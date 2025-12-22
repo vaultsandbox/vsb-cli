@@ -128,6 +128,11 @@ Renders the full HTML content of an email in the browser.
 ## Command: `vsb export / import` (Portable Identity)
 Enables team collaboration and CI persistence.
 
+## Optional: `vsb inbox list` / `vsb inbox use`
+Since the CLI relies on `active_inbox`, consider adding:
+* `vsb inbox list` to show all stored inboxes and highlight the active one.
+* `vsb inbox use <email>` to switch `active_inbox` explicitly.
+
 ### Export
 **Command:** `vsb export [email-address] --out my-keys.json`
 1.  **Locate:** Finds the keys and metadata for the inbox.
