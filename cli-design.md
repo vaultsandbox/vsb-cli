@@ -70,15 +70,20 @@ This is the entry point for most users.
 ## Command: `vsb watch` (The Live Feed)
 This command consumes the stored keys to provide a decrypted view.
 
-1.  **Load State:** Reads `active_inbox` and its corresponding private key from `keystore.json`.
+**Command:** `vsb watch` or `vsb watch --all`
+
+1.  **Load State:** 
+    *   Default: Reads `active_inbox` and its key.
+    *   `--all`: Loads keys for **all** stored inboxes in `keystore.json`.
 2.  **Connect:**
-    *   Establishes an SSE connection to `/api/events`.
-    *   *Fallback:* Starts polling if SSE fails.
+    *   Establishes a single SSE connection to `/api/events`.
+    *   *Payload:* Sends a comma-separated list of inbox hashes if using `--all`.
 3.  **Real-time Decryption Loop:**
     *   **Event Received:** Encrypted payload arrives.
     *   **Verify:** CLI verifies the `ML-DSA-65` signature using the pinned `serverSigPk`.
-    *   **Decrypt:** CLI uses the stored `kem_private` key to decapsulate and decrypt the AES-GCM payload.
-    *   **Render:** TUI updates instantly with the decrypted Subject, From, and Security Verdicts.
+    *   **Decrypt:** CLI uses the corresponding stored `kem_private` key for the target inbox to decapsulate.
+    *   **Render:** TUI updates instantly.
+        *   *UI Update:* If `--all` is active, a "Inbox Label" column is added to distinguish sources (e.g., `[Billing]`, `[Auth]`).
 
 ## Command: `vsb wait-for` (CI/CD)
 Designed for scripting.
@@ -107,6 +112,34 @@ Proves the "Production Fidelity" of the email flow.
 2.  **Decrypt:** Full decryption (including body).
 3.  **Parse:** Scans HTML/Text body for links (http/https).
 4.  **Action:** Opens the *first* link found in the system default browser.
+
+## Command: `vsb view` (Visual Preview)
+Renders the full HTML content of an email in the browser.
+
+**Command:** `vsb view <id>` (or `--latest`)
+
+1.  **Fetch & Decrypt:** Retrieves and decrypts the email body.
+2.  **Sanitize & Save:** 
+    *   Writes the HTML content to a secure temporary file (e.g., `/tmp/vsb-preview-xyz.html`).
+    *   *Note:* Images/Resources might be broken if they require authentication, but layout is visible.
+3.  **Launch:** Opens the temporary file in the system's default web browser.
+4.  **Cleanup:** (Optional) Deletes the file after a short delay or on CLI exit.
+
+## Command: `vsb export / import` (Portable Identity)
+Enables team collaboration and CI persistence.
+
+### Export
+**Command:** `vsb export [email-address] --out my-keys.json`
+1.  **Locate:** Finds the keys and metadata for the inbox.
+2.  **Serialize:** Dumps the `Exported Inbox Data` structure (JSON) containing private keys.
+3.  **Warn:** Displays a security warning ("This file contains private keys...").
+
+### Import
+**Command:** `vsb import my-keys.json`
+1.  **Read:** Parses the JSON file.
+2.  **Merge:** Adds the inbox to `keystore.json`.
+3.  **Activate:** Sets it as the `active_inbox`.
+    *   *Result:* User can now run `vsb watch` on this shared inbox.
 
 ---
 
