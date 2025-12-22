@@ -153,4 +153,3 @@ Since the CLI relies on `active_inbox`, consider adding:
 *   **TUI:** `bubbletea` (for the `watch` dashboard).
 *   **Styling:** `lipgloss` (for pretty boxes and colors).
 *   **Config:** `viper` (to handle config file parsing).
-*   **Storage:** `zalando/go-keyring` (Optional: if we want to store private keys in the OS keychain instead of a file, though a file is easier for CI).
