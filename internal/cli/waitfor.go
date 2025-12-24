@@ -1,0 +1,266 @@
+package cli
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"regexp"
+	"strings"
+	"time"
+
+	"github.com/spf13/cobra"
+	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/config"
+	"github.com/vaultsandbox/vsb-cli/internal/output"
+)
+
+var waitForCmd = &cobra.Command{
+	Use:   "wait-for",
+	Short: "Wait for an email matching criteria (CI/CD)",
+	Long: `Block until an email matching the specified criteria arrives.
+
+Designed for CI/CD pipelines and automated testing. Returns exit code 0
+when a matching email is found, 1 on timeout.
+
+Filter Options:
+  --subject       Exact subject match
+  --subject-regex Subject regex pattern
+  --from          Exact sender match
+  --from-regex    Sender regex pattern
+
+Output Options:
+  --json          Output matching email as JSON
+  --quiet         No output, just exit code
+  --extract-link  Output first link from email body
+
+Examples:
+  # Wait for any email
+  vsb wait-for
+
+  # Wait for password reset email
+  vsb wait-for --subject-regex "password reset" --timeout 30s
+
+  # Extract verification link
+  LINK=$(vsb wait-for --subject "Verify" --extract-link)
+
+  # JSON output for parsing
+  vsb wait-for --from "noreply@example.com" --json | jq .subject`,
+	RunE: runWaitFor,
+}
+
+var (
+	waitForEmail        string
+	waitForSubject      string
+	waitForSubjectRegex string
+	waitForFrom         string
+	waitForFromRegex    string
+	waitForTimeout      string
+	waitForJSON         bool
+	waitForQuiet        bool
+	waitForExtractLink  bool
+	waitForCount        int
+)
+
+func init() {
+	rootCmd.AddCommand(waitForCmd)
+
+	// Inbox selection
+	waitForCmd.Flags().StringVar(&waitForEmail, "email", "",
+		"Watch specific inbox (default: active)")
+
+	// Filters
+	waitForCmd.Flags().StringVar(&waitForSubject, "subject", "",
+		"Exact subject match")
+	waitForCmd.Flags().StringVar(&waitForSubjectRegex, "subject-regex", "",
+		"Subject regex pattern")
+	waitForCmd.Flags().StringVar(&waitForFrom, "from", "",
+		"Exact sender match")
+	waitForCmd.Flags().StringVar(&waitForFromRegex, "from-regex", "",
+		"Sender regex pattern")
+
+	// Timing
+	waitForCmd.Flags().StringVar(&waitForTimeout, "timeout", "60s",
+		"Maximum time to wait")
+	waitForCmd.Flags().IntVar(&waitForCount, "count", 1,
+		"Number of matching emails to wait for")
+
+	// Output
+	waitForCmd.Flags().BoolVar(&waitForJSON, "json", false,
+		"Output email as JSON")
+	waitForCmd.Flags().BoolVar(&waitForQuiet, "quiet", false,
+		"No output, exit code only")
+	waitForCmd.Flags().BoolVar(&waitForExtractLink, "extract-link", false,
+		"Output first link from email")
+}
+
+func runWaitFor(cmd *cobra.Command, args []string) error {
+	// Parse timeout
+	timeout, err := time.ParseDuration(waitForTimeout)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, output.PrintError("Invalid timeout format"))
+		os.Exit(2)
+	}
+
+	// Load keystore
+	keystore, err := config.LoadKeystore()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, output.PrintError("Failed to load keystore"))
+		os.Exit(2)
+	}
+
+	// Get inbox
+	var stored *config.StoredInbox
+	if waitForEmail != "" {
+		stored, err = keystore.GetInbox(waitForEmail)
+	} else {
+		stored, err = keystore.GetActiveInbox()
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, output.PrintError("No inbox found"))
+		os.Exit(2)
+	}
+
+	// Create client
+	client, err := config.NewClient()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, output.PrintError(err.Error()))
+		os.Exit(2)
+	}
+	defer client.Close()
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// Import inbox
+	inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, output.PrintError("Failed to import inbox"))
+		os.Exit(2)
+	}
+
+	// Build wait options
+	opts, err := buildWaitOptions(timeout)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, output.PrintError(err.Error()))
+		os.Exit(2)
+	}
+
+	// Show waiting message (unless quiet)
+	if !waitForQuiet {
+		fmt.Fprintf(os.Stderr, "Waiting for email on %s (timeout: %s)...\n",
+			stored.Email, timeout)
+	}
+
+	// Wait for email(s)
+	var emails []*vaultsandbox.Email
+	if waitForCount > 1 {
+		emails, err = inbox.WaitForEmailCount(ctx, waitForCount, opts...)
+	} else {
+		email, waitErr := inbox.WaitForEmail(ctx, opts...)
+		if waitErr != nil {
+			err = waitErr
+		} else {
+			emails = []*vaultsandbox.Email{email}
+		}
+	}
+
+	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			if !waitForQuiet {
+				fmt.Fprintln(os.Stderr, output.PrintError("Timeout waiting for email"))
+			}
+			os.Exit(1)
+		}
+		fmt.Fprintln(os.Stderr, output.PrintError(err.Error()))
+		os.Exit(2)
+	}
+
+	// Output result
+	outputEmails(emails)
+	os.Exit(0)
+	return nil
+}
+
+func buildWaitOptions(timeout time.Duration) ([]vaultsandbox.WaitOption, error) {
+	var opts []vaultsandbox.WaitOption
+
+	// Set timeout
+	opts = append(opts, vaultsandbox.WithWaitTimeout(timeout))
+
+	// Subject filters
+	if waitForSubject != "" {
+		opts = append(opts, vaultsandbox.WithSubject(waitForSubject))
+	}
+	if waitForSubjectRegex != "" {
+		re, err := regexp.Compile(waitForSubjectRegex)
+		if err != nil {
+			return nil, fmt.Errorf("invalid subject regex: %w", err)
+		}
+		opts = append(opts, vaultsandbox.WithSubjectRegex(re))
+	}
+
+	// From filters
+	if waitForFrom != "" {
+		opts = append(opts, vaultsandbox.WithFrom(waitForFrom))
+	}
+	if waitForFromRegex != "" {
+		re, err := regexp.Compile(waitForFromRegex)
+		if err != nil {
+			return nil, fmt.Errorf("invalid from regex: %w", err)
+		}
+		opts = append(opts, vaultsandbox.WithFromRegex(re))
+	}
+
+	return opts, nil
+}
+
+func outputEmails(emails []*vaultsandbox.Email) {
+	if waitForQuiet {
+		return
+	}
+
+	for _, email := range emails {
+		if waitForJSON {
+			// JSON output
+			data, _ := json.MarshalIndent(emailToMap(email), "", "  ")
+			fmt.Println(string(data))
+		} else if waitForExtractLink {
+			// Extract first link
+			if len(email.Links) > 0 {
+				fmt.Println(email.Links[0])
+			}
+		} else {
+			// Human-readable output
+			fmt.Printf("Subject: %s\n", email.Subject)
+			fmt.Printf("From: %s\n", email.From)
+			fmt.Printf("Received: %s\n", email.ReceivedAt.Format(time.RFC3339))
+			if len(email.Links) > 0 {
+				fmt.Printf("Links: %d found\n", len(email.Links))
+			}
+		}
+	}
+}
+
+func emailToMap(email *vaultsandbox.Email) map[string]interface{} {
+	// Format To field - join array if present
+	var to interface{}
+	if len(email.To) > 0 {
+		to = strings.Join(email.To, ", ")
+	} else {
+		to = ""
+	}
+
+	return map[string]interface{}{
+		"id":         email.ID,
+		"subject":    email.Subject,
+		"from":       email.From,
+		"to":         to,
+		"receivedAt": email.ReceivedAt.Format(time.RFC3339),
+		"text":       email.Text,
+		"html":       email.HTML,
+		"links":      email.Links,
+		"headers":    email.Headers,
+	}
+}
