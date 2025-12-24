@@ -11,6 +11,9 @@ vsb
 *.out
 vendor/
 
+# AI
+.claude
+
 # IDE
 .idea/
 .vscode/
