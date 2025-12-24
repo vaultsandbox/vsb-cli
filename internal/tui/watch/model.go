@@ -3,9 +3,11 @@ package watch
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	vaultsandbox "github.com/vaultsandbox/client-go"
@@ -52,11 +54,16 @@ type connectedMsg struct{}
 
 // Model is the Bubble Tea model for the watch TUI
 type Model struct {
-	list   list.Model
-	emails []EmailItem
+	list     list.Model
+	viewport viewport.Model
+	emails   []EmailItem
 
 	showAll    bool
 	inboxLabel string
+
+	// Detail view state
+	viewing     bool
+	viewedEmail *EmailItem
 
 	// Connection status
 	connected bool
@@ -77,14 +84,16 @@ type Model struct {
 
 // KeyMap defines the keybindings
 type KeyMap struct {
-	Up      key.Binding
-	Down    key.Binding
-	Open    key.Binding
-	View    key.Binding
-	Delete  key.Binding
-	Refresh key.Binding
-	Quit    key.Binding
-	Help    key.Binding
+	Up        key.Binding
+	Down      key.Binding
+	Enter     key.Binding
+	Back      key.Binding
+	OpenLinks key.Binding
+	ViewHTML  key.Binding
+	Delete    key.Binding
+	Refresh   key.Binding
+	Quit      key.Binding
+	Help      key.Binding
 }
 
 var DefaultKeyMap = KeyMap{
@@ -96,16 +105,24 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("down", "j"),
 		key.WithHelp("↓/j", "down"),
 	),
-	Open: key.NewBinding(
-		key.WithKeys("enter", "o"),
-		key.WithHelp("enter/o", "open links"),
+	Enter: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "view email"),
 	),
-	View: key.NewBinding(
+	Back: key.NewBinding(
+		key.WithKeys("esc", "backspace"),
+		key.WithHelp("esc", "back"),
+	),
+	OpenLinks: key.NewBinding(
+		key.WithKeys("o"),
+		key.WithHelp("o", "open links"),
+	),
+	ViewHTML: key.NewBinding(
 		key.WithKeys("v"),
 		key.WithHelp("v", "view html"),
 	),
 	Delete: key.NewBinding(
-		key.WithKeys("d", "backspace"),
+		key.WithKeys("d"),
 		key.WithHelp("d", "delete"),
 	),
 	Refresh: key.NewBinding(
@@ -237,6 +254,31 @@ func (m *Model) LoadExistingEmails(p *tea.Program) {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle detail view keys
+		if m.viewing {
+			switch {
+			case key.Matches(msg, DefaultKeyMap.Quit):
+				m.cancel()
+				return m, tea.Quit
+			case key.Matches(msg, DefaultKeyMap.Back):
+				m.viewing = false
+				m.viewedEmail = nil
+				return m, nil
+			case key.Matches(msg, DefaultKeyMap.OpenLinks):
+				if m.viewedEmail != nil && len(m.viewedEmail.Email.Links) > 0 {
+					return m, m.openLinks()
+				}
+			case key.Matches(msg, DefaultKeyMap.ViewHTML):
+				if m.viewedEmail != nil && m.viewedEmail.Email.HTML != "" {
+					return m, m.viewHTML()
+				}
+			}
+			// Update viewport for scrolling
+			var cmd tea.Cmd
+			m.viewport, cmd = m.viewport.Update(msg)
+			return m, cmd
+		}
+
 		// Don't handle keys when filtering
 		if m.list.FilterState() == list.Filtering {
 			break
@@ -246,11 +288,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, DefaultKeyMap.Quit):
 			m.cancel()
 			return m, tea.Quit
-		case key.Matches(msg, DefaultKeyMap.Open):
+		case key.Matches(msg, DefaultKeyMap.Enter):
+			if len(m.emails) > 0 {
+				if i := m.list.Index(); i >= 0 && i < len(m.emails) {
+					m.viewing = true
+					m.viewedEmail = &m.emails[i]
+					m.viewport.SetContent(m.renderEmailDetail())
+					m.viewport.GotoTop()
+				}
+			}
+			return m, nil
+		case key.Matches(msg, DefaultKeyMap.OpenLinks):
 			if len(m.emails) > 0 {
 				return m, m.openLinks()
 			}
-		case key.Matches(msg, DefaultKeyMap.View):
+		case key.Matches(msg, DefaultKeyMap.ViewHTML):
 			if len(m.emails) > 0 {
 				return m, m.viewHTML()
 			}
@@ -264,6 +316,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.list.SetSize(msg.Width-4, msg.Height-6)
+		m.viewport.Width = msg.Width - 4
+		m.viewport.Height = msg.Height - 8
 
 	case connectedMsg:
 		m.connected = true
@@ -301,6 +355,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
+	if m.viewing {
+		return m.viewDetail()
+	}
+	return m.viewList()
+}
+
+func (m Model) viewList() string {
 	// Status bar
 	status := "Watching"
 	if m.showAll {
@@ -320,7 +381,7 @@ func (m Model) View() string {
 			status, len(m.emails)))
 
 	// Help text
-	help := styles.HelpStyle.Render("q: quit • o: open links • v: view html • d: delete • /: filter")
+	help := styles.HelpStyle.Render("q: quit • enter: view • o: open links • v: view html • d: delete • /: filter")
 
 	// Combine
 	content := lipgloss.JoinVertical(lipgloss.Left,
@@ -332,13 +393,102 @@ func (m Model) View() string {
 	return styles.AppStyle.Render(content)
 }
 
+func (m Model) viewDetail() string {
+	if m.viewedEmail == nil {
+		return ""
+	}
+
+	// Header
+	header := styles.HeaderStyle.Render("Email Details")
+
+	// Help text
+	help := styles.HelpStyle.Render("esc: back • o: open links • v: view html • q: quit • ↑↓/jk: scroll")
+
+	// Combine
+	content := lipgloss.JoinVertical(lipgloss.Left,
+		header,
+		m.viewport.View(),
+		help,
+	)
+
+	return styles.AppStyle.Render(content)
+}
+
+func (m Model) renderEmailDetail() string {
+	if m.viewedEmail == nil {
+		return ""
+	}
+
+	email := m.viewedEmail.Email
+	var sb strings.Builder
+
+	// Field styles
+	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
+	valueStyle := lipgloss.NewStyle().Foreground(styles.White)
+
+	// From
+	sb.WriteString(labelStyle.Render("From:    "))
+	sb.WriteString(valueStyle.Render(email.From))
+	sb.WriteString("\n")
+
+	// To
+	sb.WriteString(labelStyle.Render("To:      "))
+	sb.WriteString(valueStyle.Render(strings.Join(email.To, ", ")))
+	sb.WriteString("\n")
+
+	// Date
+	sb.WriteString(labelStyle.Render("Date:    "))
+	sb.WriteString(valueStyle.Render(email.ReceivedAt.Format("2006-01-02 15:04:05")))
+	sb.WriteString("\n")
+
+	// Subject
+	sb.WriteString(labelStyle.Render("Subject: "))
+	subject := email.Subject
+	if subject == "" {
+		subject = "(no subject)"
+	}
+	sb.WriteString(valueStyle.Render(subject))
+	sb.WriteString("\n")
+
+	// Links (if any)
+	if len(email.Links) > 0 {
+		sb.WriteString(labelStyle.Render("Links:   "))
+		sb.WriteString(valueStyle.Render(fmt.Sprintf("%d found", len(email.Links))))
+		sb.WriteString("\n")
+	}
+
+	// Attachments (if any)
+	if len(email.Attachments) > 0 {
+		sb.WriteString(labelStyle.Render("Attach:  "))
+		sb.WriteString(valueStyle.Render(fmt.Sprintf("%d files", len(email.Attachments))))
+		sb.WriteString("\n")
+	}
+
+	// Separator
+	sb.WriteString("\n")
+	sb.WriteString(styles.HelpStyle.Render(strings.Repeat("─", 60)))
+	sb.WriteString("\n\n")
+
+	// Body
+	body := email.Text
+	if body == "" {
+		body = "(no text content)"
+	}
+	sb.WriteString(body)
+
+	return sb.String()
+}
+
 func (m Model) openLinks() tea.Cmd {
 	return func() tea.Msg {
-		if i := m.list.Index(); i >= 0 && i < len(m.emails) {
-			email := m.emails[i].Email
-			if len(email.Links) > 0 {
-				openBrowser(email.Links[0])
-			}
+		var email *vaultsandbox.Email
+		if m.viewing && m.viewedEmail != nil {
+			email = m.viewedEmail.Email
+		} else if i := m.list.Index(); i >= 0 && i < len(m.emails) {
+			email = m.emails[i].Email
+		}
+		if email != nil && len(email.Links) > 0 {
+			openBrowser(email.Links[0])
 		}
 		return nil
 	}
@@ -346,11 +496,14 @@ func (m Model) openLinks() tea.Cmd {
 
 func (m Model) viewHTML() tea.Cmd {
 	return func() tea.Msg {
-		if i := m.list.Index(); i >= 0 && i < len(m.emails) {
-			email := m.emails[i].Email
-			if email.HTML != "" {
-				viewInBrowser(email.HTML)
-			}
+		var email *vaultsandbox.Email
+		if m.viewing && m.viewedEmail != nil {
+			email = m.viewedEmail.Email
+		} else if i := m.list.Index(); i >= 0 && i < len(m.emails) {
+			email = m.emails[i].Email
+		}
+		if email != nil && email.HTML != "" {
+			viewInBrowser(email.HTML)
 		}
 		return nil
 	}
