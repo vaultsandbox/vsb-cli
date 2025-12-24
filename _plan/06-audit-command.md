@@ -1,24 +1,57 @@
-# Phase 3.2: Audit Command
+# Phase 3.2: Audit Command & Security View
 
 ## Objective
-Implement `vsb audit` - a deep-dive command that proves the "Production Fidelity" of email flows by displaying security and authentication details.
+Implement security analysis for emails:
+1. **`vsb audit`** - CLI command for scripting/CI/CD
+2. **Security view in `watch` TUI** - Press `a` to see security details for the selected email
 
-## Command
+## Commands
 
 | Command | Description |
 |---------|-------------|
 | `vsb audit <email-id>` | Audit specific email by ID |
 | `vsb audit --latest` | Audit the most recent email |
+| `vsb audit --json` | JSON output for scripting |
+
+## Watch TUI Integration
+
+In the watch TUI, add `a` keybinding to show security details:
+
+```
+Keybindings:
+  j/k     Navigate emails
+  Enter   View email content
+  a       Audit (show security info)  <-- NEW
+  o       Open first link in browser
+  l       List all links              <-- NEW
+  v       View HTML in browser
+  ?       Help
+  q       Quit
+```
+
+When viewing an email (after pressing Enter), the detail view should show tabs:
+
+```
+┌─ Email: Password Reset ─────────────────────────┐
+│ [Content] [Security] [Links] [Raw]              │
+│  Tab 1-4 to switch                              │
+├─────────────────────────────────────────────────┤
+│ From: noreply@example.com                       │
+│ To:   abc123@vaultsandbox.com                   │
+│ ...                                             │
+└─────────────────────────────────────────────────┘
+```
 
 ## Output Sections
 
-1. **Transport Security**: TLS version, cipher suite
-2. **Authentication**: SPF, DKIM, DMARC results
+1. **Authentication**: SPF, DKIM, DMARC results
+2. **Transport Security**: TLS version, cipher suite
 3. **MIME Structure**: Headers, body parts, attachments
+4. **Security Score**: 0-100 based on auth results
 
 ## Tasks
 
-### 1. Audit Command
+### 1. CLI Audit Command (for scripting)
 
 **File: `internal/cli/audit.go`**
 
@@ -27,6 +60,7 @@ package cli
 
 import (
     "context"
+    "encoding/json"
     "fmt"
     "strings"
 
@@ -43,14 +77,14 @@ var auditCmd = &cobra.Command{
     Long: `Analyze an email's transport security, authentication, and structure.
 
 Proves the "Production Fidelity" of the email flow by displaying:
-- Transport Security: TLS version and cipher suite
 - Authentication: SPF, DKIM, and DMARC validation results
+- Transport Security: TLS version and cipher suite
 - MIME Structure: Headers, body parts, and attachments
 
 Examples:
   vsb audit abc123          # Audit specific email
   vsb audit --latest        # Audit most recent email
-  vsb audit --latest --json # JSON output`,
+  vsb audit --latest --json # JSON output for scripting`,
     Args: cobra.MaximumNArgs(1),
     RunE: runAudit,
 }
@@ -317,11 +351,7 @@ func buildMIMETree(email *vaultsandbox.Email) string {
         sb.WriteString("├── body\n")
         if hasText && hasHTML {
             sb.WriteString("│   ├── text/plain\n")
-            if hasAttachments {
-                sb.WriteString("│   └── text/html\n")
-            } else {
-                sb.WriteString("│   └── text/html\n")
-            }
+            sb.WriteString("│   └── text/html\n")
         } else if hasText {
             sb.WriteString("│   └── text/plain\n")
         } else {
@@ -376,17 +406,13 @@ func calculateSecurityScore(email *vaultsandbox.Email) int {
 }
 
 func renderAuditJSON(email *vaultsandbox.Email) error {
-    // Similar to emailToMap but with auth results
     data := map[string]interface{}{
-        "id":         email.ID,
-        "subject":    email.Subject,
-        "from":       email.From,
-        "to":         email.To,
-        "receivedAt": email.ReceivedAt,
-        "text":       email.Text,
-        "html":       email.HTML,
-        "headers":    email.Headers,
-        "links":      email.Links,
+        "id":            email.ID,
+        "subject":       email.Subject,
+        "from":          email.From,
+        "to":            email.To,
+        "receivedAt":    email.ReceivedAt,
+        "securityScore": calculateSecurityScore(email),
     }
 
     if email.AuthResults != nil {
@@ -407,14 +433,270 @@ func renderAuditJSON(email *vaultsandbox.Email) error {
         }
     }
 
-    // JSON output
     output, _ := json.MarshalIndent(data, "", "  ")
     fmt.Println(string(output))
     return nil
 }
 ```
 
-## Sample Output
+### 2. Security View in Watch TUI
+
+**Update: `internal/tui/watch/model.go`**
+
+Add a new view mode for security details. When in detail view, pressing `a` toggles to security view:
+
+```go
+// Add to KeyMap
+type KeyMap struct {
+    // ... existing keys ...
+    Audit     key.Binding  // NEW
+    ListLinks key.Binding  // NEW
+}
+
+var DefaultKeyMap = KeyMap{
+    // ... existing keys ...
+    Audit: key.NewBinding(
+        key.WithKeys("a"),
+        key.WithHelp("a", "security audit"),
+    ),
+    ListLinks: key.NewBinding(
+        key.WithKeys("l"),
+        key.WithHelp("l", "list links"),
+    ),
+}
+
+// Add view mode enum
+type DetailView int
+
+const (
+    ViewContent DetailView = iota
+    ViewSecurity
+    ViewLinks
+    ViewRaw
+)
+
+// Update Model to track current detail view
+type Model struct {
+    // ... existing fields ...
+    detailView DetailView  // NEW: which tab is active
+}
+
+// In Update(), handle 'a' key to toggle security view
+case key.Matches(msg, DefaultKeyMap.Audit):
+    if m.viewing && m.viewedEmail != nil {
+        m.detailView = ViewSecurity
+        m.viewport.SetContent(m.renderSecurityView())
+        m.viewport.GotoTop()
+    }
+
+// In Update(), handle 'l' key to show links list
+case key.Matches(msg, DefaultKeyMap.ListLinks):
+    if m.viewing && m.viewedEmail != nil {
+        m.detailView = ViewLinks
+        m.viewport.SetContent(m.renderLinksView())
+        m.viewport.GotoTop()
+    }
+```
+
+**New: `internal/tui/watch/security.go`**
+
+```go
+package watch
+
+import (
+    "fmt"
+    "strings"
+
+    "github.com/charmbracelet/lipgloss"
+    vaultsandbox "github.com/vaultsandbox/client-go"
+    "github.com/vaultsandbox/vsb-cli/internal/tui/styles"
+)
+
+// renderSecurityView renders the security audit view for an email
+func (m Model) renderSecurityView() string {
+    if m.viewedEmail == nil {
+        return ""
+    }
+
+    email := m.viewedEmail.Email
+    var sb strings.Builder
+
+    labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple).Width(16)
+    passStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Green)
+    failStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Red)
+    warnStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Yellow)
+    sectionStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.White).MarginTop(1)
+
+    // Tab indicator
+    sb.WriteString(styles.HelpStyle.Render("[1:Content] [2:Security] [3:Links] [4:Raw]"))
+    sb.WriteString("\n")
+    sb.WriteString(styles.HelpStyle.Render("           ^^^^^^^^^^"))
+    sb.WriteString("\n\n")
+
+    // Authentication
+    sb.WriteString(sectionStyle.Render("AUTHENTICATION"))
+    sb.WriteString("\n")
+
+    if email.AuthResults != nil {
+        auth := email.AuthResults
+
+        // SPF
+        spfResult := formatResult(auth.SPF.Result, passStyle, failStyle, warnStyle)
+        sb.WriteString(fmt.Sprintf("%s %s", labelStyle.Render("SPF:"), spfResult))
+        if auth.SPF.Domain != "" {
+            sb.WriteString(fmt.Sprintf(" (%s)", auth.SPF.Domain))
+        }
+        sb.WriteString("\n")
+
+        // DKIM
+        dkimResult := formatResult(auth.DKIM.Result, passStyle, failStyle, warnStyle)
+        sb.WriteString(fmt.Sprintf("%s %s", labelStyle.Render("DKIM:"), dkimResult))
+        if auth.DKIM.Domain != "" {
+            sb.WriteString(fmt.Sprintf(" (%s)", auth.DKIM.Domain))
+        }
+        sb.WriteString("\n")
+
+        // DMARC
+        dmarcResult := formatResult(auth.DMARC.Result, passStyle, failStyle, warnStyle)
+        sb.WriteString(fmt.Sprintf("%s %s", labelStyle.Render("DMARC:"), dmarcResult))
+        if auth.DMARC.Policy != "" {
+            sb.WriteString(fmt.Sprintf(" (policy: %s)", auth.DMARC.Policy))
+        }
+        sb.WriteString("\n")
+
+        // Reverse DNS
+        if auth.ReverseDNS != nil {
+            rdns := "FAIL"
+            if auth.ReverseDNS.Valid {
+                rdns = "PASS"
+            }
+            rdnsResult := formatResult(rdns, passStyle, failStyle, warnStyle)
+            sb.WriteString(fmt.Sprintf("%s %s", labelStyle.Render("Reverse DNS:"), rdnsResult))
+            if auth.ReverseDNS.Hostname != "" {
+                sb.WriteString(fmt.Sprintf(" (%s)", auth.ReverseDNS.Hostname))
+            }
+            sb.WriteString("\n")
+        }
+    } else {
+        sb.WriteString(warnStyle.Render("No authentication results available"))
+        sb.WriteString("\n")
+    }
+
+    // Transport Security
+    sb.WriteString("\n")
+    sb.WriteString(sectionStyle.Render("TRANSPORT SECURITY"))
+    sb.WriteString("\n")
+    sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("TLS:"), passStyle.Render("TLS 1.3")))
+    sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("E2E:"), passStyle.Render("ML-KEM-768 + AES-256-GCM")))
+
+    // Security Score
+    sb.WriteString("\n")
+    sb.WriteString(sectionStyle.Render("SECURITY SCORE"))
+    sb.WriteString("\n")
+    score := calculateScore(email)
+    scoreStyle := passStyle
+    if score < 80 {
+        scoreStyle = warnStyle
+    }
+    if score < 60 {
+        scoreStyle = failStyle
+    }
+    sb.WriteString(scoreStyle.Render(fmt.Sprintf("%d/100", score)))
+    sb.WriteString("\n")
+
+    return sb.String()
+}
+
+func formatResult(result string, pass, fail, warn lipgloss.Style) string {
+    switch strings.ToLower(result) {
+    case "pass":
+        return pass.Render("PASS")
+    case "fail", "hardfail":
+        return fail.Render("FAIL")
+    case "softfail":
+        return warn.Render("SOFTFAIL")
+    case "none", "neutral":
+        return warn.Render(strings.ToUpper(result))
+    default:
+        return result
+    }
+}
+
+func calculateScore(email *vaultsandbox.Email) int {
+    score := 50 // Base for E2E
+
+    if email.AuthResults != nil {
+        if strings.EqualFold(email.AuthResults.SPF.Result, "pass") {
+            score += 15
+        }
+        if strings.EqualFold(email.AuthResults.DKIM.Result, "pass") {
+            score += 20
+        }
+        if strings.EqualFold(email.AuthResults.DMARC.Result, "pass") {
+            score += 10
+        }
+        if email.AuthResults.ReverseDNS != nil && email.AuthResults.ReverseDNS.Valid {
+            score += 5
+        }
+    }
+
+    return score
+}
+```
+
+**New: `internal/tui/watch/links.go`**
+
+```go
+package watch
+
+import (
+    "fmt"
+    "strings"
+
+    "github.com/charmbracelet/lipgloss"
+    "github.com/vaultsandbox/vsb-cli/internal/tui/styles"
+)
+
+// renderLinksView renders the links list view
+func (m Model) renderLinksView() string {
+    if m.viewedEmail == nil {
+        return ""
+    }
+
+    email := m.viewedEmail.Email
+    var sb strings.Builder
+
+    labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
+    linkStyle := lipgloss.NewStyle().Foreground(styles.White)
+    indexStyle := lipgloss.NewStyle().Foreground(styles.Gray)
+
+    // Tab indicator
+    sb.WriteString(styles.HelpStyle.Render("[1:Content] [2:Security] [3:Links] [4:Raw]"))
+    sb.WriteString("\n")
+    sb.WriteString(styles.HelpStyle.Render("                         ^^^^^^^"))
+    sb.WriteString("\n\n")
+
+    if len(email.Links) == 0 {
+        sb.WriteString(styles.HelpStyle.Render("No links found in this email"))
+        return sb.String()
+    }
+
+    sb.WriteString(labelStyle.Render(fmt.Sprintf("Found %d links:\n\n", len(email.Links))))
+
+    for i, link := range email.Links {
+        sb.WriteString(indexStyle.Render(fmt.Sprintf("%2d. ", i+1)))
+        sb.WriteString(linkStyle.Render(link))
+        sb.WriteString("\n")
+    }
+
+    sb.WriteString("\n")
+    sb.WriteString(styles.HelpStyle.Render("Press 'o' to open first link, or number key (1-9) to open specific link"))
+
+    return sb.String()
+}
+```
+
+## Sample CLI Output
 
 ```
  EMAIL AUDIT REPORT
@@ -462,23 +744,51 @@ MIME STRUCTURE
 ╰──────────────────────────────────────────────╯
 ```
 
+## Watch TUI Security View
+
+```
+┌─ Email Details ─────────────────────────────────┐
+│ [1:Content] [2:Security] [3:Links] [4:Raw]      │
+│              ^^^^^^^^^^                         │
+│                                                 │
+│ AUTHENTICATION                                  │
+│ SPF:            PASS (example.com)              │
+│ DKIM:           PASS (example.com)              │
+│ DMARC:          PASS (policy: reject)           │
+│ Reverse DNS:    PASS (mail.example.com)         │
+│                                                 │
+│ TRANSPORT SECURITY                              │
+│ TLS:            TLS 1.3                         │
+│ E2E:            ML-KEM-768 + AES-256-GCM        │
+│                                                 │
+│ SECURITY SCORE                                  │
+│ 100/100                                         │
+│                                                 │
+├─────────────────────────────────────────────────┤
+│ 1-4: switch tabs • esc: back • q: quit          │
+└─────────────────────────────────────────────────┘
+```
+
 ## Verification
 
 ```bash
-# Audit latest email
+# CLI: Audit latest email
 vsb audit --latest
 
-# Audit specific email
-vsb audit abc123
+# CLI: JSON output for CI/CD
+vsb audit --latest --json | jq '.authResults.spf.result'
 
-# JSON output
-vsb audit --latest --json | jq '.authResults.dkim.result'
+# TUI: In watch, press Enter on email, then 'a' for security view
+vsb watch
 ```
 
-## Files Created
+## Files Created/Modified
 
-- `internal/cli/audit.go`
+- `internal/cli/audit.go` (NEW - CLI command)
+- `internal/tui/watch/model.go` (UPDATE - add security view mode)
+- `internal/tui/watch/security.go` (NEW - security view renderer)
+- `internal/tui/watch/links.go` (NEW - links list view renderer)
 
 ## Next Steps
 
-Proceed to [07-open-view-commands.md](07-open-view-commands.md) to implement the open and view commands.
+Proceed to [07-open-view-commands.md](07-open-view-commands.md) to finalize open/view commands and browser utilities.

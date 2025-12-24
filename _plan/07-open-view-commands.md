@@ -1,21 +1,51 @@
 # Phase 4.1: Open and View Commands
 
 ## Objective
-Implement `vsb open` (extract and open first link) and `vsb view` (preview HTML in browser).
+The `watch` TUI already has `o` (open links) and `v` (view HTML) keybindings implemented in `internal/tui/watch/browser.go`. This phase adds:
 
-## Commands
+1. **CLI commands** for scripting/CI/CD use cases
+2. **Shared browser utility** to consolidate browser opening logic
+3. **Enhanced link handling** in the watch TUI (number keys to open specific links)
+
+## Current State
+
+The watch TUI already supports:
+- `o` - Open first link in browser
+- `v` - View HTML in browser
+
+These work but use a simple inline implementation. We'll extract to a shared utility.
+
+## Commands (CLI - for scripting)
 
 | Command | Description |
 |---------|-------------|
 | `vsb open` | Extract first link from latest email and open in browser |
 | `vsb open <id>` | Extract first link from specific email |
-| `vsb open --list` | List all links without opening |
+| `vsb open --list` | List all links without opening (returns JSON-friendly output) |
+| `vsb open --nth 2` | Open the Nth link |
 | `vsb view` | Open latest email HTML in browser |
 | `vsb view <id>` | Open specific email HTML in browser |
+| `vsb view --text` | Print plain text to terminal |
+| `vsb view --raw` | Print raw email source (RFC 5322) |
+
+## Watch TUI Enhancements
+
+Enhance the existing keybindings:
+
+```
+Keybindings (in detail view):
+  o       Open first link in browser (existing)
+  1-9     Open specific link by number (NEW)
+  l       Show links list view (NEW - from 06-audit)
+  v       View HTML in browser (existing)
+  r       View raw email source (NEW)
+```
 
 ## Tasks
 
-### 1. Browser Utility (Shared)
+### 1. Shared Browser Utility
+
+Extract browser logic to a shared package for use by both CLI and TUI.
 
 **File: `internal/browser/browser.go`**
 
@@ -70,7 +100,7 @@ func OpenHTML(html string) error {
     return Open("file://" + tmpFile)
 }
 
-// CleanupPreviews removes old preview files
+// CleanupPreviews removes old preview files (older than 24 hours)
 func CleanupPreviews() error {
     tmpDir := filepath.Join(os.TempDir(), "vsb-previews")
 
@@ -98,7 +128,7 @@ func CleanupPreviews() error {
 }
 ```
 
-### 2. Open Command
+### 2. Open Command (CLI)
 
 **File: `internal/cli/open.go`**
 
@@ -107,13 +137,13 @@ package cli
 
 import (
     "context"
+    "encoding/json"
     "fmt"
 
     "github.com/spf13/cobra"
     vaultsandbox "github.com/vaultsandbox/client-go"
     "github.com/vaultsandbox/vsb-cli/internal/browser"
     "github.com/vaultsandbox/vsb-cli/internal/config"
-    "github.com/vaultsandbox/vsb-cli/internal/output"
 )
 
 var openCmd = &cobra.Command{
@@ -124,11 +154,14 @@ var openCmd = &cobra.Command{
 This is useful for quickly following verification links, password reset links,
 or any other actionable URLs in emails.
 
+For interactive use, prefer 'vsb watch' and press 'o' to open links.
+
 Examples:
   vsb open              # Open first link from latest email
   vsb open abc123       # Open first link from specific email
-  vsb open --list       # List all links without opening
-  vsb open --nth 2      # Open the second link`,
+  vsb open --list       # List all links (for scripting)
+  vsb open --nth 2      # Open the second link
+  vsb open --json       # JSON output for CI/CD`,
     Args: cobra.MaximumNArgs(1),
     RunE: runOpen,
 }
@@ -137,7 +170,7 @@ var (
     openList   bool
     openNth    int
     openEmail  string
-    openLatest bool
+    openJSON   bool
 )
 
 func init() {
@@ -149,77 +182,38 @@ func init() {
         "Open the Nth link (1-indexed)")
     openCmd.Flags().StringVar(&openEmail, "email", "",
         "Use specific inbox (default: active)")
-    openCmd.Flags().BoolVar(&openLatest, "latest", true,
-        "Use latest email (default: true)")
+    openCmd.Flags().BoolVar(&openJSON, "json", false,
+        "Output as JSON")
 }
 
 func runOpen(cmd *cobra.Command, args []string) error {
     ctx := context.Background()
 
-    // Get email ID or use latest
-    emailID := ""
-    if len(args) > 0 {
-        emailID = args[0]
-        openLatest = false
-    }
-
-    // Get inbox
-    keystore, err := config.LoadKeystore()
-    if err != nil {
-        return err
-    }
-
-    var stored *config.StoredInbox
-    if openEmail != "" {
-        stored, err = keystore.GetInbox(openEmail)
-    } else {
-        stored, err = keystore.GetActiveInbox()
-    }
-    if err != nil {
-        return fmt.Errorf("no inbox found: %w", err)
-    }
-
-    // Create client and import inbox
-    client, err := config.NewClient()
-    if err != nil {
-        return err
-    }
-    defer client.Close()
-
-    inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
-    if err != nil {
-        return err
-    }
-
     // Get email
-    var email *vaultsandbox.Email
-    if openLatest {
-        emails, err := inbox.GetEmails(ctx)
-        if err != nil {
-            return err
-        }
-        if len(emails) == 0 {
-            return fmt.Errorf("no emails in inbox")
-        }
-        email = emails[0]
-    } else {
-        email, err = inbox.GetEmail(ctx, emailID)
-        if err != nil {
-            return err
-        }
+    email, err := getEmailFromArgs(ctx, args, openEmail)
+    if err != nil {
+        return err
     }
 
     // Check for links
     if len(email.Links) == 0 {
-        fmt.Println(output.Info("No links found in email"))
+        if openJSON {
+            fmt.Println("[]")
+        } else {
+            fmt.Println("No links found in email")
+        }
         return nil
     }
 
     // List mode
     if openList {
-        fmt.Printf("Found %d links in email:\n\n", len(email.Links))
-        for i, link := range email.Links {
-            fmt.Printf("  %d. %s\n", i+1, link)
+        if openJSON {
+            output, _ := json.MarshalIndent(email.Links, "", "  ")
+            fmt.Println(string(output))
+        } else {
+            for i, link := range email.Links {
+                fmt.Printf("%d. %s\n", i+1, link)
+            }
         }
         return nil
     }
@@ -230,13 +224,67 @@ func runOpen(cmd *cobra.Command, args []string) error {
     }
     link := email.Links[openNth-1]
 
-    // Open in browser
-    fmt.Println(output.Info(fmt.Sprintf("Opening: %s", link)))
+    if openJSON {
+        output, _ := json.Marshal(map[string]string{"url": link})
+        fmt.Println(string(output))
+    } else {
+        fmt.Printf("Opening: %s\n", link)
+    }
+
     return browser.Open(link)
+}
+
+// getEmailFromArgs is a helper to get an email from args or latest
+func getEmailFromArgs(ctx context.Context, args []string, inboxEmail string) (*vaultsandbox.Email, error) {
+    emailID := ""
+    useLatest := true
+    if len(args) > 0 {
+        emailID = args[0]
+        useLatest = false
+    }
+
+    keystore, err := config.LoadKeystore()
+    if err != nil {
+        return nil, err
+    }
+
+    var stored *config.StoredInbox
+    if inboxEmail != "" {
+        stored, err = keystore.GetInbox(inboxEmail)
+    } else {
+        stored, err = keystore.GetActiveInbox()
+    }
+    if err != nil {
+        return nil, fmt.Errorf("no inbox found: %w", err)
+    }
+
+    client, err := config.NewClient()
+    if err != nil {
+        return nil, err
+    }
+    defer client.Close()
+
+    inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
+    if err != nil {
+        return nil, err
+    }
+
+    if useLatest {
+        emails, err := inbox.GetEmails(ctx)
+        if err != nil {
+            return nil, err
+        }
+        if len(emails) == 0 {
+            return nil, fmt.Errorf("no emails in inbox")
+        }
+        return emails[0], nil
+    }
+
+    return inbox.GetEmail(ctx, emailID)
 }
 ```
 
-### 3. View Command
+### 3. View Command (CLI)
 
 **File: `internal/cli/view.go`**
 
@@ -246,106 +294,55 @@ package cli
 import (
     "context"
     "fmt"
+    "html"
+    "strings"
 
     "github.com/spf13/cobra"
     vaultsandbox "github.com/vaultsandbox/client-go"
     "github.com/vaultsandbox/vsb-cli/internal/browser"
     "github.com/vaultsandbox/vsb-cli/internal/config"
-    "github.com/vaultsandbox/vsb-cli/internal/output"
 )
 
 var viewCmd = &cobra.Command{
     Use:   "view [email-id]",
-    Short: "Preview email HTML in browser",
-    Long: `Open the HTML content of an email in your default web browser.
+    Short: "Preview email content",
+    Long: `View email content in various formats.
 
-The HTML is saved to a temporary file and opened. This allows you to
-see the full rendered email as it would appear in an email client.
-
-Note: External images may not load due to tracking pixel protections.
+For interactive use, prefer 'vsb watch' and press 'v' to view HTML.
 
 Examples:
-  vsb view              # View latest email
+  vsb view              # View latest email HTML in browser
   vsb view abc123       # View specific email
-  vsb view --text       # View plain text version`,
+  vsb view --text       # Print plain text to terminal
+  vsb view --raw        # Print raw email source (RFC 5322)`,
     Args: cobra.MaximumNArgs(1),
     RunE: runView,
 }
 
 var (
-    viewText    bool
-    viewEmail   string
-    viewLatest  bool
-    viewRaw     bool
+    viewText  bool
+    viewRaw   bool
+    viewEmail string
 )
 
 func init() {
     rootCmd.AddCommand(viewCmd)
 
     viewCmd.Flags().BoolVar(&viewText, "text", false,
-        "Show plain text version instead of HTML")
+        "Show plain text version in terminal")
+    viewCmd.Flags().BoolVar(&viewRaw, "raw", false,
+        "Show raw email source (RFC 5322)")
     viewCmd.Flags().StringVar(&viewEmail, "email", "",
         "Use specific inbox (default: active)")
-    viewCmd.Flags().BoolVar(&viewLatest, "latest", true,
-        "Use latest email (default: true)")
-    viewCmd.Flags().BoolVar(&viewRaw, "raw", false,
-        "Show raw email source")
 }
 
 func runView(cmd *cobra.Command, args []string) error {
     ctx := context.Background()
 
-    // Get email ID or use latest
-    emailID := ""
-    if len(args) > 0 {
-        emailID = args[0]
-        viewLatest = false
-    }
-
-    // Get inbox
-    keystore, err := config.LoadKeystore()
-    if err != nil {
-        return err
-    }
-
-    var stored *config.StoredInbox
-    if viewEmail != "" {
-        stored, err = keystore.GetInbox(viewEmail)
-    } else {
-        stored, err = keystore.GetActiveInbox()
-    }
-    if err != nil {
-        return fmt.Errorf("no inbox found: %w", err)
-    }
-
-    // Create client and import inbox
-    client, err := config.NewClient()
-    if err != nil {
-        return err
-    }
-    defer client.Close()
-
-    inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
-    if err != nil {
-        return err
-    }
-
     // Get email
-    var email *vaultsandbox.Email
-    if viewLatest {
-        emails, err := inbox.GetEmails(ctx)
-        if err != nil {
-            return err
-        }
-        if len(emails) == 0 {
-            return fmt.Errorf("no emails in inbox")
-        }
-        email = emails[0]
-    } else {
-        email, err = inbox.GetEmail(ctx, emailID)
-        if err != nil {
-            return err
-        }
+    email, inbox, err := getEmailAndInbox(ctx, args, viewEmail)
+    if err != nil {
+        return err
     }
 
     // Raw mode - show RFC 5322 source
@@ -361,7 +358,7 @@ func runView(cmd *cobra.Command, args []string) error {
     // Text mode - print to terminal
     if viewText {
         if email.Text == "" {
-            fmt.Println(output.Info("No plain text version available"))
+            fmt.Println("No plain text version available")
             return nil
         }
         fmt.Printf("Subject: %s\n", email.Subject)
@@ -373,25 +370,77 @@ func runView(cmd *cobra.Command, args []string) error {
 
     // HTML mode - open in browser
     if email.HTML == "" {
-        // No HTML, show text instead
-        fmt.Println(output.Info("No HTML version, showing text:"))
+        fmt.Println("No HTML version, showing text:")
         fmt.Println(email.Text)
         return nil
     }
 
     // Wrap HTML with proper document structure
-    html := wrapHTML(email)
+    wrappedHTML := wrapEmailHTML(email)
 
-    // Open in browser
-    fmt.Println(output.Info("Opening email in browser..."))
+    fmt.Println("Opening email in browser...")
 
     // Cleanup old previews
     browser.CleanupPreviews()
 
-    return browser.OpenHTML(html)
+    return browser.OpenHTML(wrappedHTML)
 }
 
-func wrapHTML(email *vaultsandbox.Email) string {
+func getEmailAndInbox(ctx context.Context, args []string, inboxEmail string) (*vaultsandbox.Email, *vaultsandbox.Inbox, error) {
+    emailID := ""
+    useLatest := true
+    if len(args) > 0 {
+        emailID = args[0]
+        useLatest = false
+    }
+
+    keystore, err := config.LoadKeystore()
+    if err != nil {
+        return nil, nil, err
+    }
+
+    var stored *config.StoredInbox
+    if inboxEmail != "" {
+        stored, err = keystore.GetInbox(inboxEmail)
+    } else {
+        stored, err = keystore.GetActiveInbox()
+    }
+    if err != nil {
+        return nil, nil, fmt.Errorf("no inbox found: %w", err)
+    }
+
+    client, err := config.NewClient()
+    if err != nil {
+        return nil, nil, err
+    }
+    defer client.Close()
+
+    inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
+    if err != nil {
+        return nil, nil, err
+    }
+
+    var email *vaultsandbox.Email
+    if useLatest {
+        emails, err := inbox.GetEmails(ctx)
+        if err != nil {
+            return nil, nil, err
+        }
+        if len(emails) == 0 {
+            return nil, nil, fmt.Errorf("no emails in inbox")
+        }
+        email = emails[0]
+    } else {
+        email, err = inbox.GetEmail(ctx, emailID)
+        if err != nil {
+            return nil, nil, err
+        }
+    }
+
+    return email, inbox, nil
+}
+
+func wrapEmailHTML(email *vaultsandbox.Email) string {
     return fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
@@ -411,7 +460,6 @@ func wrapHTML(email *vaultsandbox.Email) string {
             color: white;
             padding: 20px;
             border-radius: 8px 8px 0 0;
-            margin-bottom: 0;
         }
         .header h1 {
             margin: 0 0 10px 0;
@@ -450,80 +498,114 @@ func wrapHTML(email *vaultsandbox.Email) string {
     </div>
 </body>
 </html>`,
-        escapeHTML(email.Subject),
-        escapeHTML(email.Subject),
-        escapeHTML(email.From),
+        html.EscapeString(email.Subject),
+        html.EscapeString(email.Subject),
+        html.EscapeString(email.From),
         email.ReceivedAt.Format("January 2, 2006 at 3:04 PM"),
         email.HTML,
     )
 }
+```
 
-func escapeHTML(s string) string {
-    replacer := strings.NewReplacer(
-        "&", "&amp;",
-        "<", "&lt;",
-        ">", "&gt;",
-        `"`, "&quot;",
-        "'", "&#39;",
-    )
-    return replacer.Replace(s)
+### 4. Update Watch TUI to Use Shared Browser
+
+**Update: `internal/tui/watch/browser.go`**
+
+Replace the inline implementation with calls to the shared browser package:
+
+```go
+package watch
+
+import (
+    "github.com/vaultsandbox/vsb-cli/internal/browser"
+)
+
+// openBrowser opens a URL in the default browser
+func openBrowser(url string) error {
+    return browser.Open(url)
 }
+
+// viewInBrowser opens HTML in the browser with wrapper
+func viewInBrowser(html string) error {
+    return browser.OpenHTML(html)
+}
+```
+
+### 5. Add Number Keys for Link Selection (Watch TUI)
+
+**Update: `internal/tui/watch/model.go`**
+
+In the Update() function, add handling for number keys 1-9 to open specific links:
+
+```go
+// In the detail view key handling section:
+case msg.Type == tea.KeyRunes:
+    if len(msg.Runes) == 1 && m.viewing && m.viewedEmail != nil {
+        n := int(msg.Runes[0] - '1') // '1' -> 0, '2' -> 1, etc.
+        if n >= 0 && n < len(m.viewedEmail.Email.Links) {
+            return m, func() tea.Msg {
+                browser.Open(m.viewedEmail.Email.Links[n])
+                return nil
+            }
+        }
+    }
 ```
 
 ## Usage Examples
 
-### Quick Link Opening
+### CLI (Scripting/CI/CD)
+
 ```bash
-# Open verification link immediately
-vsb open
-
-# Open second link in email
-vsb open --nth 2
-
-# See all links first
-vsb open --list
-```
-
-### Email Preview
-```bash
-# View HTML in browser
-vsb view
-
-# View plain text in terminal
-vsb view --text
-
-# View raw email source
-vsb view --raw
-```
-
-### CI/CD Integration
-```bash
-# Get verification link
-LINK=$(vsb wait-for --subject "Verify" --json | jq -r '.links[0]')
+# Get verification link in CI/CD
+LINK=$(vsb open --list --json | jq -r '.[0]')
 curl "$LINK"
 
-# Or use the built-in extraction
-vsb wait-for --subject "Verify" --extract-link
+# Or use built-in nth
+vsb open --nth 1
+
+# View email text in terminal
+vsb view --text
+
+# Pipe raw email for debugging
+vsb view --raw | grep "X-Spam-Score"
+```
+
+### Watch TUI (Interactive)
+
+```bash
+vsb watch
+# Navigate to email, press Enter to view
+# Press 'l' to see links list
+# Press '1' to open first link, '2' for second, etc.
+# Press 'v' to view HTML in browser
+# Press 'a' to see security audit
 ```
 
 ## Verification
 
 ```bash
-# Create inbox and trigger an email
-vsb inbox create
+# CLI commands
+vsb open --list              # List all links
+vsb open                     # Open first link
+vsb view --text              # View in terminal
+vsb view                     # View in browser
 
-# Once email arrives...
-vsb open --list          # List links
-vsb open                 # Open first link
-vsb view                 # View in browser
-vsb view --text          # View in terminal
+# Watch TUI
+vsb watch
+# Press Enter on email, then:
+#   'o' - open first link
+#   '2' - open second link
+#   'l' - list links
+#   'v' - view HTML
 ```
 
-## Files Created
+## Files Created/Modified
 
-- `internal/browser/browser.go`
-- `internal/cli/open.go`
-- `internal/cli/view.go`
+- `internal/browser/browser.go` (NEW - shared browser utility)
+- `internal/cli/open.go` (NEW - CLI command)
+- `internal/cli/view.go` (NEW - CLI command)
+- `internal/tui/watch/browser.go` (UPDATE - use shared browser)
+- `internal/tui/watch/model.go` (UPDATE - add number key handling)
 
 ## Next Steps
 
