@@ -309,34 +309,43 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.viewport.GotoTop()
 				}
 				return m, nil
-			case msg.String() == "1":
-				if m.viewedEmail != nil {
-					m.detailView = ViewContent
-					m.viewport.SetContent(m.renderEmailDetail())
-					m.viewport.GotoTop()
+			// Number keys: open links when in Links view, otherwise switch tabs
+			default:
+				if m.viewedEmail != nil && len(msg.String()) == 1 {
+					r := msg.String()[0]
+					if r >= '1' && r <= '9' {
+						n := int(r - '1') // '1' -> 0, '2' -> 1, etc.
+
+						// In Links view, open the corresponding link
+						if m.detailView == ViewLinks {
+							if n < len(m.viewedEmail.Email.Links) {
+								return m, m.openLinkByIndex(n)
+							}
+							return m, nil
+						}
+
+						// Otherwise, switch tabs (1-4)
+						switch r {
+						case '1':
+							m.detailView = ViewContent
+							m.viewport.SetContent(m.renderEmailDetail())
+							m.viewport.GotoTop()
+						case '2':
+							m.detailView = ViewSecurity
+							m.viewport.SetContent(m.renderSecurityView())
+							m.viewport.GotoTop()
+						case '3':
+							m.detailView = ViewLinks
+							m.viewport.SetContent(m.renderLinksView())
+							m.viewport.GotoTop()
+						case '4':
+							m.detailView = ViewRaw
+							m.viewport.SetContent(m.renderRawView())
+							m.viewport.GotoTop()
+						}
+						return m, nil
+					}
 				}
-				return m, nil
-			case msg.String() == "2":
-				if m.viewedEmail != nil {
-					m.detailView = ViewSecurity
-					m.viewport.SetContent(m.renderSecurityView())
-					m.viewport.GotoTop()
-				}
-				return m, nil
-			case msg.String() == "3":
-				if m.viewedEmail != nil {
-					m.detailView = ViewLinks
-					m.viewport.SetContent(m.renderLinksView())
-					m.viewport.GotoTop()
-				}
-				return m, nil
-			case msg.String() == "4":
-				if m.viewedEmail != nil {
-					m.detailView = ViewRaw
-					m.viewport.SetContent(m.renderRawView())
-					m.viewport.GotoTop()
-				}
-				return m, nil
 			}
 			// Update viewport for scrolling
 			var cmd tea.Cmd
@@ -601,6 +610,15 @@ func (m Model) openLinks() tea.Cmd {
 		}
 		if email != nil && len(email.Links) > 0 {
 			browser.OpenURL(email.Links[0])
+		}
+		return nil
+	}
+}
+
+func (m Model) openLinkByIndex(index int) tea.Cmd {
+	return func() tea.Msg {
+		if m.viewedEmail != nil && index >= 0 && index < len(m.viewedEmail.Email.Links) {
+			browser.OpenURL(m.viewedEmail.Email.Links[index])
 		}
 		return nil
 	}
