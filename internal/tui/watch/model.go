@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/browser"
 	"github.com/vaultsandbox/vsb-cli/internal/tui/styles"
 )
 
@@ -507,7 +508,7 @@ func (m Model) openLinks() tea.Cmd {
 			email = m.emails[i].Email
 		}
 		if email != nil && len(email.Links) > 0 {
-			openBrowser(email.Links[0])
+			browser.OpenURL(email.Links[0])
 		}
 		return nil
 	}
@@ -522,7 +523,7 @@ func (m Model) viewHTML() tea.Cmd {
 			email = m.emails[i].Email
 		}
 		if email != nil && email.HTML != "" {
-			viewInBrowser(email.HTML)
+			browser.ViewHTML(email.HTML)
 		}
 		return nil
 	}
