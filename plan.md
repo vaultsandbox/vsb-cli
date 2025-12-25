@@ -77,6 +77,20 @@ agree remove the flag for base-ur and apikeys ... use config only
 - Remove individual `--json` flags from: `audit`, `open`, `wait-for`
 - Add support to all commands: `inbox create`, `inbox list`, `view`, etc.
 
+### `vsb` opens TUI directly (no subcommand)
+- Like `k9s`, `lazygit`, `htop` - base command opens the UI
+- Remove `watch` command
+- `vsb` → opens TUI
+- `vsb --all` → watch all inboxes
+- `vsb --email abc@vsb.com` → watch specific inbox
+- Help still available via `vsb --help` or `vsb help`
+
+### Rename `open` → `link`
+- `vsb link` → list links (default)
+- `vsb link --open` → open first link in browser
+- `vsb link --open 2` → open second link
+- `vsb link abc123` → links from specific email
+- Clearer: command is about links, `--open` is the action
 
 
 ---
