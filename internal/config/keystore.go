@@ -76,6 +76,9 @@ func LoadKeystore() (*Keystore, error) {
 	}
 	ks.path = path
 
+	// Auto-prune expired inboxes on load
+	ks.pruneExpired()
+
 	return ks, nil
 }
 
@@ -229,24 +232,18 @@ func (ks *Keystore) ListInboxes() []StoredInbox {
 	return result
 }
 
-// PruneExpired removes expired inboxes
-func (ks *Keystore) PruneExpired() (int, error) {
-	ks.mu.Lock()
-	defer ks.mu.Unlock()
-
+// pruneExpired removes expired inboxes (internal, no locking - used during load)
+func (ks *Keystore) pruneExpired() {
 	now := time.Now()
-	removed := 0
 	active := []StoredInbox{}
 
 	for _, inbox := range ks.Inboxes {
 		if inbox.ExpiresAt.After(now) {
 			active = append(active, inbox)
-		} else {
-			removed++
 		}
 	}
 
-	if removed > 0 {
+	if len(active) < len(ks.Inboxes) {
 		ks.Inboxes = active
 
 		// Fix active inbox if it was pruned
@@ -267,10 +264,9 @@ func (ks *Keystore) PruneExpired() (int, error) {
 			}
 		}
 
-		return removed, ks.saveLocked()
+		// Save changes silently
+		ks.saveLocked()
 	}
-
-	return 0, nil
 }
 
 // Internal helpers
