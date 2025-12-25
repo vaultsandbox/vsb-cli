@@ -92,6 +92,19 @@ agree remove the flag for base-ur and apikeys ... use config only
 - `vsb link abc123` → links from specific email
 - Clearer: command is about links, `--open` is the action
 
+### Non-interactive config for CI/CD
+- `vsb config set api-key <key>` → set API key
+- `vsb config set base-url <url>` → set base URL
+- `vsb config show` → display current config
+- Keep `VSB_API_KEY` env var support (remove only CLI flags)
+
+### Partial matching for inbox selection
+- If user types `34g` and only one inbox matches, use it
+- Works for: `inbox delete`, `inbox use`, `--email` flag
+- Example: `vsb inbox delete 34g` → deletes `34gabc@vaultsandbox.com`
+- If multiple matches, show error with options
+- Makes CLI faster to use
+
 
 ---
 
