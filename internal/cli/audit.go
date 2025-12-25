@@ -154,7 +154,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 
 		// Reverse DNS
 		if auth.ReverseDNS != nil {
-			rdnsResult := formatAuthResult(auth.ReverseDNS.Status, passStyle, failStyle, warnStyle)
+			rdnsResult := formatAuthResult(auth.ReverseDNS.Status(), passStyle, failStyle, warnStyle)
 			fmt.Printf("%s %s\n", labelStyle.Render("Reverse DNS:"), rdnsResult)
 			if auth.ReverseDNS.Hostname != "" {
 				fmt.Printf("%s %s\n", labelStyle.Render("  Hostname:"), auth.ReverseDNS.Hostname)
@@ -294,7 +294,7 @@ func calculateSecurityScore(email *vaultsandbox.Email) int {
 		}
 
 		// Reverse DNS
-		if auth.ReverseDNS != nil && strings.EqualFold(auth.ReverseDNS.Status, "pass") {
+		if auth.ReverseDNS != nil && strings.EqualFold(auth.ReverseDNS.Status(), "pass") {
 			score += 5
 		}
 	}
