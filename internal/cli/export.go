@@ -122,7 +122,6 @@ type ExportedInboxFile struct {
 	Version      int          `json:"version"`
 	EmailAddress string       `json:"emailAddress"`
 	InboxHash    string       `json:"inboxHash"`
-	Label        string       `json:"label,omitempty"`
 	ExpiresAt    time.Time    `json:"expiresAt"`
 	ExportedAt   time.Time    `json:"exportedAt"`
 	Keys         ExportedKeys `json:"keys"`
