@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -43,6 +44,7 @@ func init() {
 
 func runInboxCreate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+	jsonMode := config.GetOutput() == "json"
 
 	// Get optional label
 	label := ""
@@ -56,8 +58,10 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid TTL format: %w", err)
 	}
 
-	// Show spinner
-	fmt.Println(output.PrintInfo("Generating quantum-safe keys..."))
+	// Show progress (not in JSON mode)
+	if !jsonMode {
+		fmt.Println(output.PrintInfo("Generating quantum-safe keys..."))
+	}
 
 	// Create client
 	client, err := config.NewClient()
@@ -67,7 +71,9 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 	defer client.Close()
 
 	// Create inbox with SDK
-	fmt.Println(output.PrintInfo("Registering with VaultSandbox..."))
+	if !jsonMode {
+		fmt.Println(output.PrintInfo("Registering with VaultSandbox..."))
+	}
 
 	inbox, err := client.CreateInbox(ctx, vaultsandbox.WithTTL(ttl))
 	if err != nil {
@@ -88,8 +94,19 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save inbox: %w", err)
 	}
 
-	// Pretty output
-	printInboxCreated(stored)
+	// Output
+	if jsonMode {
+		data := map[string]interface{}{
+			"email":     stored.Email,
+			"label":     stored.Label,
+			"expiresAt": stored.ExpiresAt.Format(time.RFC3339),
+			"createdAt": stored.CreatedAt.Format(time.RFC3339),
+		}
+		out, _ := json.MarshalIndent(data, "", "  ")
+		fmt.Println(string(out))
+	} else {
+		printInboxCreated(stored)
+	}
 
 	return nil
 }
@@ -117,7 +134,7 @@ func printInboxCreated(inbox config.StoredInbox) {
   Security: ML-KEM-768 (Quantum-Safe)
   Expires:  %s
 
-Run 'vsb watch' to see emails arrive live.`,
+Run 'vsb' to see emails arrive live.`,
 		emailBox, labelStr, expiryStr)
 
 	// Box it all

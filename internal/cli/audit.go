@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -23,16 +24,15 @@ Proves the "Production Fidelity" of the email flow by displaying:
 - MIME Structure: Headers, body parts, and attachments
 
 Examples:
-  vsb audit abc123          # Audit specific email
-  vsb audit                 # Audit most recent email
-  vsb audit --json          # JSON output for scripting`,
+  vsb audit abc123       # Audit specific email
+  vsb audit              # Audit most recent email
+  vsb audit -o json      # JSON output for scripting`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runAudit,
 }
 
 var (
 	auditEmail string
-	auditJSON  bool
 )
 
 func init() {
@@ -40,8 +40,6 @@ func init() {
 
 	auditCmd.Flags().StringVar(&auditEmail, "email", "",
 		"Use specific inbox (default: active)")
-	auditCmd.Flags().BoolVar(&auditJSON, "json", false,
-		"Output as JSON")
 }
 
 func runAudit(cmd *cobra.Command, args []string) error {
@@ -61,7 +59,7 @@ func runAudit(cmd *cobra.Command, args []string) error {
 	defer cleanup()
 
 	// Render audit report
-	if auditJSON {
+	if config.GetOutput() == "json" {
 		return renderAuditJSON(email)
 	}
 	return renderAuditReport(email)

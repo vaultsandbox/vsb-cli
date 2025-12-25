@@ -18,8 +18,8 @@ const DefaultBaseURL = "https://api.vaultsandbox.com"
 
 // Package-level state (replaces viper's global state)
 var (
-	current                            Config
-	flagAPIKey, flagBaseURL, flagOutput *string
+	current    Config
+	flagOutput *string
 )
 
 // Dir returns the vsb config directory path
@@ -60,19 +60,13 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-// GetAPIKey returns API key with priority: flag > env > config file
+// GetAPIKey returns API key with priority: env > config file
 func GetAPIKey() string {
-	if flagAPIKey != nil && *flagAPIKey != "" {
-		return *flagAPIKey
-	}
 	return getEnv("API_KEY", current.APIKey)
 }
 
-// GetBaseURL returns base URL with priority: flag > env > config file > default
+// GetBaseURL returns base URL with priority: env > config file > default
 func GetBaseURL() string {
-	if flagBaseURL != nil && *flagBaseURL != "" {
-		return *flagBaseURL
-	}
 	if url := getEnv("BASE_URL", current.BaseURL); url != "" {
 		return url
 	}
@@ -107,6 +101,6 @@ func Save(cfg *Config) error {
 }
 
 // SetFlagPointers allows root.go to pass flag pointers for priority resolution
-func SetFlagPointers(apiKey, baseURL, output *string) {
-	flagAPIKey, flagBaseURL, flagOutput = apiKey, baseURL, output
+func SetFlagPointers(output *string) {
+	flagOutput = output
 }

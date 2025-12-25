@@ -2,12 +2,15 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"html"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/vaultsandbox/vsb-cli/internal/browser"
+	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
 var viewCmd = &cobra.Command{
@@ -15,13 +18,14 @@ var viewCmd = &cobra.Command{
 	Short: "Preview email content",
 	Long: `View email content in various formats.
 
-For interactive use, prefer 'vsb watch' and press 'v' to view HTML.
+For interactive use, run 'vsb' and press 'v' to view HTML.
 
 Examples:
   vsb view              # View latest email HTML in browser
   vsb view abc123       # View specific email
-  vsb view --text       # Print plain text to terminal
-  vsb view --raw        # Print raw email source (RFC 5322)`,
+  vsb view -t           # Print plain text to terminal
+  vsb view -r           # Print raw email source (RFC 5322)
+  vsb view -o json      # JSON output`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runView,
 }
@@ -35,9 +39,9 @@ var (
 func init() {
 	rootCmd.AddCommand(viewCmd)
 
-	viewCmd.Flags().BoolVar(&viewText, "text", false,
+	viewCmd.Flags().BoolVarP(&viewText, "text", "t", false,
 		"Show plain text version in terminal")
-	viewCmd.Flags().BoolVar(&viewRaw, "raw", false,
+	viewCmd.Flags().BoolVarP(&viewRaw, "raw", "r", false,
 		"Show raw email source (RFC 5322)")
 	viewCmd.Flags().StringVar(&viewEmail, "email", "",
 		"Use specific inbox (default: active)")
@@ -58,6 +62,23 @@ func runView(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer cleanup()
+
+	// JSON output
+	if config.GetOutput() == "json" {
+		data := map[string]interface{}{
+			"id":         email.ID,
+			"subject":    email.Subject,
+			"from":       email.From,
+			"to":         strings.Join(email.To, ", "),
+			"receivedAt": email.ReceivedAt.Format(time.RFC3339),
+			"text":       email.Text,
+			"html":       email.HTML,
+			"links":      email.Links,
+		}
+		output, _ := json.MarshalIndent(data, "", "  ")
+		fmt.Println(string(output))
+		return nil
+	}
 
 	// Raw mode - show RFC 5322 source
 	if viewRaw {

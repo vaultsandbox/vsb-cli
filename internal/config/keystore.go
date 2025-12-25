@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -110,7 +111,7 @@ func (ks *Keystore) AddInbox(inbox StoredInbox) error {
 	return ks.saveLocked()
 }
 
-// GetInbox retrieves an inbox by email address
+// GetInbox retrieves an inbox by email address (exact match)
 func (ks *Keystore) GetInbox(email string) (*StoredInbox, error) {
 	ks.mu.RLock()
 	defer ks.mu.RUnlock()
@@ -121,6 +122,41 @@ func (ks *Keystore) GetInbox(email string) (*StoredInbox, error) {
 		}
 	}
 	return nil, ErrInboxNotFound
+}
+
+// ErrMultipleMatches is returned when a partial match finds multiple inboxes
+var ErrMultipleMatches = errors.New("multiple inboxes match")
+
+// FindInbox retrieves an inbox by partial email match.
+// Returns the inbox if exactly one matches, error if none or multiple match.
+func (ks *Keystore) FindInbox(partial string) (*StoredInbox, []string, error) {
+	ks.mu.RLock()
+	defer ks.mu.RUnlock()
+
+	// First try exact match
+	for i := range ks.Inboxes {
+		if ks.Inboxes[i].Email == partial {
+			return &ks.Inboxes[i], nil, nil
+		}
+	}
+
+	// Try partial match (contains)
+	var matches []StoredInbox
+	var matchEmails []string
+	for i := range ks.Inboxes {
+		if strings.Contains(ks.Inboxes[i].Email, partial) {
+			matches = append(matches, ks.Inboxes[i])
+			matchEmails = append(matchEmails, ks.Inboxes[i].Email)
+		}
+	}
+
+	if len(matches) == 0 {
+		return nil, nil, ErrInboxNotFound
+	}
+	if len(matches) == 1 {
+		return &matches[0], nil, nil
+	}
+	return nil, matchEmails, ErrMultipleMatches
 }
 
 // GetActiveInbox returns the currently active inbox

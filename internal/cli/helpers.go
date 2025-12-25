@@ -17,10 +17,13 @@ func LoadKeystoreOrError() (*config.Keystore, error) {
 	return ks, nil
 }
 
-// GetInbox returns an inbox by email flag, or the active inbox if emailFlag is empty.
+// GetInbox returns an inbox by email flag (with partial matching), or the active inbox if emailFlag is empty.
 func GetInbox(ks *config.Keystore, emailFlag string) (*config.StoredInbox, error) {
 	if emailFlag != "" {
-		inbox, err := ks.GetInbox(emailFlag)
+		inbox, matches, err := ks.FindInbox(emailFlag)
+		if err == config.ErrMultipleMatches {
+			return nil, fmt.Errorf("multiple inboxes match '%s': %v", emailFlag, matches)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("inbox not found: %s", emailFlag)
 		}

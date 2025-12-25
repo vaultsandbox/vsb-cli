@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -25,7 +26,7 @@ var (
 func init() {
 	inboxCmd.AddCommand(inboxListCmd)
 
-	inboxListCmd.Flags().BoolVar(&listShowExpired, "all", false,
+	inboxListCmd.Flags().BoolVarP(&listShowExpired, "all", "a", false,
 		"Show expired inboxes too")
 }
 
@@ -36,12 +37,47 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 	}
 
 	inboxes := keystore.ListInboxes()
-	if len(inboxes) == 0 {
-		fmt.Println("No inboxes found. Create one with 'vsb inbox create'")
+	now := time.Now()
+
+	// Filter expired if needed
+	var filtered []config.StoredInbox
+	for _, inbox := range inboxes {
+		isExpired := inbox.ExpiresAt.Before(now)
+		if isExpired && !listShowExpired {
+			continue
+		}
+		filtered = append(filtered, inbox)
+	}
+
+	// JSON output
+	if config.GetOutput() == "json" {
+		type inboxJSON struct {
+			Email     string `json:"email"`
+			Label     string `json:"label"`
+			ExpiresAt string `json:"expiresAt"`
+			IsActive  bool   `json:"isActive"`
+			IsExpired bool   `json:"isExpired"`
+		}
+		var result []inboxJSON
+		for _, inbox := range filtered {
+			result = append(result, inboxJSON{
+				Email:     inbox.Email,
+				Label:     inbox.Label,
+				ExpiresAt: inbox.ExpiresAt.Format(time.RFC3339),
+				IsActive:  inbox.Email == keystore.ActiveInbox,
+				IsExpired: inbox.ExpiresAt.Before(now),
+			})
+		}
+		data, _ := json.MarshalIndent(result, "", "  ")
+		fmt.Println(string(data))
 		return nil
 	}
 
-	now := time.Now()
+	// Pretty output
+	if len(filtered) == 0 {
+		fmt.Println("No inboxes found. Create one with 'vsb inbox create'")
+		return nil
+	}
 
 	// Header
 	fmt.Println()
@@ -52,13 +88,9 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 		styles.HeaderStyle.Render("EXPIRES"))
 	fmt.Println(strings.Repeat("-", 70))
 
-	for _, inbox := range inboxes {
+	for _, inbox := range filtered {
 		isActive := inbox.Email == keystore.ActiveInbox
 		isExpired := inbox.ExpiresAt.Before(now)
-
-		if isExpired && !listShowExpired {
-			continue
-		}
 
 		// Active marker
 		marker := "  "

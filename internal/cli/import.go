@@ -23,8 +23,9 @@ This adds the inbox to your local keystore and optionally verifies
 it's still valid on the server.
 
 Examples:
-  vsb import backup.json          # Import and verify
-  vsb import backup.json --local  # Skip server verification
+  vsb import backup.json           # Import and verify
+  vsb import backup.json -l        # Skip server verification
+  vsb import backup.json -f        # Force overwrite existing
   vsb import backup.json --label "shared-inbox"`,
 	Args: cobra.ExactArgs(1),
 	RunE: runImport,
@@ -39,11 +40,11 @@ var (
 func init() {
 	rootCmd.AddCommand(importCmd)
 
-	importCmd.Flags().BoolVar(&importLocal, "local", false,
+	importCmd.Flags().BoolVarP(&importLocal, "local", "l", false,
 		"Skip server verification")
 	importCmd.Flags().StringVar(&importLabel, "label", "",
 		"Override the label for imported inbox")
-	importCmd.Flags().BoolVar(&importForce, "force", false,
+	importCmd.Flags().BoolVarP(&importForce, "force", "f", false,
 		"Overwrite existing inbox with same email")
 }
 
@@ -162,7 +163,7 @@ Label:    %s
 Expires:  %s
 
 This inbox is now your active inbox.
-Run 'vsb watch' to see emails.`,
+Run 'vsb' to see emails.`,
 		styles.SuccessTitleStyle.Render("Import Complete"),
 		inbox.Email,
 		orDefault(inbox.Label, "(none)"),

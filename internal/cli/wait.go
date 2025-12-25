@@ -14,8 +14,8 @@ import (
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
-var waitForCmd = &cobra.Command{
-	Use:   "wait-for",
+var waitCmd = &cobra.Command{
+	Use:   "wait",
 	Short: "Wait for an email matching criteria (CI/CD)",
 	Long: `Block until an email matching the specified criteria arrives.
 
@@ -29,23 +29,22 @@ Filter Options:
   --from-regex    Sender regex pattern
 
 Output Options:
-  --json          Output matching email as JSON
   --quiet         No output, just exit code
   --extract-link  Output first link from email body
 
 Examples:
   # Wait for any email
-  vsb wait-for
+  vsb wait
 
   # Wait for password reset email
-  vsb wait-for --subject-regex "password reset" --timeout 30s
+  vsb wait --subject-regex "password reset" --timeout 30s
 
   # Extract verification link
-  LINK=$(vsb wait-for --subject "Verify" --extract-link)
+  LINK=$(vsb wait --subject "Verify" --extract-link)
 
   # JSON output for parsing
-  vsb wait-for --from "noreply@example.com" --json | jq .subject`,
-	RunE: runWaitFor,
+  vsb wait --from "noreply@example.com" -o json | jq .subject`,
+	RunE: runWait,
 }
 
 var (
@@ -55,45 +54,42 @@ var (
 	waitForFrom         string
 	waitForFromRegex    string
 	waitForTimeout      string
-	waitForJSON         bool
 	waitForQuiet        bool
 	waitForExtractLink  bool
 	waitForCount        int
 )
 
 func init() {
-	rootCmd.AddCommand(waitForCmd)
+	rootCmd.AddCommand(waitCmd)
 
 	// Inbox selection
-	waitForCmd.Flags().StringVar(&waitForEmail, "email", "",
+	waitCmd.Flags().StringVar(&waitForEmail, "email", "",
 		"Watch specific inbox (default: active)")
 
 	// Filters
-	waitForCmd.Flags().StringVar(&waitForSubject, "subject", "",
+	waitCmd.Flags().StringVar(&waitForSubject, "subject", "",
 		"Exact subject match")
-	waitForCmd.Flags().StringVar(&waitForSubjectRegex, "subject-regex", "",
+	waitCmd.Flags().StringVar(&waitForSubjectRegex, "subject-regex", "",
 		"Subject regex pattern")
-	waitForCmd.Flags().StringVar(&waitForFrom, "from", "",
+	waitCmd.Flags().StringVar(&waitForFrom, "from", "",
 		"Exact sender match")
-	waitForCmd.Flags().StringVar(&waitForFromRegex, "from-regex", "",
+	waitCmd.Flags().StringVar(&waitForFromRegex, "from-regex", "",
 		"Sender regex pattern")
 
 	// Timing
-	waitForCmd.Flags().StringVar(&waitForTimeout, "timeout", "60s",
+	waitCmd.Flags().StringVar(&waitForTimeout, "timeout", "60s",
 		"Maximum time to wait")
-	waitForCmd.Flags().IntVar(&waitForCount, "count", 1,
+	waitCmd.Flags().IntVar(&waitForCount, "count", 1,
 		"Number of matching emails to wait for")
 
 	// Output
-	waitForCmd.Flags().BoolVar(&waitForJSON, "json", false,
-		"Output email as JSON")
-	waitForCmd.Flags().BoolVar(&waitForQuiet, "quiet", false,
+	waitCmd.Flags().BoolVarP(&waitForQuiet, "quiet", "q", false,
 		"No output, exit code only")
-	waitForCmd.Flags().BoolVar(&waitForExtractLink, "extract-link", false,
+	waitCmd.Flags().BoolVar(&waitForExtractLink, "extract-link", false,
 		"Output first link from email")
 }
 
-func runWaitFor(cmd *cobra.Command, args []string) error {
+func runWait(cmd *cobra.Command, args []string) error {
 	// Parse timeout
 	timeout, err := time.ParseDuration(waitForTimeout)
 	if err != nil {
@@ -205,7 +201,7 @@ func outputEmails(emails []*vaultsandbox.Email) {
 	}
 
 	for _, email := range emails {
-		if waitForJSON {
+		if config.GetOutput() == "json" {
 			// JSON output
 			data, _ := json.MarshalIndent(emailToMap(email), "", "  ")
 			fmt.Println(string(data))
