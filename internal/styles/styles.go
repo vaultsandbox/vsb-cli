@@ -97,4 +97,26 @@ var (
 	SuccessTitleStyle = lipgloss.NewStyle().
 				Bold(true).
 				Foreground(Green)
+
+	// Warning box
+	WarningBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(Yellow).
+			Padding(1, 2)
+
+	// Warning title
+	WarningTitleStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(Yellow)
+
+	// Error box
+	ErrorBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(Red).
+			Padding(0, 1)
+
+	// Error title
+	ErrorTitleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(Red)
 )

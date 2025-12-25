@@ -8,13 +8,9 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"gopkg.in/yaml.v3"
 )
-
-type Config struct {
-	APIKey  string `yaml:"api_key"`
-	BaseURL string `yaml:"base_url"`
-}
 
 var configCmd = &cobra.Command{
 	Use:   "config",
@@ -76,7 +72,7 @@ func runConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	// Save config
-	cfg := Config{
+	cfg := config.Config{
 		APIKey:  apiKey,
 		BaseURL: baseURL,
 	}
@@ -94,8 +90,8 @@ func runConfig(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func loadExistingConfig(path string) Config {
-	var cfg Config
+func loadExistingConfig(path string) config.Config {
+	var cfg config.Config
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return cfg

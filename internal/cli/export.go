@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	"github.com/vaultsandbox/vsb-cli/internal/output"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
@@ -64,11 +63,7 @@ func runExport(cmd *cobra.Command, args []string) error {
 
 	// Check if expired
 	if stored.ExpiresAt.Before(time.Now()) {
-		warningBox := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(styles.Yellow).
-			Padding(0, 1).
-			Render(lipgloss.NewStyle().Foreground(styles.Yellow).Render("Warning: This inbox has expired"))
+		warningBox := styles.WarningBoxStyle.Render(styles.WarningTitleStyle.Render("Warning: This inbox has expired"))
 		fmt.Println(warningBox)
 	}
 
@@ -140,30 +135,8 @@ type ExportedKeys struct {
 	ServerSigPK string `json:"serverSigPk"`
 }
 
-func sanitizeFilename(email string) string {
-	// Replace @ and . with underscores for safe filename
-	result := ""
-	for _, r := range email {
-		if r == '@' || r == '.' {
-			result += "_"
-		} else if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
-			(r >= '0' && r <= '9') || r == '-' || r == '_' {
-			result += string(r)
-		}
-	}
-	return result
-}
 
 func printExportWarning(path, email string) {
-	warningStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(styles.Yellow)
-
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.Yellow).
-		Padding(1, 2)
-
 	warning := fmt.Sprintf(`%s
 
 This file contains your PRIVATE KEY for:
@@ -173,12 +146,12 @@ Anyone with this file can read emails sent to this inbox.
 Keep it secure and do not commit it to version control!
 
 File: %s`,
-		warningStyle.Render("SECURITY WARNING"),
+		styles.WarningTitleStyle.Render("SECURITY WARNING"),
 		email,
 		path)
 
 	fmt.Println()
-	fmt.Println(boxStyle.Render(warning))
+	fmt.Println(styles.WarningBoxStyle.Render(warning))
 	fmt.Println()
 	fmt.Println(output.PrintSuccess("Export complete"))
 }

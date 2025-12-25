@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
@@ -71,12 +70,8 @@ func runImport(cmd *cobra.Command, args []string) error {
 
 	// Check if expired
 	if exported.ExpiresAt.Before(time.Now()) {
-		warningBox := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(styles.Red).
-			Padding(0, 1).
-			Render(lipgloss.NewStyle().Foreground(styles.Red).Render("Error: This inbox has expired"))
-		fmt.Println(warningBox)
+		errorBox := styles.ErrorBoxStyle.Render(styles.ErrorTitleStyle.Render("Error: This inbox has expired"))
+		fmt.Println(errorBox)
 		return fmt.Errorf("inbox expired on %s", exported.ExpiresAt.Format("2006-01-02"))
 	}
 
@@ -160,13 +155,6 @@ func runImport(cmd *cobra.Command, args []string) error {
 func printImportSuccess(inbox config.StoredInbox) {
 	remaining := time.Until(inbox.ExpiresAt).Round(time.Hour)
 
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.Green).
-		Padding(1, 2)
-
-	successStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Green)
-
 	content := fmt.Sprintf(`%s
 
 Address:  %s
@@ -175,19 +163,13 @@ Expires:  %s
 
 This inbox is now your active inbox.
 Run 'vsb watch' to see emails.`,
-		successStyle.Render("Import Complete"),
+		styles.SuccessTitleStyle.Render("Import Complete"),
 		inbox.Email,
 		orDefault(inbox.Label, "(none)"),
 		remaining.String())
 
 	fmt.Println()
-	fmt.Println(boxStyle.Render(content))
+	fmt.Println(styles.SuccessBoxStyle.Render(content))
 	fmt.Println()
 }
 
-func orDefault(s, def string) string {
-	if s == "" {
-		return def
-	}
-	return s
-}

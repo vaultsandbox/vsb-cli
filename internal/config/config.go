@@ -60,15 +60,6 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-// Load returns the current config (for backwards compatibility)
-func Load() *Config {
-	return &Config{
-		APIKey:        GetAPIKey(),
-		BaseURL:       GetBaseURL(),
-		DefaultOutput: GetOutput(),
-	}
-}
-
 // GetAPIKey returns API key with priority: flag > env > config file
 func GetAPIKey() string {
 	if flagAPIKey != nil && *flagAPIKey != "" {

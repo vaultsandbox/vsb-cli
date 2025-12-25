@@ -34,28 +34,29 @@ func GetInbox(ks *config.Keystore, emailFlag string) (*config.StoredInbox, error
 	return inbox, nil
 }
 
-// GetEmailByIDOrLatest fetches an email by ID if provided, otherwise returns the latest email.
-// Returns the email, the imported inbox, a cleanup function (closes client), and any error.
+// LoadAndImportInbox loads the keystore, gets an inbox (by emailFlag or active),
+// creates a client, and imports the inbox into the SDK.
+// Returns the imported inbox, a cleanup function (closes client), and any error.
 // The caller must call the cleanup function when done.
-func GetEmailByIDOrLatest(ctx context.Context, emailID, emailFlag string) (*vaultsandbox.Email, *vaultsandbox.Inbox, func(), error) {
+func LoadAndImportInbox(ctx context.Context, emailFlag string) (*vaultsandbox.Inbox, func(), error) {
 	noop := func() {}
 
 	// Load keystore
 	ks, err := LoadKeystoreOrError()
 	if err != nil {
-		return nil, nil, noop, err
+		return nil, noop, err
 	}
 
-	// Get inbox
+	// Get stored inbox
 	stored, err := GetInbox(ks, emailFlag)
 	if err != nil {
-		return nil, nil, noop, err
+		return nil, noop, err
 	}
 
 	// Create client
 	client, err := config.NewClient()
 	if err != nil {
-		return nil, nil, noop, err
+		return nil, noop, err
 	}
 
 	cleanup := func() {
@@ -66,7 +67,21 @@ func GetEmailByIDOrLatest(ctx context.Context, emailID, emailFlag string) (*vaul
 	inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
 	if err != nil {
 		cleanup()
-		return nil, nil, noop, fmt.Errorf("failed to import inbox: %w", err)
+		return nil, noop, fmt.Errorf("failed to import inbox: %w", err)
+	}
+
+	return inbox, cleanup, nil
+}
+
+// GetEmailByIDOrLatest fetches an email by ID if provided, otherwise returns the latest email.
+// Returns the email, the imported inbox, a cleanup function (closes client), and any error.
+// The caller must call the cleanup function when done.
+func GetEmailByIDOrLatest(ctx context.Context, emailID, emailFlag string) (*vaultsandbox.Email, *vaultsandbox.Inbox, func(), error) {
+	noop := func() {}
+
+	inbox, cleanup, err := LoadAndImportInbox(ctx, emailFlag)
+	if err != nil {
+		return nil, nil, noop, err
 	}
 
 	// Fetch email
