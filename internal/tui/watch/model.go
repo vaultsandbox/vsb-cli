@@ -12,7 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/browser"
-	"github.com/vaultsandbox/vsb-cli/internal/tui/styles"
+	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 // EmailItem represents an email in the list

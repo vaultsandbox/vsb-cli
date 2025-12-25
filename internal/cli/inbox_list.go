@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
+	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 var inboxListCmd = &cobra.Command{
@@ -41,28 +41,15 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Styles
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#7C3AED"))
-
-	activeStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#10B981"))
-
-	expiredStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6B7280")).
-		Strikethrough(true)
-
 	now := time.Now()
 
 	// Header
 	fmt.Println()
 	fmt.Printf("%s  %-35s  %-12s  %s\n",
-		headerStyle.Render(" "),
-		headerStyle.Render("EMAIL"),
-		headerStyle.Render("LABEL"),
-		headerStyle.Render("EXPIRES"))
+		styles.HeaderStyle.Render(" "),
+		styles.HeaderStyle.Render("EMAIL"),
+		styles.HeaderStyle.Render("LABEL"),
+		styles.HeaderStyle.Render("EXPIRES"))
 	fmt.Println(strings.Repeat("-", 70))
 
 	for _, inbox := range inboxes {
@@ -76,15 +63,15 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 		// Active marker
 		marker := "  "
 		if isActive {
-			marker = activeStyle.Render("> ")
+			marker = styles.ActiveStyle.Render("> ")
 		}
 
 		// Email
 		email := inbox.Email
 		if isExpired {
-			email = expiredStyle.Render(email)
+			email = styles.ExpiredStyle.Render(email)
 		} else if isActive {
-			email = activeStyle.Render(email)
+			email = styles.ActiveStyle.Render(email)
 		}
 
 		// Label
@@ -96,7 +83,7 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 		// Expiry
 		var expiry string
 		if isExpired {
-			expiry = expiredStyle.Render("expired")
+			expiry = styles.ExpiredStyle.Render("expired")
 		} else {
 			remaining := inbox.ExpiresAt.Sub(now).Round(time.Minute)
 			expiry = formatDuration(remaining)

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/output"
+	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 var inboxCreateCmd = &cobra.Command{
@@ -94,18 +94,10 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 
 func printInboxCreated(inbox config.StoredInbox) {
 	// Title
-	title := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#10B981")).
-		Render("Inbox Ready!")
+	title := styles.SuccessTitleStyle.Render("Inbox Ready!")
 
 	// Email address box
-	emailBox := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#FFFFFF")).
-		Background(lipgloss.Color("#7C3AED")).
-		Padding(0, 2).
-		Render(inbox.Email)
+	emailBox := styles.EmailBoxStyle.Render(inbox.Email)
 
 	// Details
 	expiry := inbox.ExpiresAt.Sub(time.Now()).Round(time.Hour)
@@ -127,11 +119,7 @@ Run 'vsb watch' to see emails arrive live.`,
 		emailBox, labelStr, expiryStr)
 
 	// Box it all
-	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("#7C3AED")).
-		Padding(1, 2).
-		Render(title + details)
+	box := styles.SuccessBoxStyle.Render(title + details)
 
 	fmt.Println()
 	fmt.Println(box)

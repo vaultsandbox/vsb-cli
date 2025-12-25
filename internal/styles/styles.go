@@ -69,4 +69,32 @@ var (
 	// Help
 	HelpStyle = lipgloss.NewStyle().
 			Foreground(Gray)
+
+	// Active marker (for lists)
+	ActiveStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(Green)
+
+	// Expired/disabled items
+	ExpiredStyle = lipgloss.NewStyle().
+			Foreground(Gray).
+			Strikethrough(true)
+
+	// Email box (for display)
+	EmailBoxStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(White).
+			Background(Purple).
+			Padding(0, 2)
+
+	// Success box
+	SuccessBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(Purple).
+			Padding(1, 2)
+
+	// Success title
+	SuccessTitleStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(Green)
 )
