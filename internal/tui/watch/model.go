@@ -53,6 +53,16 @@ type errMsg struct {
 
 type connectedMsg struct{}
 
+// DetailView represents which tab is active in detail view
+type DetailView int
+
+const (
+	ViewContent DetailView = iota
+	ViewSecurity
+	ViewLinks
+	ViewRaw
+)
+
 // Model is the Bubble Tea model for the watch TUI
 type Model struct {
 	list     list.Model
@@ -65,6 +75,7 @@ type Model struct {
 	// Detail view state
 	viewing     bool
 	viewedEmail *EmailItem
+	detailView  DetailView
 
 	// Connection status
 	connected bool
@@ -95,6 +106,8 @@ type KeyMap struct {
 	Refresh   key.Binding
 	Quit      key.Binding
 	Help      key.Binding
+	Audit     key.Binding
+	ListLinks key.Binding
 }
 
 var DefaultKeyMap = KeyMap{
@@ -137,6 +150,14 @@ var DefaultKeyMap = KeyMap{
 	Help: key.NewBinding(
 		key.WithKeys("?"),
 		key.WithHelp("?", "help"),
+	),
+	Audit: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "security audit"),
+	),
+	ListLinks: key.NewBinding(
+		key.WithKeys("l"),
+		key.WithHelp("l", "list links"),
 	),
 }
 
@@ -264,6 +285,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, DefaultKeyMap.Back):
 				m.viewing = false
 				m.viewedEmail = nil
+				m.detailView = ViewContent
 				return m, nil
 			case key.Matches(msg, DefaultKeyMap.OpenLinks):
 				if m.viewedEmail != nil && len(m.viewedEmail.Email.Links) > 0 {
@@ -273,6 +295,48 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.viewedEmail != nil && m.viewedEmail.Email.HTML != "" {
 					return m, m.viewHTML()
 				}
+			case key.Matches(msg, DefaultKeyMap.Audit):
+				if m.viewedEmail != nil {
+					m.detailView = ViewSecurity
+					m.viewport.SetContent(m.renderSecurityView())
+					m.viewport.GotoTop()
+				}
+				return m, nil
+			case key.Matches(msg, DefaultKeyMap.ListLinks):
+				if m.viewedEmail != nil {
+					m.detailView = ViewLinks
+					m.viewport.SetContent(m.renderLinksView())
+					m.viewport.GotoTop()
+				}
+				return m, nil
+			case msg.String() == "1":
+				if m.viewedEmail != nil {
+					m.detailView = ViewContent
+					m.viewport.SetContent(m.renderEmailDetail())
+					m.viewport.GotoTop()
+				}
+				return m, nil
+			case msg.String() == "2":
+				if m.viewedEmail != nil {
+					m.detailView = ViewSecurity
+					m.viewport.SetContent(m.renderSecurityView())
+					m.viewport.GotoTop()
+				}
+				return m, nil
+			case msg.String() == "3":
+				if m.viewedEmail != nil {
+					m.detailView = ViewLinks
+					m.viewport.SetContent(m.renderLinksView())
+					m.viewport.GotoTop()
+				}
+				return m, nil
+			case msg.String() == "4":
+				if m.viewedEmail != nil {
+					m.detailView = ViewRaw
+					m.viewport.SetContent(m.renderRawView())
+					m.viewport.GotoTop()
+				}
+				return m, nil
 			}
 			// Update viewport for scrolling
 			var cmd tea.Cmd
@@ -311,6 +375,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.emails) > 0 {
 				return m, m.deleteEmail()
 			}
+		case key.Matches(msg, DefaultKeyMap.Audit):
+			if len(m.emails) > 0 {
+				if i := m.list.Index(); i >= 0 && i < len(m.emails) {
+					m.viewing = true
+					m.viewedEmail = &m.emails[i]
+					m.detailView = ViewSecurity
+					m.viewport.SetContent(m.renderSecurityView())
+					m.viewport.GotoTop()
+				}
+			}
+			return m, nil
+		case key.Matches(msg, DefaultKeyMap.ListLinks):
+			if len(m.emails) > 0 {
+				if i := m.list.Index(); i >= 0 && i < len(m.emails) {
+					m.viewing = true
+					m.viewedEmail = &m.emails[i]
+					m.detailView = ViewLinks
+					m.viewport.SetContent(m.renderLinksView())
+					m.viewport.GotoTop()
+				}
+			}
+			return m, nil
 		}
 
 	case tea.WindowSizeMsg:
@@ -401,7 +487,7 @@ func (m Model) viewList() string {
 			status, len(m.emails)))
 
 	// Help text
-	help := styles.HelpStyle.Render("q: quit • enter: view • o: open links • v: view html • d: delete • /: filter")
+	help := styles.HelpStyle.Render("q: quit • enter: view • a: audit • l: links • o: open • v: html • d: delete")
 
 	// Combine
 	content := lipgloss.JoinVertical(lipgloss.Left,
@@ -422,7 +508,7 @@ func (m Model) viewDetail() string {
 	header := styles.HeaderStyle.Render("Email Details")
 
 	// Help text
-	help := styles.HelpStyle.Render("esc: back • o: open links • v: view html • q: quit • ↑↓/jk: scroll")
+	help := styles.HelpStyle.Render("1-4: tabs • a: audit • l: links • o: open • v: html • esc: back • q: quit")
 
 	// Combine
 	content := lipgloss.JoinVertical(lipgloss.Left,
@@ -441,6 +527,12 @@ func (m Model) renderEmailDetail() string {
 
 	email := m.viewedEmail.Email
 	var sb strings.Builder
+
+	// Tab indicator
+	sb.WriteString(styles.HelpStyle.Render("[1:Content] [2:Security] [3:Links] [4:Raw]"))
+	sb.WriteString("\n")
+	sb.WriteString(styles.HelpStyle.Render("^^^^^^^^^"))
+	sb.WriteString("\n\n")
 
 	// Field styles
 	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
