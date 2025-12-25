@@ -44,9 +44,9 @@ func runWatch(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	// Load keystore
-	keystore, err := config.LoadKeystore()
+	keystore, err := LoadKeystoreOrError()
 	if err != nil {
-		return fmt.Errorf("failed to load keystore: %w", err)
+		return err
 	}
 
 	// Determine which inboxes to watch
@@ -57,16 +57,10 @@ func runWatch(cmd *cobra.Command, args []string) error {
 		if len(storedInboxes) == 0 {
 			return fmt.Errorf("no inboxes found. Create one with 'vsb inbox create'")
 		}
-	} else if watchEmail != "" {
-		inbox, err := keystore.GetInbox(watchEmail)
-		if err != nil {
-			return fmt.Errorf("inbox not found: %s", watchEmail)
-		}
-		storedInboxes = []config.StoredInbox{*inbox}
 	} else {
-		inbox, err := keystore.GetActiveInbox()
+		inbox, err := GetInbox(keystore, watchEmail)
 		if err != nil {
-			return fmt.Errorf("no active inbox. Create one with 'vsb inbox create' or set with 'vsb inbox use'")
+			return err
 		}
 		storedInboxes = []config.StoredInbox{*inbox}
 	}
