@@ -3,6 +3,8 @@ package cli
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -49,7 +51,7 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Parse TTL
-	ttl, err := time.ParseDuration(createTTL)
+	ttl, err := parseTTL(createTTL)
 	if err != nil {
 		return fmt.Errorf("invalid TTL format: %w", err)
 	}
@@ -124,4 +126,17 @@ Run 'vsb watch' to see emails arrive live.`,
 	fmt.Println()
 	fmt.Println(box)
 	fmt.Println()
+}
+
+func parseTTL(s string) (time.Duration, error) {
+	// Handle days suffix (not supported by time.ParseDuration)
+	if strings.HasSuffix(s, "d") {
+		days := strings.TrimSuffix(s, "d")
+		n, err := strconv.Atoi(days)
+		if err != nil {
+			return 0, fmt.Errorf("invalid day value: %s", days)
+		}
+		return time.Duration(n) * 24 * time.Hour, nil
+	}
+	return time.ParseDuration(s)
 }

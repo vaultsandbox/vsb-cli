@@ -219,7 +219,10 @@ func (m *Model) WatchEmails(p *tea.Program) {
 				select {
 				case <-m.ctx.Done():
 					return
-				case event := <-eventCh:
+				case event, ok := <-eventCh:
+					if !ok {
+						return
+					}
 					if event != nil {
 						p.Send(emailReceivedMsg{
 							email:      event.Email,
@@ -237,7 +240,10 @@ func (m *Model) WatchEmails(p *tea.Program) {
 				select {
 				case <-m.ctx.Done():
 					return
-				case email := <-emailCh:
+				case email, ok := <-emailCh:
+					if !ok {
+						return
+					}
 					if email != nil {
 						p.Send(emailReceivedMsg{
 							email:      email,

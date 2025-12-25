@@ -250,6 +250,9 @@ func (ks *Keystore) removeInboxLocked(email string) bool {
 }
 
 func (ks *Keystore) saveLocked() error {
+	if err := EnsureDir(); err != nil {
+		return err
+	}
 	data, err := json.MarshalIndent(ks, "", "  ")
 	if err != nil {
 		return err
