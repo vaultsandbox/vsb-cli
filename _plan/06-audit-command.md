@@ -10,7 +10,7 @@ Implement security analysis for emails:
 | Command | Description |
 |---------|-------------|
 | `vsb audit <email-id>` | Audit specific email by ID |
-| `vsb audit --latest` | Audit the most recent email |
+| `vsb audit` | Audit the most recent email (default) |
 | `vsb audit --json` | JSON output for scripting |
 
 ## Watch TUI Integration
@@ -67,8 +67,7 @@ import (
     "github.com/charmbracelet/lipgloss"
     "github.com/spf13/cobra"
     vaultsandbox "github.com/vaultsandbox/client-go"
-    "github.com/vaultsandbox/vsb-cli/internal/config"
-    "github.com/vaultsandbox/vsb-cli/internal/tui/styles"
+    "github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 var auditCmd = &cobra.Command{
@@ -90,16 +89,13 @@ Examples:
 }
 
 var (
-    auditLatest bool
-    auditEmail  string
-    auditJSON   bool
+    auditEmail string
+    auditJSON  bool
 )
 
 func init() {
     rootCmd.AddCommand(auditCmd)
 
-    auditCmd.Flags().BoolVar(&auditLatest, "latest", false,
-        "Audit the most recent email")
     auditCmd.Flags().StringVar(&auditEmail, "email", "",
         "Use specific inbox (default: active)")
     auditCmd.Flags().BoolVar(&auditJSON, "json", false,
@@ -109,59 +105,18 @@ func init() {
 func runAudit(cmd *cobra.Command, args []string) error {
     ctx := context.Background()
 
-    // Get email ID
+    // Get email ID (empty string = latest)
     emailID := ""
     if len(args) > 0 {
         emailID = args[0]
-    } else if !auditLatest {
-        return fmt.Errorf("specify an email ID or use --latest")
     }
 
-    // Load keystore and get inbox
-    keystore, err := config.LoadKeystore()
+    // Use shared helper to get email
+    email, _, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, auditEmail)
     if err != nil {
         return err
     }
-
-    var stored *config.StoredInbox
-    if auditEmail != "" {
-        stored, err = keystore.GetInbox(auditEmail)
-    } else {
-        stored, err = keystore.GetActiveInbox()
-    }
-    if err != nil {
-        return fmt.Errorf("no inbox found: %w", err)
-    }
-
-    // Create client and import inbox
-    client, err := config.NewClient()
-    if err != nil {
-        return err
-    }
-    defer client.Close()
-
-    inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
-    if err != nil {
-        return err
-    }
-
-    // Get email
-    var email *vaultsandbox.Email
-    if auditLatest {
-        emails, err := inbox.GetEmails(ctx)
-        if err != nil {
-            return err
-        }
-        if len(emails) == 0 {
-            return fmt.Errorf("no emails in inbox")
-        }
-        email = emails[0] // Most recent
-    } else {
-        email, err = inbox.GetEmail(ctx, emailID)
-        if err != nil {
-            return err
-        }
-    }
+    defer cleanup()
 
     // Render audit report
     if auditJSON {
@@ -509,7 +464,7 @@ import (
 
     "github.com/charmbracelet/lipgloss"
     vaultsandbox "github.com/vaultsandbox/client-go"
-    "github.com/vaultsandbox/vsb-cli/internal/tui/styles"
+    "github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 // renderSecurityView renders the security audit view for an email
@@ -654,7 +609,7 @@ import (
     "strings"
 
     "github.com/charmbracelet/lipgloss"
-    "github.com/vaultsandbox/vsb-cli/internal/tui/styles"
+    "github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 // renderLinksView renders the links list view
@@ -773,10 +728,13 @@ MIME STRUCTURE
 
 ```bash
 # CLI: Audit latest email
-vsb audit --latest
+vsb audit
+
+# CLI: Audit specific email
+vsb audit abc123
 
 # CLI: JSON output for CI/CD
-vsb audit --latest --json | jq '.authResults.spf.result'
+vsb audit --json | jq '.authResults.spf.result'
 
 # TUI: In watch, press Enter on email, then 'a' for security view
 vsb watch
@@ -784,10 +742,14 @@ vsb watch
 
 ## Files Created/Modified
 
-- `internal/cli/audit.go` (NEW - CLI command)
-- `internal/tui/watch/model.go` (UPDATE - add security view mode)
+- `internal/cli/audit.go` (NEW - CLI command, uses existing helpers)
+- `internal/tui/watch/model.go` (UPDATE - add security view mode, 'a' and 'l' keys)
 - `internal/tui/watch/security.go` (NEW - security view renderer)
 - `internal/tui/watch/links.go` (NEW - links list view renderer)
+
+**Existing files used (no changes needed):**
+- `internal/cli/helpers.go` - GetEmailByIDOrLatest
+- `internal/styles/styles.go` - Color constants (Purple, Green, Red, etc.)
 
 ## Next Steps
 

@@ -35,9 +35,8 @@ import (
 
     "github.com/charmbracelet/lipgloss"
     "github.com/spf13/cobra"
-    "github.com/vaultsandbox/vsb-cli/internal/config"
     "github.com/vaultsandbox/vsb-cli/internal/output"
-    "github.com/vaultsandbox/vsb-cli/internal/tui/styles"
+    "github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 var exportCmd = &cobra.Command{
@@ -73,20 +72,20 @@ func init() {
 }
 
 func runExport(cmd *cobra.Command, args []string) error {
-    // Get inbox to export
-    keystore, err := config.LoadKeystore()
+    // Use existing helpers
+    ks, err := LoadKeystoreOrError()
     if err != nil {
         return err
     }
 
-    var stored *config.StoredInbox
+    // Get inbox (by arg or active)
+    emailArg := ""
     if len(args) > 0 {
-        stored, err = keystore.GetInbox(args[0])
-    } else {
-        stored, err = keystore.GetActiveInbox()
+        emailArg = args[0]
     }
+    stored, err := GetInbox(ks, emailArg)
     if err != nil {
-        return fmt.Errorf("inbox not found: %w", err)
+        return err
     }
 
     // Check if expired
@@ -207,7 +206,7 @@ File: %s`,
     fmt.Println()
     fmt.Println(boxStyle.Render(warning))
     fmt.Println()
-    fmt.Println(output.Success("Export complete"))
+    fmt.Println(output.PrintSuccess("Export complete"))
 }
 ```
 
@@ -230,7 +229,7 @@ import (
     vaultsandbox "github.com/vaultsandbox/client-go"
     "github.com/vaultsandbox/vsb-cli/internal/config"
     "github.com/vaultsandbox/vsb-cli/internal/output"
-    "github.com/vaultsandbox/vsb-cli/internal/tui/styles"
+    "github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 var importCmd = &cobra.Command{
@@ -293,13 +292,13 @@ func runImport(cmd *cobra.Command, args []string) error {
             Border(lipgloss.RoundedBorder()).
             BorderForeground(styles.Red).
             Padding(0, 1).
-            Render(styles.Red.Render("Error: This inbox has expired"))
+            Render(lipgloss.NewStyle().Foreground(styles.Red).Render("Error: This inbox has expired"))
         fmt.Println(warningBox)
         return fmt.Errorf("inbox expired on %s", exported.ExpiresAt.Format("2006-01-02"))
     }
 
-    // Load keystore
-    keystore, err := config.LoadKeystore()
+    // Use existing helper
+    keystore, err := LoadKeystoreOrError()
     if err != nil {
         return err
     }
@@ -312,7 +311,7 @@ func runImport(cmd *cobra.Command, args []string) error {
 
     // Server verification (unless --local)
     if !importLocal {
-        fmt.Println(output.Info("Verifying with server..."))
+        fmt.Println(output.PrintInfo("Verifying with server..."))
 
         client, err := config.NewClient()
         if err != nil {
@@ -339,9 +338,9 @@ func runImport(cmd *cobra.Command, args []string) error {
         // Check sync status
         status, err := inbox.GetSyncStatus(ctx)
         if err != nil {
-            fmt.Println(output.Info("Warning: Could not verify sync status"))
+            fmt.Println(output.PrintInfo("Warning: Could not verify sync status"))
         } else {
-            fmt.Println(output.Success(fmt.Sprintf("Inbox verified: %d emails", status.EmailCount)))
+            fmt.Println(output.PrintSuccess(fmt.Sprintf("Inbox verified: %d emails", status.EmailCount)))
         }
     }
 
@@ -383,6 +382,8 @@ func printImportSuccess(inbox config.StoredInbox) {
         BorderForeground(styles.Green).
         Padding(1, 2)
 
+    successStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Green)
+
     content := fmt.Sprintf(`%s
 
 Address:  %s
@@ -391,7 +392,7 @@ Expires:  %s
 
 This inbox is now your active inbox.
 Run 'vsb watch' to see emails.`,
-        output.Success("Import Complete"),
+        successStyle.Render("Import Complete"),
         inbox.Email,
         orDefault(inbox.Label, "(none)"),
         remaining.String())
@@ -500,10 +501,15 @@ vsb import test-export.json
 rm test-export.json
 ```
 
-## Files Created
+## Files Created/Modified
 
-- `internal/cli/export.go`
-- `internal/cli/import.go`
+- `internal/cli/export.go` (NEW - uses existing helpers)
+- `internal/cli/import.go` (NEW - uses existing helpers)
+
+**Existing files used (no changes needed):**
+- `internal/cli/helpers.go` - LoadKeystoreOrError, GetInbox
+- `internal/output/printer.go` - PrintSuccess, PrintInfo, PrintError
+- `internal/styles/styles.go` - Color constants
 
 ## Implementation Complete
 

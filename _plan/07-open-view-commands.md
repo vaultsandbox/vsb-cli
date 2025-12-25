@@ -43,90 +43,15 @@ Keybindings (in detail view):
 
 ## Tasks
 
-### 1. Shared Browser Utility
+### 1. Shared Browser Utility (Already Exists)
 
-Extract browser logic to a shared package for use by both CLI and TUI.
+The browser utility already exists at `internal/browser/browser.go` with:
 
-**File: `internal/browser/browser.go`**
+- `OpenURL(url string) error` - Opens URL in default browser (with scheme validation)
+- `ViewHTML(html string) error` - Writes HTML to temp file and opens in browser
+- `CleanupPreviews(olderThan time.Duration) error` - Removes old preview files
 
-```go
-package browser
-
-import (
-    "fmt"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "runtime"
-    "time"
-)
-
-// Open opens a URL in the default browser
-func Open(url string) error {
-    var cmd *exec.Cmd
-
-    switch runtime.GOOS {
-    case "darwin":
-        cmd = exec.Command("open", url)
-    case "linux":
-        cmd = exec.Command("xdg-open", url)
-    case "windows":
-        cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-    default:
-        return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
-    }
-
-    return cmd.Start()
-}
-
-// OpenHTML writes HTML content to a temp file and opens it in the browser
-func OpenHTML(html string) error {
-    // Create temp directory for vsb previews
-    tmpDir := filepath.Join(os.TempDir(), "vsb-previews")
-    if err := os.MkdirAll(tmpDir, 0755); err != nil {
-        return err
-    }
-
-    // Create unique temp file
-    filename := fmt.Sprintf("preview-%d.html", time.Now().UnixNano())
-    tmpFile := filepath.Join(tmpDir, filename)
-
-    // Write HTML
-    if err := os.WriteFile(tmpFile, []byte(html), 0644); err != nil {
-        return err
-    }
-
-    // Open in browser
-    return Open("file://" + tmpFile)
-}
-
-// CleanupPreviews removes old preview files (older than 24 hours)
-func CleanupPreviews() error {
-    tmpDir := filepath.Join(os.TempDir(), "vsb-previews")
-
-    entries, err := os.ReadDir(tmpDir)
-    if err != nil {
-        if os.IsNotExist(err) {
-            return nil
-        }
-        return err
-    }
-
-    cutoff := time.Now().Add(-24 * time.Hour)
-
-    for _, entry := range entries {
-        info, err := entry.Info()
-        if err != nil {
-            continue
-        }
-        if info.ModTime().Before(cutoff) {
-            os.Remove(filepath.Join(tmpDir, entry.Name()))
-        }
-    }
-
-    return nil
-}
-```
+**No changes needed** - the TUI already uses this package.
 
 ### 2. Open Command (CLI)
 
@@ -141,9 +66,7 @@ import (
     "fmt"
 
     "github.com/spf13/cobra"
-    vaultsandbox "github.com/vaultsandbox/client-go"
     "github.com/vaultsandbox/vsb-cli/internal/browser"
-    "github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
 var openCmd = &cobra.Command{
@@ -167,10 +90,10 @@ Examples:
 }
 
 var (
-    openList   bool
-    openNth    int
-    openEmail  string
-    openJSON   bool
+    openList  bool
+    openNth   int
+    openEmail string
+    openJSON  bool
 )
 
 func init() {
@@ -189,11 +112,18 @@ func init() {
 func runOpen(cmd *cobra.Command, args []string) error {
     ctx := context.Background()
 
-    // Get email
-    email, err := getEmailFromArgs(ctx, args, openEmail)
+    // Get email ID (empty = latest)
+    emailID := ""
+    if len(args) > 0 {
+        emailID = args[0]
+    }
+
+    // Use shared helper
+    email, _, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, openEmail)
     if err != nil {
         return err
     }
+    defer cleanup()
 
     // Check for links
     if len(email.Links) == 0 {
@@ -208,8 +138,8 @@ func runOpen(cmd *cobra.Command, args []string) error {
     // List mode
     if openList {
         if openJSON {
-            output, _ := json.MarshalIndent(email.Links, "", "  ")
-            fmt.Println(string(output))
+            data, _ := json.MarshalIndent(email.Links, "", "  ")
+            fmt.Println(string(data))
         } else {
             for i, link := range email.Links {
                 fmt.Printf("%d. %s\n", i+1, link)
@@ -225,62 +155,13 @@ func runOpen(cmd *cobra.Command, args []string) error {
     link := email.Links[openNth-1]
 
     if openJSON {
-        output, _ := json.Marshal(map[string]string{"url": link})
-        fmt.Println(string(output))
+        data, _ := json.Marshal(map[string]string{"url": link})
+        fmt.Println(string(data))
     } else {
         fmt.Printf("Opening: %s\n", link)
     }
 
-    return browser.Open(link)
-}
-
-// getEmailFromArgs is a helper to get an email from args or latest
-func getEmailFromArgs(ctx context.Context, args []string, inboxEmail string) (*vaultsandbox.Email, error) {
-    emailID := ""
-    useLatest := true
-    if len(args) > 0 {
-        emailID = args[0]
-        useLatest = false
-    }
-
-    keystore, err := config.LoadKeystore()
-    if err != nil {
-        return nil, err
-    }
-
-    var stored *config.StoredInbox
-    if inboxEmail != "" {
-        stored, err = keystore.GetInbox(inboxEmail)
-    } else {
-        stored, err = keystore.GetActiveInbox()
-    }
-    if err != nil {
-        return nil, fmt.Errorf("no inbox found: %w", err)
-    }
-
-    client, err := config.NewClient()
-    if err != nil {
-        return nil, err
-    }
-    defer client.Close()
-
-    inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
-    if err != nil {
-        return nil, err
-    }
-
-    if useLatest {
-        emails, err := inbox.GetEmails(ctx)
-        if err != nil {
-            return nil, err
-        }
-        if len(emails) == 0 {
-            return nil, fmt.Errorf("no emails in inbox")
-        }
-        return emails[0], nil
-    }
-
-    return inbox.GetEmail(ctx, emailID)
+    return browser.OpenURL(link)
 }
 ```
 
@@ -295,12 +176,11 @@ import (
     "context"
     "fmt"
     "html"
-    "strings"
+    "time"
 
     "github.com/spf13/cobra"
     vaultsandbox "github.com/vaultsandbox/client-go"
     "github.com/vaultsandbox/vsb-cli/internal/browser"
-    "github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
 var viewCmd = &cobra.Command{
@@ -339,11 +219,18 @@ func init() {
 func runView(cmd *cobra.Command, args []string) error {
     ctx := context.Background()
 
-    // Get email
-    email, inbox, err := getEmailAndInbox(ctx, args, viewEmail)
+    // Get email ID (empty = latest)
+    emailID := ""
+    if len(args) > 0 {
+        emailID = args[0]
+    }
+
+    // Use shared helper (returns email, inbox, cleanup, error)
+    email, inbox, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, viewEmail)
     if err != nil {
         return err
     }
+    defer cleanup()
 
     // Raw mode - show RFC 5322 source
     if viewRaw {
@@ -380,64 +267,10 @@ func runView(cmd *cobra.Command, args []string) error {
 
     fmt.Println("Opening email in browser...")
 
-    // Cleanup old previews
-    browser.CleanupPreviews()
+    // Cleanup old previews (older than 1 hour)
+    browser.CleanupPreviews(time.Hour)
 
-    return browser.OpenHTML(wrappedHTML)
-}
-
-func getEmailAndInbox(ctx context.Context, args []string, inboxEmail string) (*vaultsandbox.Email, *vaultsandbox.Inbox, error) {
-    emailID := ""
-    useLatest := true
-    if len(args) > 0 {
-        emailID = args[0]
-        useLatest = false
-    }
-
-    keystore, err := config.LoadKeystore()
-    if err != nil {
-        return nil, nil, err
-    }
-
-    var stored *config.StoredInbox
-    if inboxEmail != "" {
-        stored, err = keystore.GetInbox(inboxEmail)
-    } else {
-        stored, err = keystore.GetActiveInbox()
-    }
-    if err != nil {
-        return nil, nil, fmt.Errorf("no inbox found: %w", err)
-    }
-
-    client, err := config.NewClient()
-    if err != nil {
-        return nil, nil, err
-    }
-    defer client.Close()
-
-    inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
-    if err != nil {
-        return nil, nil, err
-    }
-
-    var email *vaultsandbox.Email
-    if useLatest {
-        emails, err := inbox.GetEmails(ctx)
-        if err != nil {
-            return nil, nil, err
-        }
-        if len(emails) == 0 {
-            return nil, nil, fmt.Errorf("no emails in inbox")
-        }
-        email = emails[0]
-    } else {
-        email, err = inbox.GetEmail(ctx, emailID)
-        if err != nil {
-            return nil, nil, err
-        }
-    }
-
-    return email, inbox, nil
+    return browser.ViewHTML(wrappedHTML)
 }
 
 func wrapEmailHTML(email *vaultsandbox.Email) string {
@@ -507,29 +340,19 @@ func wrapEmailHTML(email *vaultsandbox.Email) string {
 }
 ```
 
-### 4. Update Watch TUI to Use Shared Browser
+### 4. Watch TUI Browser Integration (Already Done)
 
-**Update: `internal/tui/watch/browser.go`**
-
-Replace the inline implementation with calls to the shared browser package:
+The watch TUI model (`internal/tui/watch/model.go`) already uses the shared browser package directly:
 
 ```go
-package watch
+// In openLinks() method:
+browser.OpenURL(email.Links[0])
 
-import (
-    "github.com/vaultsandbox/vsb-cli/internal/browser"
-)
-
-// openBrowser opens a URL in the default browser
-func openBrowser(url string) error {
-    return browser.Open(url)
-}
-
-// viewInBrowser opens HTML in the browser with wrapper
-func viewInBrowser(html string) error {
-    return browser.OpenHTML(html)
-}
+// In viewHTML() method:
+browser.ViewHTML(email.HTML)
 ```
+
+**No separate browser.go file needed** - the model uses `internal/browser` directly.
 
 ### 5. Add Number Keys for Link Selection (Watch TUI)
 
@@ -601,11 +424,13 @@ vsb watch
 
 ## Files Created/Modified
 
-- `internal/browser/browser.go` (NEW - shared browser utility)
-- `internal/cli/open.go` (NEW - CLI command)
-- `internal/cli/view.go` (NEW - CLI command)
-- `internal/tui/watch/browser.go` (UPDATE - use shared browser)
-- `internal/tui/watch/model.go` (UPDATE - add number key handling)
+- `internal/cli/open.go` (NEW - CLI command, uses existing helpers)
+- `internal/cli/view.go` (NEW - CLI command, uses existing helpers)
+- `internal/tui/watch/model.go` (UPDATE - add number key handling for links)
+
+**Existing files used (no changes needed):**
+- `internal/browser/browser.go` - Already has OpenURL, ViewHTML, CleanupPreviews
+- `internal/cli/helpers.go` - Already has GetEmailByIDOrLatest
 
 ## Next Steps
 
