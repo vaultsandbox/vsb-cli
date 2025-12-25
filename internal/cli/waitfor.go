@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
-	"github.com/vaultsandbox/vsb-cli/internal/output"
 )
 
 var waitForCmd = &cobra.Command{
@@ -98,34 +97,25 @@ func runWaitFor(cmd *cobra.Command, args []string) error {
 	// Parse timeout
 	timeout, err := time.ParseDuration(waitForTimeout)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, output.PrintError("Invalid timeout format"))
-		os.Exit(2)
+		return fmt.Errorf("invalid timeout format: %w", err)
 	}
 
 	// Load keystore
-	keystore, err := config.LoadKeystore()
+	keystore, err := LoadKeystoreOrError()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, output.PrintError("Failed to load keystore"))
-		os.Exit(2)
+		return err
 	}
 
 	// Get inbox
-	var stored *config.StoredInbox
-	if waitForEmail != "" {
-		stored, err = keystore.GetInbox(waitForEmail)
-	} else {
-		stored, err = keystore.GetActiveInbox()
-	}
+	stored, err := GetInbox(keystore, waitForEmail)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, output.PrintError("No inbox found"))
-		os.Exit(2)
+		return err
 	}
 
 	// Create client
 	client, err := config.NewClient()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, output.PrintError(err.Error()))
-		os.Exit(2)
+		return err
 	}
 	defer client.Close()
 
@@ -136,15 +126,13 @@ func runWaitFor(cmd *cobra.Command, args []string) error {
 	// Import inbox
 	inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
 	if err != nil {
-		fmt.Fprintln(os.Stderr, output.PrintError("Failed to import inbox"))
-		os.Exit(2)
+		return fmt.Errorf("failed to import inbox: %w", err)
 	}
 
 	// Build wait options
 	opts, err := buildWaitOptions(timeout)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, output.PrintError(err.Error()))
-		os.Exit(2)
+		return err
 	}
 
 	// Show waiting message (unless quiet)
@@ -168,18 +156,13 @@ func runWaitFor(cmd *cobra.Command, args []string) error {
 
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			if !waitForQuiet {
-				fmt.Fprintln(os.Stderr, output.PrintError("Timeout waiting for email"))
-			}
-			os.Exit(1)
+			return fmt.Errorf("timeout waiting for email")
 		}
-		fmt.Fprintln(os.Stderr, output.PrintError(err.Error()))
-		os.Exit(2)
+		return err
 	}
 
 	// Output result
 	outputEmails(emails)
-	os.Exit(0)
 	return nil
 }
 
