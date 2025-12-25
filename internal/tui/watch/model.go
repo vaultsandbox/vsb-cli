@@ -347,6 +347,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		m.lastError = msg.err
 		m.connected = false
+
+	case emailDeletedMsg:
+		if msg.err != nil {
+			m.lastError = msg.err
+			return m, nil
+		}
+		// Remove email from local state
+		for i, e := range m.emails {
+			if e.Email.ID == msg.emailID {
+				m.emails = append(m.emails[:i], m.emails[i+1:]...)
+				break
+			}
+		}
+		// Update list items
+		items := make([]list.Item, len(m.emails))
+		for i, e := range m.emails {
+			items[i] = e
+		}
+		m.list.SetItems(items)
 	}
 
 	var cmd tea.Cmd
@@ -509,6 +528,12 @@ func (m Model) viewHTML() tea.Cmd {
 	}
 }
 
+// emailDeletedMsg is sent after an email is deleted
+type emailDeletedMsg struct {
+	emailID string
+	err     error
+}
+
 func (m Model) deleteEmail() tea.Cmd {
 	return func() tea.Msg {
 		if i := m.list.Index(); i >= 0 && i < len(m.emails) {
@@ -517,12 +542,12 @@ func (m Model) deleteEmail() tea.Cmd {
 			for _, inbox := range m.inboxes {
 				if m.showAll || len(m.inboxes) > 1 {
 					if inbox.EmailAddress() == emailItem.InboxLabel {
-						inbox.DeleteEmail(m.ctx, emailItem.Email.ID)
-						break
+						err := inbox.DeleteEmail(m.ctx, emailItem.Email.ID)
+						return emailDeletedMsg{emailID: emailItem.Email.ID, err: err}
 					}
 				} else {
-					inbox.DeleteEmail(m.ctx, emailItem.Email.ID)
-					break
+					err := inbox.DeleteEmail(m.ctx, emailItem.Email.ID)
+					return emailDeletedMsg{emailID: emailItem.Email.ID, err: err}
 				}
 			}
 		}
