@@ -48,7 +48,7 @@ Examples:
 }
 
 var (
-	waitForEmail        string
+	waitForInbox        string
 	waitForSubject      string
 	waitForSubjectRegex string
 	waitForFrom         string
@@ -63,8 +63,8 @@ func init() {
 	rootCmd.AddCommand(waitCmd)
 
 	// Inbox selection
-	waitCmd.Flags().StringVar(&waitForEmail, "email", "",
-		"Watch specific inbox (default: active)")
+	waitCmd.Flags().StringVar(&waitForInbox, "inbox", "",
+		"Use specific inbox (default: active)")
 
 	// Filters
 	waitCmd.Flags().StringVar(&waitForSubject, "subject", "",
@@ -103,7 +103,7 @@ func runWait(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get inbox
-	stored, err := GetInbox(keystore, waitForEmail)
+	stored, err := GetInbox(keystore, waitForInbox)
 	if err != nil {
 		return err
 	}

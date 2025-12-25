@@ -24,21 +24,21 @@ Proves the "Production Fidelity" of the email flow by displaying:
 - MIME Structure: Headers, body parts, and attachments
 
 Examples:
-  vsb audit abc123       # Audit specific email
-  vsb audit              # Audit most recent email
-  vsb audit -o json      # JSON output for scripting`,
+  vsb email audit              # Audit most recent email
+  vsb email audit abc123       # Audit specific email
+  vsb email audit -o json      # JSON output for scripting`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runAudit,
 }
 
 var (
-	auditEmail string
+	auditInbox string
 )
 
 func init() {
-	rootCmd.AddCommand(auditCmd)
+	emailCmd.AddCommand(auditCmd)
 
-	auditCmd.Flags().StringVar(&auditEmail, "email", "",
+	auditCmd.Flags().StringVar(&auditInbox, "inbox", "",
 		"Use specific inbox (default: active)")
 }
 
@@ -52,7 +52,7 @@ func runAudit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Use shared helper to get email
-	email, _, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, auditEmail)
+	email, _, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, auditInbox)
 	if err != nil {
 		return err
 	}

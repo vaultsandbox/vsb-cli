@@ -18,14 +18,12 @@ var viewCmd = &cobra.Command{
 	Short: "Preview email content",
 	Long: `View email content in various formats.
 
-For interactive use, run 'vsb' and press 'v' to view HTML.
-
 Examples:
-  vsb view              # View latest email HTML in browser
-  vsb view abc123       # View specific email
-  vsb view -t           # Print plain text to terminal
-  vsb view -r           # Print raw email source (RFC 5322)
-  vsb view -o json      # JSON output`,
+  vsb email view              # View latest email HTML in browser
+  vsb email view abc123       # View specific email
+  vsb email view -t           # Print plain text to terminal
+  vsb email view -r           # Print raw email source (RFC 5322)
+  vsb email view -o json      # JSON output`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runView,
 }
@@ -33,17 +31,17 @@ Examples:
 var (
 	viewText  bool
 	viewRaw   bool
-	viewEmail string
+	viewInbox string
 )
 
 func init() {
-	rootCmd.AddCommand(viewCmd)
+	emailCmd.AddCommand(viewCmd)
 
 	viewCmd.Flags().BoolVarP(&viewText, "text", "t", false,
 		"Show plain text version in terminal")
 	viewCmd.Flags().BoolVarP(&viewRaw, "raw", "r", false,
 		"Show raw email source (RFC 5322)")
-	viewCmd.Flags().StringVar(&viewEmail, "email", "",
+	viewCmd.Flags().StringVar(&viewInbox, "inbox", "",
 		"Use specific inbox (default: active)")
 }
 
@@ -57,7 +55,7 @@ func runView(cmd *cobra.Command, args []string) error {
 	}
 
 	// Use shared helper (returns email, inbox, cleanup, error)
-	email, inbox, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, viewEmail)
+	email, inbox, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, viewInbox)
 	if err != nil {
 		return err
 	}

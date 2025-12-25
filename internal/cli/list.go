@@ -22,28 +22,28 @@ Displays email ID, subject, sender, and received time.
 Use the email ID with other commands like 'vsb view <id>'.
 
 Examples:
-  vsb list              # List emails in active inbox
-  vsb list --email abc  # List emails in specific inbox
-  vsb list -o json      # JSON output`,
+  vsb email list              # List emails in active inbox
+  vsb email list --inbox abc  # List emails in specific inbox
+  vsb email list -o json      # JSON output`,
 	Aliases: []string{"ls"},
 	RunE:    runList,
 }
 
 var (
-	listEmail string
+	listInbox string
 )
 
 func init() {
-	rootCmd.AddCommand(listCmd)
+	emailCmd.AddCommand(listCmd)
 
-	listCmd.Flags().StringVar(&listEmail, "email", "",
+	listCmd.Flags().StringVar(&listInbox, "inbox", "",
 		"Use specific inbox (default: active)")
 }
 
 func runList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	inbox, cleanup, err := LoadAndImportInbox(ctx, listEmail)
+	inbox, cleanup, err := LoadAndImportInbox(ctx, listInbox)
 	if err != nil {
 		return err
 	}

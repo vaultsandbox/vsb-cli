@@ -19,29 +19,27 @@ By default, lists all links. Use --open to open a link in your browser.
 This is useful for quickly following verification links, password reset links,
 or any other actionable URLs in emails.
 
-For interactive use, run 'vsb' and press 'o' to open links.
-
 Examples:
-  vsb link              # List links from latest email
-  vsb link abc123       # List links from specific email
-  vsb link --open       # Open first link in browser
-  vsb link --open 2     # Open second link in browser
-  vsb link -o json      # JSON output for CI/CD`,
+  vsb email link              # List links from latest email
+  vsb email link abc123       # List links from specific email
+  vsb email link --open 1     # Open first link in browser
+  vsb email link --open 2     # Open second link in browser
+  vsb email link -o json      # JSON output for CI/CD`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runLink,
 }
 
 var (
 	linkOpen  int
-	linkEmail string
+	linkInbox string
 )
 
 func init() {
-	rootCmd.AddCommand(linkCmd)
+	emailCmd.AddCommand(linkCmd)
 
 	linkCmd.Flags().IntVarP(&linkOpen, "open", "O", 0,
 		"Open the Nth link in browser (1=first, 0=don't open)")
-	linkCmd.Flags().StringVar(&linkEmail, "email", "",
+	linkCmd.Flags().StringVar(&linkInbox, "inbox", "",
 		"Use specific inbox (default: active)")
 }
 
@@ -55,7 +53,7 @@ func runLink(cmd *cobra.Command, args []string) error {
 	}
 
 	// Use shared helper
-	email, _, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, linkEmail)
+	email, _, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, linkInbox)
 	if err != nil {
 		return err
 	}
