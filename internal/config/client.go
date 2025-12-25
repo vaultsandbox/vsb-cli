@@ -23,19 +23,3 @@ func NewClient() (*vaultsandbox.Client, error) {
 
 	return vaultsandbox.New(apiKey, opts...)
 }
-
-// NewClientWithKeystore creates a client and loads the keystore
-func NewClientWithKeystore() (*vaultsandbox.Client, *Keystore, error) {
-	client, err := NewClient()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	keystore, err := LoadKeystore()
-	if err != nil {
-		client.Close()
-		return nil, nil, err
-	}
-
-	return client, keystore, nil
-}
