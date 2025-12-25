@@ -1,16 +1,13 @@
 package cli
 
 import (
-	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
-var (
-	cfgFile string
-)
+var cfgFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "vsb",
@@ -34,37 +31,24 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
 		"config file (default is $HOME/.config/vsb/config.yaml)")
 
-	// Global flags
-	rootCmd.PersistentFlags().String("api-key", "", "API key (overrides config)")
-	rootCmd.PersistentFlags().String("base-url", "", "API base URL")
-	rootCmd.PersistentFlags().StringP("output", "o", "pretty",
-		"Output format: pretty, json, minimal")
+	// Global flags - store pointers for priority resolution
+	apiKey := rootCmd.PersistentFlags().String("api-key", "", "API key (overrides config)")
+	baseURL := rootCmd.PersistentFlags().String("base-url", "", "API base URL")
+	output := rootCmd.PersistentFlags().StringP("output", "o", "", "Output format: pretty, json, minimal")
 
-	// Bind flags to viper
-	viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
-	viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("base-url"))
-	viper.BindPFlag("output", rootCmd.PersistentFlags().Lookup("output"))
+	config.SetFlagPointers(apiKey, baseURL, output)
 }
 
 func initConfig() {
+	var configPath string
 	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
+		configPath = cfgFile
 	} else {
-		configDir, err := os.UserConfigDir()
+		dir, err := config.Dir()
 		if err != nil {
 			return
 		}
-
-		vsbConfigDir := filepath.Join(configDir, "vsb")
-		viper.AddConfigPath(vsbConfigDir)
-		viper.SetConfigName("config")
-		viper.SetConfigType("yaml")
+		configPath = filepath.Join(dir, "config.yaml")
 	}
-
-	// Environment variables
-	viper.SetEnvPrefix("VSB")
-	viper.AutomaticEnv()
-
-	// Read config (ignore error if not found)
-	viper.ReadInConfig()
+	config.LoadFromFile(configPath)
 }

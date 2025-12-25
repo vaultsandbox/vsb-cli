@@ -4,17 +4,23 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	APIKey        string `mapstructure:"api_key"`
-	BaseURL       string `mapstructure:"base_url"`
-	DefaultOutput string `mapstructure:"default_output"`
+	APIKey        string `yaml:"api_key"`
+	BaseURL       string `yaml:"base_url"`
+	DefaultOutput string `yaml:"default_output"`
 }
 
 // DefaultBaseURL is the production API endpoint
 const DefaultBaseURL = "https://api.vaultsandbox.com"
+
+// Package-level state (replaces viper's global state)
+var (
+	current                            Config
+	flagAPIKey, flagBaseURL, flagOutput *string
+)
 
 // Dir returns the vsb config directory path
 func Dir() (string, error) {
@@ -34,33 +40,66 @@ func EnsureDir() error {
 	return os.MkdirAll(dir, 0700)
 }
 
-// Load reads configuration from viper (already initialized in root.go)
+// LoadFromFile reads configuration from a YAML file
+func LoadFromFile(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // No config file is fine
+		}
+		return err
+	}
+	return yaml.Unmarshal(data, &current)
+}
+
+// getEnv returns env var with VSB_ prefix, or fallback
+func getEnv(key, fallback string) string {
+	if v := os.Getenv("VSB_" + key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+// Load returns the current config (for backwards compatibility)
 func Load() *Config {
 	return &Config{
-		APIKey:        viper.GetString("api_key"),
-		BaseURL:       viper.GetString("base_url"),
-		DefaultOutput: viper.GetString("default_output"),
+		APIKey:        GetAPIKey(),
+		BaseURL:       GetBaseURL(),
+		DefaultOutput: GetOutput(),
 	}
 }
 
-// GetAPIKey returns the API key, checking env vars and config
+// GetAPIKey returns API key with priority: flag > env > config file
 func GetAPIKey() string {
-	// Priority: flag > env > config file
-	if key := viper.GetString("api_key"); key != "" {
-		return key
+	if flagAPIKey != nil && *flagAPIKey != "" {
+		return *flagAPIKey
 	}
-	return os.Getenv("VSB_API_KEY")
+	return getEnv("API_KEY", current.APIKey)
 }
 
-// GetBaseURL returns the base URL with default fallback
+// GetBaseURL returns base URL with priority: flag > env > config file > default
 func GetBaseURL() string {
-	if url := viper.GetString("base_url"); url != "" {
+	if flagBaseURL != nil && *flagBaseURL != "" {
+		return *flagBaseURL
+	}
+	if url := getEnv("BASE_URL", current.BaseURL); url != "" {
 		return url
 	}
 	return DefaultBaseURL
 }
 
-// Save writes the current config to disk
+// GetOutput returns output format with priority: flag > env > config file
+func GetOutput() string {
+	if flagOutput != nil && *flagOutput != "" {
+		return *flagOutput
+	}
+	if out := getEnv("OUTPUT", current.DefaultOutput); out != "" {
+		return out
+	}
+	return "pretty"
+}
+
+// Save writes the config to disk as YAML
 func Save(cfg *Config) error {
 	if err := EnsureDir(); err != nil {
 		return err
@@ -69,9 +108,14 @@ func Save(cfg *Config) error {
 	dir, _ := Dir()
 	configPath := filepath.Join(dir, "config.yaml")
 
-	viper.Set("api_key", cfg.APIKey)
-	viper.Set("base_url", cfg.BaseURL)
-	viper.Set("default_output", cfg.DefaultOutput)
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(configPath, data, 0600)
+}
 
-	return viper.WriteConfigAs(configPath)
+// SetFlagPointers allows root.go to pass flag pointers for priority resolution
+func SetFlagPointers(apiKey, baseURL, output *string) {
+	flagAPIKey, flagBaseURL, flagOutput = apiKey, baseURL, output
 }
