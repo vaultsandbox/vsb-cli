@@ -149,23 +149,23 @@ vsb email audit -o json      # JSON output for scripting
 
 ---
 
-### `vsb email link [email-id]`
+### `vsb email url [email-id]`
 
-Extract and optionally open links from an email.
+Extract and open URLs from an email.
 
 **Flags:**
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--open` | `-O` | Open the Nth link in browser (1=first, 0=don't open) |
+| `--open` | `-O` | Open the Nth URL in browser (1=first, 0=don't open) |
 | `--inbox` | | Use specific inbox (default: active) |
 
 **Examples:**
 ```bash
-vsb email link              # List links from latest email
-vsb email link abc123       # List links from specific email
-vsb email link --open 1     # Open first link in browser
-vsb email link --open 2     # Open second link in browser
-vsb email link -o json      # JSON output for CI/CD
+vsb email url              # List URLs from latest email
+vsb email url abc123       # List URLs from specific email
+vsb email url --open 1     # Open first URL in browser
+vsb email url --open 2     # Open second URL in browser
+vsb email url -o json      # JSON output for CI/CD
 ```
 
 ---
