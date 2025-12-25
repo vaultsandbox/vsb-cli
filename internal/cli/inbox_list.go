@@ -78,11 +78,11 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Header
+	headerStyle := styles.HeaderStyle.MarginBottom(0)
 	fmt.Println()
-	fmt.Printf("%s  %-38s  %s\n",
-		styles.HeaderStyle.Render(" "),
-		styles.HeaderStyle.Render("EMAIL"),
-		styles.HeaderStyle.Render("EXPIRES"))
+	fmt.Printf("   %s  %s\n",
+		headerStyle.Render(fmt.Sprintf("%-38s", "EMAIL")),
+		headerStyle.Render("EXPIRES"))
 	fmt.Println(strings.Repeat("-", 55))
 
 	for _, inbox := range filtered {
@@ -95,12 +95,12 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 			marker = styles.ActiveStyle.Render("> ")
 		}
 
-		// Email
-		email := inbox.Email
+		// Email (pad before styling to preserve alignment)
+		emailPadded := fmt.Sprintf("%-38s", inbox.Email)
 		if isExpired {
-			email = styles.ExpiredStyle.Render(email)
+			emailPadded = styles.ExpiredStyle.Render(emailPadded)
 		} else if isActive {
-			email = styles.ActiveStyle.Render(email)
+			emailPadded = styles.ActiveStyle.Render(emailPadded)
 		}
 
 		// Expiry
@@ -112,7 +112,7 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 			expiry = formatDuration(remaining)
 		}
 
-		fmt.Printf("%s%-38s  %s\n", marker, email, expiry)
+		fmt.Printf("%s%s  %s\n", marker, emailPadded, expiry)
 	}
 
 	fmt.Println()
