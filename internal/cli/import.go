@@ -23,17 +23,15 @@ This adds the inbox to your local keystore and optionally verifies
 it's still valid on the server.
 
 Examples:
-  vsb import backup.json           # Import and verify
-  vsb import backup.json -l        # Skip server verification
-  vsb import backup.json -f        # Force overwrite existing
-  vsb import backup.json --label "shared-inbox"`,
+  vsb import backup.json      # Import and verify
+  vsb import backup.json -l   # Skip server verification
+  vsb import backup.json -f   # Force overwrite existing`,
 	Args: cobra.ExactArgs(1),
 	RunE: runImport,
 }
 
 var (
 	importLocal bool
-	importLabel string
 	importForce bool
 )
 
@@ -42,8 +40,6 @@ func init() {
 
 	importCmd.Flags().BoolVarP(&importLocal, "local", "l", false,
 		"Skip server verification")
-	importCmd.Flags().StringVar(&importLabel, "label", "",
-		"Override the label for imported inbox")
 	importCmd.Flags().BoolVarP(&importForce, "force", "f", false,
 		"Overwrite existing inbox with same email")
 }
@@ -123,17 +119,10 @@ func runImport(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Determine label
-	label := exported.Label
-	if importLabel != "" {
-		label = importLabel
-	}
-
 	// Save to keystore
 	stored := config.StoredInbox{
 		Email:     exported.EmailAddress,
 		ID:        exported.InboxHash,
-		Label:     label,
 		CreatedAt: exported.ExportedAt,
 		ExpiresAt: exported.ExpiresAt,
 		Keys: config.InboxKeys{
@@ -159,14 +148,12 @@ func printImportSuccess(inbox config.StoredInbox) {
 	content := fmt.Sprintf(`%s
 
 Address:  %s
-Label:    %s
 Expires:  %s
 
 This inbox is now your active inbox.
 Run 'vsb' to see emails.`,
 		styles.SuccessTitleStyle.Render("Import Complete"),
 		inbox.Email,
-		orDefault(inbox.Label, "(none)"),
 		remaining.String())
 
 	fmt.Println()

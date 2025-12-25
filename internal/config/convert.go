@@ -5,11 +5,10 @@ import (
 )
 
 // StoredInboxFromExport converts SDK ExportedInbox to StoredInbox
-func StoredInboxFromExport(exp *vaultsandbox.ExportedInbox, label string) StoredInbox {
+func StoredInboxFromExport(exp *vaultsandbox.ExportedInbox) StoredInbox {
 	return StoredInbox{
 		Email:     exp.EmailAddress,
 		ID:        exp.InboxHash,
-		Label:     label,
 		CreatedAt: exp.ExportedAt,
 		ExpiresAt: exp.ExpiresAt,
 		Keys: InboxKeys{

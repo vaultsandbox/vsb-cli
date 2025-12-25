@@ -16,7 +16,7 @@ import (
 )
 
 var inboxCreateCmd = &cobra.Command{
-	Use:   "create [label]",
+	Use:   "create",
 	Short: "Create a new temporary inbox",
 	Long: `Create a new temporary email inbox with quantum-safe encryption.
 
@@ -25,9 +25,8 @@ Your private key never leaves your machine - all decryption happens locally.
 
 Examples:
   vsb inbox create
-  vsb inbox create auth-tests
-  vsb inbox create --ttl 1h`,
-	Args: cobra.MaximumNArgs(1),
+  vsb inbox create --ttl 1h
+  vsb inbox create --ttl 7d`,
 	RunE: runInboxCreate,
 }
 
@@ -45,12 +44,6 @@ func init() {
 func runInboxCreate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	jsonMode := config.GetOutput() == "json"
-
-	// Get optional label
-	label := ""
-	if len(args) > 0 {
-		label = args[0]
-	}
 
 	// Parse TTL
 	ttl, err := parseTTL(createTTL)
@@ -89,7 +82,7 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load keystore: %w", err)
 	}
 
-	stored := config.StoredInboxFromExport(exported, label)
+	stored := config.StoredInboxFromExport(exported)
 	if err := keystore.AddInbox(stored); err != nil {
 		return fmt.Errorf("failed to save inbox: %w", err)
 	}
@@ -98,7 +91,6 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 	if jsonMode {
 		data := map[string]interface{}{
 			"email":     stored.Email,
-			"label":     stored.Label,
 			"expiresAt": stored.ExpiresAt.Format(time.RFC3339),
 			"createdAt": stored.CreatedAt.Format(time.RFC3339),
 		}
@@ -122,20 +114,14 @@ func printInboxCreated(inbox config.StoredInbox) {
 	expiry := inbox.ExpiresAt.Sub(time.Now()).Round(time.Hour)
 	expiryStr := fmt.Sprintf("%v", expiry)
 
-	labelStr := inbox.Label
-	if labelStr == "" {
-		labelStr = "(none)"
-	}
-
 	details := fmt.Sprintf(`
 
   Address:  %s
-  Label:    %s
   Security: ML-KEM-768 (Quantum-Safe)
   Expires:  %s
 
 Run 'vsb' to see emails arrive live.`,
-		emailBox, labelStr, expiryStr)
+		emailBox, expiryStr)
 
 	// Box it all
 	box := styles.SuccessBoxStyle.Render(title + details)

@@ -91,7 +91,6 @@ func runExport(cmd *cobra.Command, args []string) error {
 		Version:      1,
 		EmailAddress: stored.Email,
 		InboxHash:    stored.ID,
-		Label:        stored.Label,
 		ExpiresAt:    stored.ExpiresAt,
 		ExportedAt:   time.Now(),
 		Keys: ExportedKeys{

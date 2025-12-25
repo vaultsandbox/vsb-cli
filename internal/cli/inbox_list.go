@@ -53,7 +53,6 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 	if config.GetOutput() == "json" {
 		type inboxJSON struct {
 			Email     string `json:"email"`
-			Label     string `json:"label"`
 			ExpiresAt string `json:"expiresAt"`
 			IsActive  bool   `json:"isActive"`
 			IsExpired bool   `json:"isExpired"`
@@ -62,7 +61,6 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 		for _, inbox := range filtered {
 			result = append(result, inboxJSON{
 				Email:     inbox.Email,
-				Label:     inbox.Label,
 				ExpiresAt: inbox.ExpiresAt.Format(time.RFC3339),
 				IsActive:  inbox.Email == keystore.ActiveInbox,
 				IsExpired: inbox.ExpiresAt.Before(now),
@@ -81,12 +79,11 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 
 	// Header
 	fmt.Println()
-	fmt.Printf("%s  %-35s  %-12s  %s\n",
+	fmt.Printf("%s  %-38s  %s\n",
 		styles.HeaderStyle.Render(" "),
 		styles.HeaderStyle.Render("EMAIL"),
-		styles.HeaderStyle.Render("LABEL"),
 		styles.HeaderStyle.Render("EXPIRES"))
-	fmt.Println(strings.Repeat("-", 70))
+	fmt.Println(strings.Repeat("-", 55))
 
 	for _, inbox := range filtered {
 		isActive := inbox.Email == keystore.ActiveInbox
@@ -106,12 +103,6 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 			email = styles.ActiveStyle.Render(email)
 		}
 
-		// Label
-		label := inbox.Label
-		if label == "" {
-			label = "-"
-		}
-
 		// Expiry
 		var expiry string
 		if isExpired {
@@ -121,7 +112,7 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 			expiry = formatDuration(remaining)
 		}
 
-		fmt.Printf("%s%-35s  %-12s  %s\n", marker, email, label, expiry)
+		fmt.Printf("%s%-38s  %s\n", marker, email, expiry)
 	}
 
 	fmt.Println()
