@@ -114,7 +114,7 @@ func printInboxCreated(inbox config.StoredInbox) {
 	details := fmt.Sprintf(`
 
   Address:  %s
-  Security: ML-KEM-768 (Quantum-Safe)
+  Security: ML-KEM-768
   Expires:  %s
 
 Run 'vsb' to see emails arrive live.`,

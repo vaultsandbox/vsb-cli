@@ -146,7 +146,7 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 	}
 
 	// Security info
-	content += fmt.Sprintf("%s %s", labelStyle.Render("Encryption:"), "ML-KEM-768 (Quantum-Safe)")
+	content += fmt.Sprintf("%s %s", labelStyle.Render("Encryption:"), "ML-KEM-768")
 
 	fmt.Println()
 	fmt.Println(styles.BoxStyle.Render(content))
