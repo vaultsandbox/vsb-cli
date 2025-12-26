@@ -359,7 +359,7 @@ func TestPasswordResetWorkflow(t *testing.T) {
 	}()
 
 	// Step 3: Wait for reset email
-	stdout, stderr, code = runVSBWithConfig(t, configDir, "wait",
+	stdout, stderr, code := runVSBWithConfig(t, configDir, "wait",
 		"--subject-regex", "Password.*Reset",
 		"--timeout", "30s",
 		"--output", "json")
@@ -441,7 +441,7 @@ func TestOrderConfirmationWorkflow(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Step 3: Wait for confirmation
-	stdout, stderr, code = runVSBWithConfig(t, configDir, "wait",
+	stdout, stderr, code := runVSBWithConfig(t, configDir, "wait",
 		"--subject-regex", "Order Confirmation.*"+orderID[:15],
 		"--timeout", "30s",
 		"--output", "json")
