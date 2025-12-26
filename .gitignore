@@ -11,6 +11,11 @@
 *.out
 vendor/
 
+# Environment files
+.env
+.env.local
+.env.*.local
+
 # AI
 .claude
 
