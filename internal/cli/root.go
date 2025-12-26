@@ -119,7 +119,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create TUI model
-	model := watch.NewModel(client, inboxes, rootAll)
+	model := watch.NewModel(client, inboxes)
 
 	// Create and run TUI program
 	p := tea.NewProgram(&model, tea.WithAltScreen())

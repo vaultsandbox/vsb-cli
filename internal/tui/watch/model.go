@@ -53,6 +53,11 @@ type errMsg struct {
 
 type connectedMsg struct{}
 
+type inboxCreatedMsg struct {
+	inbox *vaultsandbox.Inbox
+	err   error
+}
+
 // DetailView represents which tab is active in detail view
 type DetailView int
 
@@ -69,8 +74,7 @@ type Model struct {
 	viewport viewport.Model
 	emails   []EmailItem
 
-	showAll    bool
-	inboxLabel string
+	currentInboxIdx int // index into inboxes slice
 
 	// Detail view state
 	viewing     bool
@@ -100,14 +104,15 @@ type KeyMap struct {
 	Down      key.Binding
 	Enter     key.Binding
 	Back      key.Binding
-	OpenLinks key.Binding
+	OpenURL   key.Binding
 	ViewHTML  key.Binding
 	Delete    key.Binding
 	Refresh   key.Binding
 	Quit      key.Binding
 	Help      key.Binding
-	Audit     key.Binding
-	ListLinks key.Binding
+	PrevInbox key.Binding
+	NextInbox key.Binding
+	NewInbox  key.Binding
 }
 
 var DefaultKeyMap = KeyMap{
@@ -127,9 +132,9 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("esc", "backspace"),
 		key.WithHelp("esc", "back"),
 	),
-	OpenLinks: key.NewBinding(
+	OpenURL: key.NewBinding(
 		key.WithKeys("o"),
-		key.WithHelp("o", "open links"),
+		key.WithHelp("o", "open url"),
 	),
 	ViewHTML: key.NewBinding(
 		key.WithKeys("v"),
@@ -151,18 +156,22 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("?"),
 		key.WithHelp("?", "help"),
 	),
-	Audit: key.NewBinding(
-		key.WithKeys("a"),
-		key.WithHelp("a", "security audit"),
+	PrevInbox: key.NewBinding(
+		key.WithKeys("left"),
+		key.WithHelp("←", "prev inbox"),
 	),
-	ListLinks: key.NewBinding(
-		key.WithKeys("l"),
-		key.WithHelp("l", "list links"),
+	NextInbox: key.NewBinding(
+		key.WithKeys("right"),
+		key.WithHelp("→", "next inbox"),
+	),
+	NewInbox: key.NewBinding(
+		key.WithKeys("n"),
+		key.WithHelp("n", "new inbox"),
 	),
 }
 
 // NewModel creates a new watch TUI model
-func NewModel(client *vaultsandbox.Client, inboxes []*vaultsandbox.Inbox, showAll bool) Model {
+func NewModel(client *vaultsandbox.Client, inboxes []*vaultsandbox.Inbox) Model {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Create list with custom delegate
@@ -179,21 +188,14 @@ func NewModel(client *vaultsandbox.Client, inboxes []*vaultsandbox.Inbox, showAl
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
 
-	// Get label for single inbox
-	label := ""
-	if len(inboxes) == 1 {
-		label = inboxes[0].EmailAddress()
-	}
-
 	return Model{
-		list:       l,
-		emails:     []EmailItem{},
-		showAll:    showAll,
-		inboxLabel: label,
-		ctx:        ctx,
-		cancel:     cancel,
-		client:     client,
-		inboxes:    inboxes,
+		list:            l,
+		emails:          []EmailItem{},
+		currentInboxIdx: 0,
+		ctx:             ctx,
+		cancel:          cancel,
+		client:          client,
+		inboxes:         inboxes,
 	}
 }
 
@@ -211,49 +213,28 @@ func (m *Model) startWatching() tea.Cmd {
 
 // WatchEmails starts watching for emails and sends them to the program
 func (m *Model) WatchEmails(p *tea.Program) {
-	if m.showAll || len(m.inboxes) > 1 {
-		// Watch multiple inboxes
-		eventCh := m.client.WatchInboxes(m.ctx, m.inboxes...)
-		go func() {
-			for {
-				select {
-				case <-m.ctx.Done():
-					return
-				case event, ok := <-eventCh:
-					if !ok {
-						return
-					}
-					if event != nil {
-						p.Send(emailReceivedMsg{
-							email:      event.Email,
-							inboxLabel: event.Inbox.EmailAddress(),
-						})
-					}
-				}
-			}
-		}()
-	} else if len(m.inboxes) == 1 {
-		// Watch single inbox
-		emailCh := m.inboxes[0].Watch(m.ctx)
-		go func() {
-			for {
-				select {
-				case <-m.ctx.Done():
-					return
-				case email, ok := <-emailCh:
-					if !ok {
-						return
-					}
-					if email != nil {
-						p.Send(emailReceivedMsg{
-							email:      email,
-							inboxLabel: m.inboxLabel,
-						})
-					}
-				}
-			}
-		}()
+	if len(m.inboxes) == 0 {
+		return
 	}
+	eventCh := m.client.WatchInboxes(m.ctx, m.inboxes...)
+	go func() {
+		for {
+			select {
+			case <-m.ctx.Done():
+				return
+			case event, ok := <-eventCh:
+				if !ok {
+					return
+				}
+				if event != nil {
+					p.Send(emailReceivedMsg{
+						email:      event.Email,
+						inboxLabel: event.Inbox.EmailAddress(),
+					})
+				}
+			}
+		}
+	}()
 }
 
 // LoadExistingEmails fetches existing emails and sends them to the program
@@ -266,13 +247,9 @@ func (m *Model) LoadExistingEmails(p *tea.Program) {
 				continue
 			}
 			for _, email := range emails {
-				label := ""
-				if m.showAll || len(m.inboxes) > 1 {
-					label = inbox.EmailAddress()
-				}
 				p.Send(emailReceivedMsg{
 					email:      email,
-					inboxLabel: label,
+					inboxLabel: inbox.EmailAddress(),
 				})
 			}
 		}
@@ -293,28 +270,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewedEmail = nil
 				m.detailView = ViewContent
 				return m, nil
-			case key.Matches(msg, DefaultKeyMap.OpenLinks):
+			case key.Matches(msg, DefaultKeyMap.OpenURL):
 				if m.viewedEmail != nil && len(m.viewedEmail.Email.Links) > 0 {
-					return m, m.openLinks()
+					return m, m.openFirstURL()
 				}
 			case key.Matches(msg, DefaultKeyMap.ViewHTML):
 				if m.viewedEmail != nil && m.viewedEmail.Email.HTML != "" {
 					return m, m.viewHTML()
 				}
-			case key.Matches(msg, DefaultKeyMap.Audit):
-				if m.viewedEmail != nil {
-					m.detailView = ViewSecurity
-					m.viewport.SetContent(m.renderSecurityView())
-					m.viewport.GotoTop()
-				}
-				return m, nil
-			case key.Matches(msg, DefaultKeyMap.ListLinks):
-				if m.viewedEmail != nil {
-					m.detailView = ViewLinks
-					m.viewport.SetContent(m.renderLinksView())
-					m.viewport.GotoTop()
-				}
-				return m, nil
 			// Number keys: open links when in Links view, otherwise switch tabs
 			default:
 				if m.viewedEmail != nil && len(msg.String()) == 1 {
@@ -369,49 +332,48 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cancel()
 			return m, tea.Quit
 		case key.Matches(msg, DefaultKeyMap.Enter):
-			if len(m.emails) > 0 {
-				if i := m.list.Index(); i >= 0 && i < len(m.emails) {
+			if len(m.filteredEmails()) > 0 {
+				if i := m.list.Index(); i >= 0 && i < len(m.filteredEmails()) {
+					filtered := m.filteredEmails()
 					m.viewing = true
-					m.viewedEmail = &m.emails[i]
+					m.viewedEmail = &filtered[i]
 					m.viewport.SetContent(m.renderEmailDetail())
 					m.viewport.GotoTop()
 				}
 			}
 			return m, nil
-		case key.Matches(msg, DefaultKeyMap.OpenLinks):
-			if len(m.emails) > 0 {
-				return m, m.openLinks()
+		case key.Matches(msg, DefaultKeyMap.OpenURL):
+			if len(m.filteredEmails()) > 0 {
+				return m, m.openFirstURL()
 			}
 		case key.Matches(msg, DefaultKeyMap.ViewHTML):
-			if len(m.emails) > 0 {
+			if len(m.filteredEmails()) > 0 {
 				return m, m.viewHTML()
 			}
 		case key.Matches(msg, DefaultKeyMap.Delete):
-			if len(m.emails) > 0 {
+			if len(m.filteredEmails()) > 0 {
 				return m, m.deleteEmail()
 			}
-		case key.Matches(msg, DefaultKeyMap.Audit):
-			if len(m.emails) > 0 {
-				if i := m.list.Index(); i >= 0 && i < len(m.emails) {
-					m.viewing = true
-					m.viewedEmail = &m.emails[i]
-					m.detailView = ViewSecurity
-					m.viewport.SetContent(m.renderSecurityView())
-					m.viewport.GotoTop()
+		case key.Matches(msg, DefaultKeyMap.PrevInbox):
+			if len(m.inboxes) > 0 {
+				m.currentInboxIdx--
+				if m.currentInboxIdx < 0 {
+					m.currentInboxIdx = len(m.inboxes) - 1
 				}
+				m.updateFilteredList()
 			}
 			return m, nil
-		case key.Matches(msg, DefaultKeyMap.ListLinks):
-			if len(m.emails) > 0 {
-				if i := m.list.Index(); i >= 0 && i < len(m.emails) {
-					m.viewing = true
-					m.viewedEmail = &m.emails[i]
-					m.detailView = ViewLinks
-					m.viewport.SetContent(m.renderLinksView())
-					m.viewport.GotoTop()
+		case key.Matches(msg, DefaultKeyMap.NextInbox):
+			if len(m.inboxes) > 0 {
+				m.currentInboxIdx++
+				if m.currentInboxIdx >= len(m.inboxes) {
+					m.currentInboxIdx = 0
 				}
+				m.updateFilteredList()
 			}
 			return m, nil
+		case key.Matches(msg, DefaultKeyMap.NewInbox):
+			return m, m.createNewInbox()
 		}
 
 	case tea.WindowSizeMsg:
@@ -463,11 +425,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		// Update list items
-		items := make([]list.Item, len(m.emails))
-		for i, e := range m.emails {
-			items[i] = e
+		m.updateFilteredList()
+
+	case inboxCreatedMsg:
+		if msg.err != nil {
+			m.lastError = msg.err
+			return m, nil
 		}
-		m.list.SetItems(items)
+		// Add inbox and switch to it
+		m.inboxes = append(m.inboxes, msg.inbox)
+		m.currentInboxIdx = len(m.inboxes) - 1
+		m.updateFilteredList()
+		// Start watching the new inbox
+		return m, m.watchNewInbox(msg.inbox)
 	}
 
 	var cmd tea.Cmd
@@ -485,10 +455,10 @@ func (m Model) View() string {
 func (m Model) viewList() string {
 	// Status bar
 	status := "Watching"
-	if m.showAll {
-		status += fmt.Sprintf(" %d inboxes", len(m.inboxes))
-	} else if m.inboxLabel != "" {
-		status += " " + m.inboxLabel
+	if len(m.inboxes) > 1 {
+		status += fmt.Sprintf(" [%d/%d] %s", m.currentInboxIdx+1, len(m.inboxes), m.currentInboxLabel())
+	} else if len(m.inboxes) == 1 {
+		status += " " + m.currentInboxLabel()
 	}
 	if !m.connected {
 		status = styles.HelpStyle.Foreground(styles.Red).Render("Disconnected")
@@ -497,12 +467,13 @@ func (m Model) viewList() string {
 		status = styles.HelpStyle.Foreground(styles.Red).Render("Error: " + m.lastError.Error())
 	}
 
+	filtered := m.filteredEmails()
 	statusBar := styles.StatusBarStyle.Render(
 		fmt.Sprintf("%s • %d emails • Press ? for help",
-			status, len(m.emails)))
+			status, len(filtered)))
 
 	// Help text
-	help := styles.HelpStyle.Render("q: quit • enter: view • a: audit • l: links • o: open • v: html • d: delete")
+	help := styles.HelpStyle.Render("q: quit • enter: view • o: open • v: html • d: delete • ←/→: inbox • n: new")
 
 	// Combine
 	content := lipgloss.JoinVertical(lipgloss.Left,
@@ -523,7 +494,7 @@ func (m Model) viewDetail() string {
 	header := styles.HeaderStyle.Render("Email Details")
 
 	// Help text
-	help := styles.HelpStyle.Render("1-4: tabs • a: audit • l: links • o: open • v: html • esc: back • q: quit")
+	help := styles.HelpStyle.Render("1-4: tabs • o: open • v: html • esc: back • q: quit")
 
 	// Combine
 	content := lipgloss.JoinVertical(lipgloss.Left,
@@ -606,13 +577,49 @@ func (m Model) renderEmailDetail() string {
 	return sb.String()
 }
 
-func (m Model) openLinks() tea.Cmd {
+// filteredEmails returns emails for the current inbox filter
+func (m Model) filteredEmails() []EmailItem {
+	if m.currentInboxIdx < 0 || m.currentInboxIdx >= len(m.inboxes) {
+		return m.emails // show all
+	}
+	currentInbox := m.inboxes[m.currentInboxIdx].EmailAddress()
+	var filtered []EmailItem
+	for _, e := range m.emails {
+		if e.InboxLabel == currentInbox {
+			filtered = append(filtered, e)
+		}
+	}
+	return filtered
+}
+
+// updateFilteredList updates the list with filtered emails
+func (m *Model) updateFilteredList() {
+	filtered := m.filteredEmails()
+	items := make([]list.Item, len(filtered))
+	for i, e := range filtered {
+		items[i] = e
+	}
+	m.list.SetItems(items)
+}
+
+// currentInboxLabel returns the label for the current inbox
+func (m Model) currentInboxLabel() string {
+	if m.currentInboxIdx >= 0 && m.currentInboxIdx < len(m.inboxes) {
+		return m.inboxes[m.currentInboxIdx].EmailAddress()
+	}
+	return "all"
+}
+
+func (m Model) openFirstURL() tea.Cmd {
 	return func() tea.Msg {
 		var email *vaultsandbox.Email
 		if m.viewing && m.viewedEmail != nil {
 			email = m.viewedEmail.Email
-		} else if i := m.list.Index(); i >= 0 && i < len(m.emails) {
-			email = m.emails[i].Email
+		} else {
+			filtered := m.filteredEmails()
+			if i := m.list.Index(); i >= 0 && i < len(filtered) {
+				email = filtered[i].Email
+			}
 		}
 		if email != nil && len(email.Links) > 0 {
 			browser.OpenURL(email.Links[0])
@@ -630,13 +637,30 @@ func (m Model) openLinkByIndex(index int) tea.Cmd {
 	}
 }
 
+func (m Model) createNewInbox() tea.Cmd {
+	return func() tea.Msg {
+		inbox, err := m.client.CreateInbox(m.ctx)
+		return inboxCreatedMsg{inbox: inbox, err: err}
+	}
+}
+
+func (m Model) watchNewInbox(inbox *vaultsandbox.Inbox) tea.Cmd {
+	// Note: New inbox watching requires program reference
+	// For now, new inboxes are added but won't receive real-time emails
+	// until the watch command is restarted
+	return nil
+}
+
 func (m Model) viewHTML() tea.Cmd {
 	return func() tea.Msg {
 		var email *vaultsandbox.Email
 		if m.viewing && m.viewedEmail != nil {
 			email = m.viewedEmail.Email
-		} else if i := m.list.Index(); i >= 0 && i < len(m.emails) {
-			email = m.emails[i].Email
+		} else {
+			filtered := m.filteredEmails()
+			if i := m.list.Index(); i >= 0 && i < len(filtered) {
+				email = filtered[i].Email
+			}
 		}
 		if email != nil && email.HTML != "" {
 			browser.ViewHTML(email.HTML)
@@ -653,11 +677,12 @@ type emailDeletedMsg struct {
 
 func (m Model) deleteEmail() tea.Cmd {
 	return func() tea.Msg {
-		if i := m.list.Index(); i >= 0 && i < len(m.emails) {
-			emailItem := m.emails[i]
+		filtered := m.filteredEmails()
+		if i := m.list.Index(); i >= 0 && i < len(filtered) {
+			emailItem := filtered[i]
 			// Find inbox for this email
 			for _, inbox := range m.inboxes {
-				if m.showAll || len(m.inboxes) > 1 {
+				if len(m.inboxes) > 1 {
 					if inbox.EmailAddress() == emailItem.InboxLabel {
 						err := inbox.DeleteEmail(m.ctx, emailItem.Email.ID)
 						return emailDeletedMsg{emailID: emailItem.Email.ID, err: err}
