@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -86,13 +87,13 @@ func runExport(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create export data
-	exportData := ExportedInboxFile{
+	exportData := config.ExportedInboxFile{
 		Version:      1,
 		EmailAddress: stored.Email,
 		InboxHash:    stored.ID,
 		ExpiresAt:    stored.ExpiresAt,
 		ExportedAt:   time.Now(),
-		Keys: ExportedKeys{
+		Keys: config.ExportedKeys{
 			KEMPrivate:  stored.Keys.KEMPrivate,
 			KEMPublic:   stored.Keys.KEMPublic,
 			ServerSigPK: stored.Keys.ServerSigPK,
@@ -116,21 +117,6 @@ func runExport(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// ExportedInboxFile is the file format for exported inboxes
-type ExportedInboxFile struct {
-	Version      int          `json:"version"`
-	EmailAddress string       `json:"emailAddress"`
-	InboxHash    string       `json:"inboxHash"`
-	ExpiresAt    time.Time    `json:"expiresAt"`
-	ExportedAt   time.Time    `json:"exportedAt"`
-	Keys         ExportedKeys `json:"keys"`
-}
-
-type ExportedKeys struct {
-	KEMPrivate  string `json:"kemPrivate"`
-	KEMPublic   string `json:"kemPublic"`
-	ServerSigPK string `json:"serverSigPk"`
-}
 
 
 func printExportWarning(path, email string) {

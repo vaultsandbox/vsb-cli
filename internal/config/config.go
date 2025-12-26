@@ -28,6 +28,36 @@ func Dir() (string, error) {
 	return filepath.Join(configDir, "vsb"), nil
 }
 
+// Path returns the config file path (~/.config/vsb/config.yaml)
+func Path() (string, error) {
+	dir, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "config.yaml"), nil
+}
+
+// Load reads the config file and returns the Config struct.
+// Returns an empty Config if the file doesn't exist.
+func Load() (*Config, error) {
+	path, err := Path()
+	if err != nil {
+		return nil, err
+	}
+	var cfg Config
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return &cfg, nil
+		}
+		return nil, err
+	}
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
 // EnsureDir creates the config directory if it doesn't exist
 func EnsureDir() error {
 	dir, err := Dir()

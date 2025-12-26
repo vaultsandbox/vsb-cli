@@ -27,14 +27,6 @@ func outputJSON(v interface{}) error {
 	return nil
 }
 
-// orDefault returns s if non-empty, otherwise def.
-func orDefault(s, def string) string {
-	if s == "" {
-		return def
-	}
-	return s
-}
-
 // sanitizeFilename replaces unsafe characters for use in filenames.
 func sanitizeFilename(email string) string {
 	// Replace @ and . with underscores for safe filename

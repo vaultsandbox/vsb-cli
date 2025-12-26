@@ -54,7 +54,7 @@ func runImport(cmd *cobra.Command, args []string) error {
 	}
 
 	// Parse JSON
-	var exported ExportedInboxFile
+	var exported config.ExportedInboxFile
 	if err := json.Unmarshal(data, &exported); err != nil {
 		return fmt.Errorf("invalid export file format: %w", err)
 	}

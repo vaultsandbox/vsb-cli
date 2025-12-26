@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
-	"gopkg.in/yaml.v3"
 )
 
 var configCmd = &cobra.Command{
@@ -59,16 +57,11 @@ func init() {
 func runConfigInteractive(cmd *cobra.Command, args []string) error {
 	reader := bufio.NewReader(os.Stdin)
 
-	// Get config directory
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return fmt.Errorf("failed to get config directory: %w", err)
-	}
-	vsbConfigDir := filepath.Join(configDir, "vsb")
-	configPath := filepath.Join(vsbConfigDir, "config.yaml")
-
 	// Load existing config if present
-	existing := loadExistingConfig(configPath)
+	existing, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
 
 	// Prompt for base URL
 	defaultURL := "https://api.vaultsandbox.com"
@@ -103,38 +96,30 @@ func runConfigInteractive(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("API key is required")
 	}
 
-	// Create config directory
-	if err := os.MkdirAll(vsbConfigDir, 0700); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-
 	// Save config
-	cfg := config.Config{
+	cfg := &config.Config{
 		APIKey:  apiKey,
 		BaseURL: baseURL,
 	}
-
-	data, err := yaml.Marshal(&cfg)
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
+	if err := config.Save(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
 	}
 
-	if err := os.WriteFile(configPath, data, 0600); err != nil {
-		return fmt.Errorf("failed to write config: %w", err)
-	}
-
+	configPath, _ := config.Path()
 	fmt.Printf("\nConfig saved to %s\n", configPath)
 	return nil
 }
 
 func runConfigShow(cmd *cobra.Command, args []string) error {
-	configDir, err := os.UserConfigDir()
+	configPath, err := config.Path()
 	if err != nil {
-		return fmt.Errorf("failed to get config directory: %w", err)
+		return fmt.Errorf("failed to get config path: %w", err)
 	}
-	configPath := filepath.Join(configDir, "vsb", "config.yaml")
 
-	cfg := loadExistingConfig(configPath)
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
 
 	// Mask API key for display
 	maskedKey := ""
@@ -179,15 +164,11 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 	key := args[0]
 	value := args[1]
 
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return fmt.Errorf("failed to get config directory: %w", err)
-	}
-	vsbConfigDir := filepath.Join(configDir, "vsb")
-	configPath := filepath.Join(vsbConfigDir, "config.yaml")
-
 	// Load existing config
-	cfg := loadExistingConfig(configPath)
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
 
 	// Update the appropriate key
 	switch key {
@@ -199,31 +180,12 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unknown config key: %s (valid keys: api-key, base-url)", key)
 	}
 
-	// Create config directory
-	if err := os.MkdirAll(vsbConfigDir, 0700); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-
 	// Save config
-	data, err := yaml.Marshal(&cfg)
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	if err := os.WriteFile(configPath, data, 0600); err != nil {
-		return fmt.Errorf("failed to write config: %w", err)
+	if err := config.Save(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
 	}
 
 	fmt.Printf("Set %s successfully\n", key)
 	return nil
 }
 
-func loadExistingConfig(path string) config.Config {
-	var cfg config.Config
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return cfg
-	}
-	yaml.Unmarshal(data, &cfg)
-	return cfg
-}
