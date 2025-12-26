@@ -494,8 +494,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.inboxes = append(m.inboxes, msg.inbox)
 		m.currentInboxIdx = len(m.inboxes) - 1
 		m.updateFilteredList()
-		// Start watching the new inbox
-		return m, m.watchNewInbox(msg.inbox)
+		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -704,13 +703,6 @@ func (m Model) createNewInbox() tea.Cmd {
 		inbox, err := m.client.CreateInbox(m.ctx)
 		return inboxCreatedMsg{inbox: inbox, err: err}
 	}
-}
-
-func (m Model) watchNewInbox(inbox *vaultsandbox.Inbox) tea.Cmd {
-	// Note: New inbox watching requires program reference
-	// For now, new inboxes are added but won't receive real-time emails
-	// until the watch command is restarted
-	return nil
 }
 
 func (m Model) viewHTML() tea.Cmd {
