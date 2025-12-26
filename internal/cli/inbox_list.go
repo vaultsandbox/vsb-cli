@@ -30,9 +30,9 @@ func init() {
 }
 
 func runInboxList(cmd *cobra.Command, args []string) error {
-	keystore, err := config.LoadKeystore()
+	keystore, err := LoadKeystoreOrError()
 	if err != nil {
-		return fmt.Errorf("failed to load keystore: %w", err)
+		return err
 	}
 
 	inboxes := keystore.ListInboxes()

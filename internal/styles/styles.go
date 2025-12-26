@@ -151,117 +151,70 @@ func FormatAuthResult(result string) string {
 // Encryption label constant for consistent display across CLI and TUI
 const EncryptionLabel = "ML-KEM-768 + AES-256-GCM"
 
-// RenderAuthResults renders authentication results (SPF/DKIM/DMARC/ReverseDNS).
-// If compact is true, details are shown in parentheses on the same line (TUI style).
-// If compact is false, details are shown on separate indented lines (CLI style).
-func RenderAuthResults(auth *authresults.AuthResults, labelStyle lipgloss.Style, compact bool) string {
+// RenderAuthResults renders authentication results in compact format (for TUI).
+// Details are shown in parentheses on the same line.
+func RenderAuthResults(auth *authresults.AuthResults, labelStyle lipgloss.Style) string {
 	if auth == nil {
 		return WarnStyle.Render("No authentication results available")
 	}
 
 	var lines []string
 
-	// SPF
 	if auth.SPF != nil {
-		spfResult := FormatAuthResult(auth.SPF.Status)
-		if compact {
-			line := fmt.Sprintf("%s %s", labelStyle.Render("SPF:"), spfResult)
-			if auth.SPF.Domain != "" {
-				line += fmt.Sprintf(" (%s)", auth.SPF.Domain)
-			}
-			lines = append(lines, line)
-		} else {
-			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("SPF:"), spfResult))
-			if auth.SPF.Domain != "" {
-				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Domain:"), auth.SPF.Domain))
-			}
+		line := fmt.Sprintf("%s %s", labelStyle.Render("SPF:"), FormatAuthResult(auth.SPF.Status))
+		if auth.SPF.Domain != "" {
+			line += fmt.Sprintf(" (%s)", auth.SPF.Domain)
 		}
+		lines = append(lines, line)
 	}
 
-	// DKIM (it's a slice)
 	if len(auth.DKIM) > 0 {
 		dkim := auth.DKIM[0]
-		dkimResult := FormatAuthResult(dkim.Status)
-		if compact {
-			line := fmt.Sprintf("%s %s", labelStyle.Render("DKIM:"), dkimResult)
-			if dkim.Domain != "" {
-				line += fmt.Sprintf(" (%s)", dkim.Domain)
-			}
-			lines = append(lines, line)
-		} else {
-			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("DKIM:"), dkimResult))
-			if dkim.Selector != "" {
-				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Selector:"), dkim.Selector))
-			}
-			if dkim.Domain != "" {
-				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Domain:"), dkim.Domain))
-			}
+		line := fmt.Sprintf("%s %s", labelStyle.Render("DKIM:"), FormatAuthResult(dkim.Status))
+		if dkim.Domain != "" {
+			line += fmt.Sprintf(" (%s)", dkim.Domain)
 		}
+		lines = append(lines, line)
 	}
 
-	// DMARC
 	if auth.DMARC != nil {
-		dmarcResult := FormatAuthResult(auth.DMARC.Status)
-		if compact {
-			line := fmt.Sprintf("%s %s", labelStyle.Render("DMARC:"), dmarcResult)
-			if auth.DMARC.Policy != "" {
-				line += fmt.Sprintf(" (policy: %s)", auth.DMARC.Policy)
-			}
-			lines = append(lines, line)
-		} else {
-			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("DMARC:"), dmarcResult))
-			if auth.DMARC.Policy != "" {
-				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Policy:"), auth.DMARC.Policy))
-			}
+		line := fmt.Sprintf("%s %s", labelStyle.Render("DMARC:"), FormatAuthResult(auth.DMARC.Status))
+		if auth.DMARC.Policy != "" {
+			line += fmt.Sprintf(" (policy: %s)", auth.DMARC.Policy)
 		}
+		lines = append(lines, line)
 	}
 
-	// Reverse DNS
 	if auth.ReverseDNS != nil {
-		rdnsResult := FormatAuthResult(auth.ReverseDNS.Status())
-		if compact {
-			line := fmt.Sprintf("%s %s", labelStyle.Render("Reverse DNS:"), rdnsResult)
-			if auth.ReverseDNS.Hostname != "" {
-				line += fmt.Sprintf(" (%s)", auth.ReverseDNS.Hostname)
-			}
-			lines = append(lines, line)
-		} else {
-			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Reverse DNS:"), rdnsResult))
-			if auth.ReverseDNS.Hostname != "" {
-				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Hostname:"), auth.ReverseDNS.Hostname))
-			}
+		line := fmt.Sprintf("%s %s", labelStyle.Render("Reverse DNS:"), FormatAuthResult(auth.ReverseDNS.Status()))
+		if auth.ReverseDNS.Hostname != "" {
+			line += fmt.Sprintf(" (%s)", auth.ReverseDNS.Hostname)
 		}
+		lines = append(lines, line)
 	}
 
 	return strings.Join(lines, "\n")
 }
 
-// CalculateScore computes a security score (0-100) for an email based on
-// authentication results. Base score of 50 assumes E2E encryption.
+// CalculateScore computes a security score (0-100) based on auth results.
+// Base score of 50 assumes E2E encryption.
 func CalculateScore(email *vaultsandbox.Email) int {
-	score := 50 // Base score for E2E encryption
-
+	score := 50
 	if email.AuthResults == nil {
 		return score
 	}
-
 	auth := email.AuthResults
-
 	if auth.SPF != nil && strings.EqualFold(auth.SPF.Status, "pass") {
 		score += 15
 	}
-
 	if len(auth.DKIM) > 0 && strings.EqualFold(auth.DKIM[0].Status, "pass") {
 		score += 20
 	}
-
 	if auth.DMARC != nil && strings.EqualFold(auth.DMARC.Status, "pass") {
 		score += 10
 	}
-
 	if auth.ReverseDNS != nil && strings.EqualFold(auth.ReverseDNS.Status(), "pass") {
 		score += 5
 	}
-
 	return score
 }

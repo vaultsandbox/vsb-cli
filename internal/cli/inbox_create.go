@@ -75,9 +75,9 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 	exported := inbox.Export()
 
 	// Save to keystore
-	keystore, err := config.LoadKeystore()
+	keystore, err := LoadKeystoreOrError()
 	if err != nil {
-		return fmt.Errorf("failed to load keystore: %w", err)
+		return err
 	}
 
 	stored := config.StoredInboxFromExport(exported)
