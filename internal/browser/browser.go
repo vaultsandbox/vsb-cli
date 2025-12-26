@@ -2,6 +2,7 @@ package browser
 
 import (
 	"fmt"
+	"html"
 	"net/url"
 	"os"
 	"os/exec"
@@ -70,6 +71,76 @@ func ViewHTML(html string) error {
 	}
 
 	return OpenURL("file://" + tmpFile.Name())
+}
+
+// ViewEmailHTML wraps email HTML with styled template and opens in browser.
+// Provides consistent styling with VaultSandbox branding across CLI and TUI.
+func ViewEmailHTML(subject, from string, receivedAt time.Time, emailHTML string) error {
+	wrappedHTML := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>%s</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: #1cc2e3;
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.2em;
+        }
+        .header .meta {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        .content {
+            background: white;
+            padding: 20px;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .vsb-badge {
+            background: #10B981;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>%s <span class="vsb-badge">VaultSandbox</span></h1>
+        <div class="meta">
+            <strong>From:</strong> %s<br>
+            <strong>Date:</strong> %s
+        </div>
+    </div>
+    <div class="content">
+        %s
+    </div>
+</body>
+</html>`,
+		html.EscapeString(subject),
+		html.EscapeString(subject),
+		html.EscapeString(from),
+		receivedAt.Format("January 2, 2006 at 3:04 PM"),
+		emailHTML,
+	)
+
+	return ViewHTML(wrappedHTML)
 }
 
 // CleanupPreviews removes old preview temp files older than the given duration.

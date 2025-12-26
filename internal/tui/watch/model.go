@@ -724,7 +724,7 @@ func (m Model) viewHTML() tea.Cmd {
 			}
 		}
 		if email != nil && email.HTML != "" {
-			browser.ViewHTML(email.HTML)
+			browser.ViewEmailHTML(email.Subject, email.From, email.ReceivedAt, email.HTML)
 		}
 		return nil
 	}
