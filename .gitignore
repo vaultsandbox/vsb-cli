@@ -13,6 +13,7 @@ vendor/
 # Coverage
 *.out
 coverage*.html
+coverage/
 
 # Environment files
 .env
