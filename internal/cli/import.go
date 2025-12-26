@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
@@ -94,17 +93,8 @@ func runImport(cmd *cobra.Command, args []string) error {
 		defer client.Close()
 
 		// Try to import into SDK to verify
-		sdkExport := &vaultsandbox.ExportedInbox{
-			EmailAddress: exported.EmailAddress,
-			ExpiresAt:    exported.ExpiresAt,
-			InboxHash:    exported.InboxHash,
-			ServerSigPk:  exported.Keys.ServerSigPK,
-			PublicKeyB64: exported.Keys.KEMPublic,
-			SecretKeyB64: exported.Keys.KEMPrivate,
-			ExportedAt:   exported.ExportedAt,
-		}
-
-		inbox, err := client.ImportInbox(ctx, sdkExport)
+		stored := exported.ToStoredInbox()
+		inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
 		if err != nil {
 			return fmt.Errorf("server verification failed: %w", err)
 		}

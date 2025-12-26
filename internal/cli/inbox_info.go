@@ -106,16 +106,9 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 		Foreground(styles.Gray).
 		Width(14)
 
-	valueStyle := lipgloss.NewStyle()
-
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(styles.Primary)
-
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.Primary).
-		Padding(1, 2)
 
 	// Build content
 	var content string
@@ -133,8 +126,8 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 	content += title + "\n\n"
 
 	// Details
-	content += fmt.Sprintf("%s %s\n", labelStyle.Render("ID:"), valueStyle.Render(stored.ID))
-	content += fmt.Sprintf("%s %s\n", labelStyle.Render("Created:"), valueStyle.Render(stored.CreatedAt.Format("2006-01-02 15:04")))
+	content += fmt.Sprintf("%s %s\n", labelStyle.Render("ID:"), stored.ID)
+	content += fmt.Sprintf("%s %s\n", labelStyle.Render("Created:"), stored.CreatedAt.Format("2006-01-02 15:04"))
 
 	// Expiry with color
 	var expiryStr string
@@ -153,10 +146,10 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 	}
 
 	// Security info
-	content += fmt.Sprintf("%s %s", labelStyle.Render("Encryption:"), valueStyle.Render("ML-KEM-768 (Quantum-Safe)"))
+	content += fmt.Sprintf("%s %s", labelStyle.Render("Encryption:"), "ML-KEM-768 (Quantum-Safe)")
 
 	fmt.Println()
-	fmt.Println(boxStyle.Render(content))
+	fmt.Println(styles.BoxStyle.Render(content))
 	fmt.Println()
 
 	return nil

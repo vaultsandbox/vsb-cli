@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
-	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
 var waitCmd = &cobra.Command{
@@ -95,34 +94,16 @@ func runWait(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid timeout format: %w", err)
 	}
 
-	// Load keystore
-	keystore, err := LoadKeystoreOrError()
-	if err != nil {
-		return err
-	}
-
-	// Get inbox
-	stored, err := GetInbox(keystore, waitForInbox)
-	if err != nil {
-		return err
-	}
-
-	// Create client
-	client, err := config.NewClient()
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// Import inbox
-	inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
+	// Use shared helper
+	inbox, cleanup, err := LoadAndImportInbox(ctx, waitForInbox)
 	if err != nil {
-		return fmt.Errorf("failed to import inbox: %w", err)
+		return err
 	}
+	defer cleanup()
 
 	// Build wait options
 	opts, err := buildWaitOptions(timeout)
@@ -133,7 +114,7 @@ func runWait(cmd *cobra.Command, args []string) error {
 	// Show waiting message (unless quiet)
 	if !waitForQuiet {
 		fmt.Fprintf(os.Stderr, "Waiting for email on %s (timeout: %s)...\n",
-			stored.Email, timeout)
+			inbox.Export().EmailAddress, timeout)
 	}
 
 	// Wait for email(s)

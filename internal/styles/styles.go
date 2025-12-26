@@ -109,6 +109,18 @@ var (
 
 	// Muted style for info messages
 	MutedStyle = lipgloss.NewStyle().Foreground(Gray)
+
+	// Section header for CLI reports
+	SectionStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(Primary).
+			MarginTop(1)
+
+	// Generic bordered box (neutral color)
+	BoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(Primary).
+			Padding(1, 2)
 )
 
 // ScoreStyle returns the appropriate style for a security score (0-100).

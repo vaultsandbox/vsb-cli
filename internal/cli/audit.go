@@ -64,18 +64,7 @@ func runAudit(cmd *cobra.Command, args []string) error {
 }
 
 func renderAuditReport(email *vaultsandbox.Email) error {
-	// Styles
-	sectionStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(styles.Primary).
-		MarginTop(1)
-
 	labelStyle := styles.LabelStyle
-
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.Primary).
-		Padding(1, 2)
 
 	// Title
 	title := lipgloss.NewStyle().
@@ -90,7 +79,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	fmt.Println()
 
 	// Basic Info
-	fmt.Println(sectionStyle.Render("BASIC INFO"))
+	fmt.Println(styles.SectionStyle.Render("BASIC INFO"))
 	fmt.Printf("%s %s\n", labelStyle.Render("Subject:"), email.Subject)
 	fmt.Printf("%s %s\n", labelStyle.Render("From:"), email.From)
 	fmt.Printf("%s %s\n", labelStyle.Render("To:"), strings.Join(email.To, ", "))
@@ -98,12 +87,12 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 
 	// Authentication Results
 	fmt.Println()
-	fmt.Println(sectionStyle.Render("AUTHENTICATION"))
+	fmt.Println(styles.SectionStyle.Render("AUTHENTICATION"))
 	fmt.Println(styles.RenderAuthResults(email.AuthResults, labelStyle, false))
 
 	// Transport Security
 	fmt.Println()
-	fmt.Println(sectionStyle.Render("TRANSPORT SECURITY"))
+	fmt.Println(styles.SectionStyle.Render("TRANSPORT SECURITY"))
 
 	// Extract from headers if available
 	tlsVersion := "TLS 1.3"
@@ -121,16 +110,16 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 
 	// MIME Structure
 	fmt.Println()
-	fmt.Println(sectionStyle.Render("MIME STRUCTURE"))
+	fmt.Println(styles.SectionStyle.Render("MIME STRUCTURE"))
 
 	mimeTree := buildMIMETree(email)
-	fmt.Println(boxStyle.Render(mimeTree))
+	fmt.Println(styles.BoxStyle.Render(mimeTree))
 
 	// Summary
 	fmt.Println()
 	score := styles.CalculateScore(email)
 	summary := fmt.Sprintf("Security Score: %s", styles.ScoreStyle(score).Render(fmt.Sprintf("%d/100", score)))
-	fmt.Println(boxStyle.Render(summary))
+	fmt.Println(styles.BoxStyle.Render(summary))
 	fmt.Println()
 
 	return nil
