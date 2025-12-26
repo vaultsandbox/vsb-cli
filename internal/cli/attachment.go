@@ -3,13 +3,12 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
+	"github.com/vaultsandbox/vsb-cli/internal/files"
 	"github.com/vaultsandbox/vsb-cli/internal/output"
 )
 
@@ -130,30 +129,9 @@ func runAttachment(cmd *cobra.Command, args []string) error {
 }
 
 func downloadAttachment(filename string, content []byte) error {
-	// Ensure directory exists
-	if err := os.MkdirAll(attachmentDir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
-	}
-
-	// Build full path
-	path := filepath.Join(attachmentDir, filename)
-
-	// Check if file exists
-	if _, err := os.Stat(path); err == nil {
-		// File exists, add suffix to avoid overwriting
-		ext := filepath.Ext(filename)
-		base := filename[:len(filename)-len(ext)]
-		for i := 1; ; i++ {
-			path = filepath.Join(attachmentDir, fmt.Sprintf("%s_%d%s", base, i, ext))
-			if _, err := os.Stat(path); os.IsNotExist(err) {
-				break
-			}
-		}
-	}
-
-	// Write file
-	if err := os.WriteFile(path, content, 0644); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
+	path, err := files.SaveFile(attachmentDir, filename, content)
+	if err != nil {
+		return err
 	}
 
 	fmt.Println(output.PrintSuccess(fmt.Sprintf("Saved: %s (%s)", path, humanize.Bytes(uint64(len(content))))))
@@ -161,11 +139,6 @@ func downloadAttachment(filename string, content []byte) error {
 }
 
 func downloadAllAttachments(attachments []vaultsandbox.Attachment) error {
-	// Ensure directory exists
-	if err := os.MkdirAll(attachmentDir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
-	}
-
 	saved := 0
 	for _, att := range attachments {
 		if err := downloadAttachment(att.Filename, att.Content); err != nil {

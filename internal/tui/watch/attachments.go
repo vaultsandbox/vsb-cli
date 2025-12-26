@@ -2,12 +2,11 @@ package watch
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vaultsandbox/vsb-cli/internal/files"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -81,26 +80,7 @@ func (m Model) saveAttachment(index int) tea.Cmd {
 		}
 
 		att := m.viewedEmail.Email.Attachments[index]
-		filename := getUniqueFilename(att.Filename)
-
-		err := os.WriteFile(filename, att.Content, 0644)
-		return attachmentSavedMsg{filename: filename, err: err}
-	}
-}
-
-// getUniqueFilename returns a unique filename, adding (1), (2), etc. if needed
-func getUniqueFilename(filename string) string {
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		return filename
-	}
-
-	ext := filepath.Ext(filename)
-	base := strings.TrimSuffix(filename, ext)
-
-	for i := 1; ; i++ {
-		newName := fmt.Sprintf("%s (%d)%s", base, i, ext)
-		if _, err := os.Stat(newName); os.IsNotExist(err) {
-			return newName
-		}
+		path, err := files.SaveFile(".", att.Filename, att.Content)
+		return attachmentSavedMsg{filename: path, err: err}
 	}
 }
