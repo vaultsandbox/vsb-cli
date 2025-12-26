@@ -39,9 +39,7 @@ func init() {
 		"config file (default is $HOME/.config/vsb/config.yaml)")
 
 	// Global output format flag
-	output := rootCmd.PersistentFlags().StringP("output", "o", "", "Output format: pretty, json")
-
-	config.SetFlagPointers(output)
+	rootCmd.PersistentFlags().StringP("output", "o", "", "Output format: pretty, json")
 }
 
 func initConfig() {

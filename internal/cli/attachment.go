@@ -7,7 +7,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
-	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/files"
 	"github.com/vaultsandbox/vsb-cli/internal/output"
 )
@@ -70,7 +69,7 @@ func runAttachment(cmd *cobra.Command, args []string) error {
 
 	// Check for attachments
 	if len(email.Attachments) == 0 {
-		if config.GetOutput() == "json" {
+		if getOutput(cmd) == "json" {
 			fmt.Println("[]")
 		} else {
 			fmt.Println("No attachments found in email")
@@ -93,7 +92,7 @@ func runAttachment(cmd *cobra.Command, args []string) error {
 	}
 
 	// Default: list all attachments
-	if config.GetOutput() == "json" {
+	if getOutput(cmd) == "json" {
 		// Build JSON-friendly output (without binary content)
 		type attachmentInfo struct {
 			Index       int    `json:"index"`

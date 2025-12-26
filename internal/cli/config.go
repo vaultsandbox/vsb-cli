@@ -152,7 +152,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	}
 
 	// JSON output
-	if config.GetOutput() == "json" {
+	if getOutput(cmd) == "json" {
 		data := map[string]interface{}{
 			"configFile": configPath,
 			"apiKey":     maskedKey,

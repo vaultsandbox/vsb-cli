@@ -49,7 +49,7 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 	}
 
 	// JSON output
-	if config.GetOutput() == "json" {
+	if getOutput(cmd) == "json" {
 		type inboxJSON struct {
 			Email     string `json:"email"`
 			ExpiresAt string `json:"expiresAt"`

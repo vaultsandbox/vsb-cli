@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
-	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -54,7 +53,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	// JSON output
-	if config.GetOutput() == "json" {
+	if getOutput(cmd) == "json" {
 		type emailJSON struct {
 			ID         string `json:"id"`
 			Subject    string `json:"subject"`

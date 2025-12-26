@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
-	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/security"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
@@ -59,7 +58,7 @@ func runAudit(cmd *cobra.Command, args []string) error {
 	defer cleanup()
 
 	// Render audit report
-	if config.GetOutput() == "json" {
+	if getOutput(cmd) == "json" {
 		return renderAuditJSON(email)
 	}
 	return renderAuditReport(email)

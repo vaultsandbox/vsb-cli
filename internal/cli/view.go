@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/vaultsandbox/vsb-cli/internal/browser"
-	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
 var viewCmd = &cobra.Command{
@@ -61,7 +60,7 @@ func runView(cmd *cobra.Command, args []string) error {
 	defer cleanup()
 
 	// JSON output
-	if config.GetOutput() == "json" {
+	if getOutput(cmd) == "json" {
 		data := map[string]interface{}{
 			"id":         email.ID,
 			"subject":    email.Subject,

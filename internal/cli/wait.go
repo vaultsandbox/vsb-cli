@@ -157,7 +157,7 @@ func runWait(cmd *cobra.Command, args []string) error {
 	}
 
 	// Output result
-	outputEmails(emails)
+	outputEmails(cmd, emails)
 	return nil
 }
 
@@ -194,13 +194,13 @@ func buildWaitOptions(timeout time.Duration) ([]vaultsandbox.WaitOption, error) 
 	return opts, nil
 }
 
-func outputEmails(emails []*vaultsandbox.Email) {
+func outputEmails(cmd *cobra.Command, emails []*vaultsandbox.Email) {
 	if waitForQuiet {
 		return
 	}
 
 	for _, email := range emails {
-		if config.GetOutput() == "json" {
+		if getOutput(cmd) == "json" {
 			// JSON output
 			_ = outputJSON(emailToMap(email))
 		} else if waitForExtractLink {

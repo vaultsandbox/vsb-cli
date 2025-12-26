@@ -85,7 +85,7 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 	isActive := stored.Email == ks.ActiveInbox
 
 	// JSON output
-	if config.GetOutput() == "json" {
+	if getOutput(cmd) == "json" {
 		data := map[string]interface{}{
 			"email":      stored.Email,
 			"id":         stored.ID,

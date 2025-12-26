@@ -3,8 +3,23 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
+
+// getOutput returns the output format with priority: flag > env > config > default.
+func getOutput(cmd *cobra.Command) string {
+	if flag := cmd.Flag("output"); flag != nil && flag.Changed {
+		return flag.Value.String()
+	}
+	if v := os.Getenv("VSB_OUTPUT"); v != "" {
+		return v
+	}
+	return config.GetDefaultOutput()
+}
 
 // outputJSON marshals v to indented JSON and prints it to stdout.
 func outputJSON(v interface{}) error {

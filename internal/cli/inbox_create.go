@@ -42,7 +42,7 @@ func init() {
 
 func runInboxCreate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-	jsonMode := config.GetOutput() == "json"
+	jsonMode := getOutput(cmd) == "json"
 
 	// Parse TTL
 	ttl, err := parseTTL(createTTL)

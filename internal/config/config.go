@@ -16,11 +16,8 @@ type Config struct {
 // DefaultBaseURL is the production API endpoint
 const DefaultBaseURL = "https://api.vaultsandbox.com"
 
-// Package-level state (replaces viper's global state)
-var (
-	current    Config
-	flagOutput *string
-)
+// Package-level state
+var current Config
 
 // Dir returns the vsb config directory path
 func Dir() (string, error) {
@@ -73,13 +70,10 @@ func GetBaseURL() string {
 	return DefaultBaseURL
 }
 
-// GetOutput returns output format with priority: flag > env > config file
-func GetOutput() string {
-	if flagOutput != nil && *flagOutput != "" {
-		return *flagOutput
-	}
-	if out := getEnv("OUTPUT", current.DefaultOutput); out != "" {
-		return out
+// GetDefaultOutput returns the configured default output format, or "pretty" if not set.
+func GetDefaultOutput() string {
+	if current.DefaultOutput != "" {
+		return current.DefaultOutput
 	}
 	return "pretty"
 }
@@ -98,9 +92,4 @@ func Save(cfg *Config) error {
 		return err
 	}
 	return os.WriteFile(configPath, data, 0600)
-}
-
-// SetFlagPointers allows root.go to pass flag pointers for priority resolution
-func SetFlagPointers(output *string) {
-	flagOutput = output
 }

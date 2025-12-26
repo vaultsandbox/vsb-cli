@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/vaultsandbox/vsb-cli/internal/browser"
-	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
 var urlCmd = &cobra.Command{
@@ -60,7 +59,7 @@ func runURL(cmd *cobra.Command, args []string) error {
 
 	// Check for URLs
 	if len(email.Links) == 0 {
-		if config.GetOutput() == "json" {
+		if getOutput(cmd) == "json" {
 			fmt.Println("[]")
 		} else {
 			fmt.Println("No URLs found in email")
@@ -79,7 +78,7 @@ func runURL(cmd *cobra.Command, args []string) error {
 	}
 
 	// Default: list all URLs
-	if config.GetOutput() == "json" {
+	if getOutput(cmd) == "json" {
 		return outputJSON(email.Links)
 	} else {
 		for i, url := range email.Links {
