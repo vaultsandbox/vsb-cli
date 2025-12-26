@@ -106,9 +106,9 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	// Create and run TUI program
 	p := tea.NewProgram(&model, tea.WithAltScreen())
 
-	// Start watching for emails (must happen after program is created)
-	model.WatchEmails(p)
+	// Load existing emails first (synchronous), then start watching for new ones
 	model.LoadExistingEmails(p)
+	model.WatchEmails(p)
 
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("TUI error: %w", err)

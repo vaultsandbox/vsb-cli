@@ -8,14 +8,17 @@ import (
 
 // GetUniqueFilename returns a unique filename in the given directory.
 // If the file already exists, it appends _1, _2, etc. before the extension.
+// The filename is sanitized to prevent path traversal attacks.
 func GetUniqueFilename(dir, name string) string {
-	path := filepath.Join(dir, name)
+	// Sanitize filename to prevent path traversal (e.g., "../../.bashrc")
+	cleanName := filepath.Base(name)
+	path := filepath.Join(dir, cleanName)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return path
 	}
 
-	ext := filepath.Ext(name)
-	base := name[:len(name)-len(ext)]
+	ext := filepath.Ext(cleanName)
+	base := cleanName[:len(cleanName)-len(ext)]
 
 	for i := 1; ; i++ {
 		path = filepath.Join(dir, fmt.Sprintf("%s_%d%s", base, i, ext))

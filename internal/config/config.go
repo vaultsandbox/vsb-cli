@@ -13,8 +13,8 @@ type Config struct {
 	DefaultOutput string `yaml:"default_output"`
 }
 
-// DefaultBaseURL is the production API endpoint
-const DefaultBaseURL = "https://api.vaultsandbox.com"
+// DefaultBaseURL
+const DefaultBaseURL = "https://"
 
 // Package-level state
 var current Config
