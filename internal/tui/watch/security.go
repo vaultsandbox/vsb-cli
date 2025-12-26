@@ -24,10 +24,8 @@ func (m Model) renderSecurityView() string {
 	warnStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Yellow)
 	sectionStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.White).MarginTop(1)
 
-	// Tab indicator
-	sb.WriteString(styles.HelpStyle.Render("[1:Content] [2:Security] [3:Links] [4:Raw]"))
-	sb.WriteString("\n")
-	sb.WriteString(styles.HelpStyle.Render("           ^^^^^^^^^^"))
+	// Tab bar
+	sb.WriteString(m.renderTabs())
 	sb.WriteString("\n\n")
 
 	// Authentication

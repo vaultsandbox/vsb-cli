@@ -22,10 +22,8 @@ func (m Model) renderRawView() string {
 	headerKeyStyle := lipgloss.NewStyle().Foreground(styles.Gray)
 	headerValStyle := lipgloss.NewStyle().Foreground(styles.White)
 
-	// Tab indicator
-	sb.WriteString(styles.HelpStyle.Render("[1:Content] [2:Security] [3:Links] [4:Raw]"))
-	sb.WriteString("\n")
-	sb.WriteString(styles.HelpStyle.Render("                                   ^^^"))
+	// Tab bar
+	sb.WriteString(m.renderTabs())
 	sb.WriteString("\n\n")
 
 	// Raw Headers

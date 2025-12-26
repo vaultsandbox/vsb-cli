@@ -19,12 +19,10 @@ func (m Model) renderLinksView() string {
 
 	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
 	linkStyle := lipgloss.NewStyle().Foreground(styles.White)
-	indexStyle := lipgloss.NewStyle().Foreground(styles.Gray)
+	selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
 
-	// Tab indicator
-	sb.WriteString(styles.HelpStyle.Render("[1:Content] [2:Security] [3:Links] [4:Raw]"))
-	sb.WriteString("\n")
-	sb.WriteString(styles.HelpStyle.Render("                         ^^^^^^^"))
+	// Tab bar
+	sb.WriteString(m.renderTabs())
 	sb.WriteString("\n\n")
 
 	if len(email.Links) == 0 {
@@ -35,13 +33,16 @@ func (m Model) renderLinksView() string {
 	sb.WriteString(labelStyle.Render(fmt.Sprintf("Found %d links:\n\n", len(email.Links))))
 
 	for i, link := range email.Links {
-		sb.WriteString(indexStyle.Render(fmt.Sprintf("%2d. ", i+1)))
-		sb.WriteString(linkStyle.Render(link))
+		if i == m.selectedLink {
+			sb.WriteString(selectedStyle.Render("> " + link))
+		} else {
+			sb.WriteString(linkStyle.Render("  " + link))
+		}
 		sb.WriteString("\n")
 	}
 
 	sb.WriteString("\n")
-	sb.WriteString(styles.HelpStyle.Render("Press 'o' to open first link, or number key (1-9) to open specific link"))
+	sb.WriteString(styles.HelpStyle.Render("↑/↓: select • enter: open"))
 
 	return sb.String()
 }

@@ -77,9 +77,10 @@ type Model struct {
 	currentInboxIdx int // index into inboxes slice
 
 	// Detail view state
-	viewing     bool
-	viewedEmail *EmailItem
-	detailView  DetailView
+	viewing      bool
+	viewedEmail  *EmailItem
+	detailView   DetailView
+	selectedLink int // selected link index in links view
 
 	// Connection status
 	connected bool
@@ -270,50 +271,57 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewedEmail = nil
 				m.detailView = ViewContent
 				return m, nil
-			case key.Matches(msg, DefaultKeyMap.OpenURL):
-				if m.viewedEmail != nil && len(m.viewedEmail.Email.Links) > 0 {
-					return m, m.openFirstURL()
-				}
 			case key.Matches(msg, DefaultKeyMap.ViewHTML):
 				if m.viewedEmail != nil && m.viewedEmail.Email.HTML != "" {
 					return m, m.viewHTML()
 				}
-			// Number keys: open links when in Links view, otherwise switch tabs
+			// Links view: up/down to navigate, enter to open
+			case key.Matches(msg, DefaultKeyMap.Up):
+				if m.detailView == ViewLinks && m.viewedEmail != nil && len(m.viewedEmail.Email.Links) > 0 {
+					m.selectedLink--
+					if m.selectedLink < 0 {
+						m.selectedLink = len(m.viewedEmail.Email.Links) - 1
+					}
+					m.viewport.SetContent(m.renderLinksView())
+					return m, nil
+				}
+			case key.Matches(msg, DefaultKeyMap.Down):
+				if m.detailView == ViewLinks && m.viewedEmail != nil && len(m.viewedEmail.Email.Links) > 0 {
+					m.selectedLink++
+					if m.selectedLink >= len(m.viewedEmail.Email.Links) {
+						m.selectedLink = 0
+					}
+					m.viewport.SetContent(m.renderLinksView())
+					return m, nil
+				}
+			case key.Matches(msg, DefaultKeyMap.Enter):
+				if m.detailView == ViewLinks && m.viewedEmail != nil && len(m.viewedEmail.Email.Links) > 0 {
+					return m, m.openLinkByIndex(m.selectedLink)
+				}
+			// Number keys: switch tabs
 			default:
 				if m.viewedEmail != nil && len(msg.String()) == 1 {
 					r := msg.String()[0]
-					if r >= '1' && r <= '9' {
-						n := int(r - '1') // '1' -> 0, '2' -> 1, etc.
-
-						// In Links view, open the corresponding link
-						if m.detailView == ViewLinks {
-							if n < len(m.viewedEmail.Email.Links) {
-								return m, m.openLinkByIndex(n)
-							}
-							return m, nil
-						}
-
-						// Otherwise, switch tabs (1-4)
-						switch r {
-						case '1':
-							m.detailView = ViewContent
-							m.viewport.SetContent(m.renderEmailDetail())
-							m.viewport.GotoTop()
-						case '2':
-							m.detailView = ViewSecurity
-							m.viewport.SetContent(m.renderSecurityView())
-							m.viewport.GotoTop()
-						case '3':
-							m.detailView = ViewLinks
-							m.viewport.SetContent(m.renderLinksView())
-							m.viewport.GotoTop()
-						case '4':
-							m.detailView = ViewRaw
-							m.viewport.SetContent(m.renderRawView())
-							m.viewport.GotoTop()
-						}
-						return m, nil
+					switch r {
+					case '1':
+						m.detailView = ViewContent
+						m.viewport.SetContent(m.renderEmailDetail())
+						m.viewport.GotoTop()
+					case '2':
+						m.detailView = ViewSecurity
+						m.viewport.SetContent(m.renderSecurityView())
+						m.viewport.GotoTop()
+					case '3':
+						m.detailView = ViewLinks
+						m.selectedLink = 0
+						m.viewport.SetContent(m.renderLinksView())
+						m.viewport.GotoTop()
+					case '4':
+						m.detailView = ViewRaw
+						m.viewport.SetContent(m.renderRawView())
+						m.viewport.GotoTop()
 					}
+					return m, nil
 				}
 			}
 			// Update viewport for scrolling
@@ -466,20 +474,30 @@ func (m Model) viewDetail() string {
 		return ""
 	}
 
-	// Header
-	header := styles.HeaderStyle.Render("Email Details")
-
 	// Help text
-	help := styles.HelpStyle.Render("1-4: tabs • o: open • v: html • esc: back • q: quit")
+	help := styles.HelpStyle.Render("1-4: tabs • v: html • esc: back • q: quit")
 
 	// Combine
 	content := lipgloss.JoinVertical(lipgloss.Left,
-		header,
 		m.viewport.View(),
 		help,
 	)
 
 	return styles.AppStyle.Render(content)
+}
+
+// renderTabs renders the tab bar with the active tab highlighted
+func (m Model) renderTabs() string {
+	tabs := []string{"Content", "Security", "Links", "Raw"}
+	var rendered []string
+	for i, tab := range tabs {
+		if DetailView(i) == m.detailView {
+			rendered = append(rendered, styles.TabActiveStyle.Render(fmt.Sprintf("%d %s", i+1, tab)))
+		} else {
+			rendered = append(rendered, styles.TabStyle.Render(fmt.Sprintf("%d %s", i+1, tab)))
+		}
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
 }
 
 func (m Model) renderEmailDetail() string {
@@ -490,10 +508,8 @@ func (m Model) renderEmailDetail() string {
 	email := m.viewedEmail.Email
 	var sb strings.Builder
 
-	// Tab indicator
-	sb.WriteString(styles.HelpStyle.Render("[1:Content] [2:Security] [3:Links] [4:Raw]"))
-	sb.WriteString("\n")
-	sb.WriteString(styles.HelpStyle.Render("^^^^^^^^^"))
+	// Tab bar
+	sb.WriteString(m.renderTabs())
 	sb.WriteString("\n\n")
 
 	// Field styles

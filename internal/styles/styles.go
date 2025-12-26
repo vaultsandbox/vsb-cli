@@ -70,6 +70,17 @@ var (
 	HelpStyle = lipgloss.NewStyle().
 			Foreground(Gray)
 
+	// Tabs
+	TabStyle = lipgloss.NewStyle().
+			Foreground(Gray).
+			Padding(0, 1)
+
+	TabActiveStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(Purple).
+			Background(DarkGray).
+			Padding(0, 1)
+
 	// Active marker (for lists)
 	ActiveStyle = lipgloss.NewStyle().
 			Bold(true).
