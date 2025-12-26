@@ -70,8 +70,11 @@ func GetBaseURL() string {
 	return DefaultBaseURL
 }
 
-// GetDefaultOutput returns the configured default output format, or "pretty" if not set.
+// GetDefaultOutput returns the output format with priority: env (VSB_OUTPUT) > config file > default.
 func GetDefaultOutput() string {
+	if env := os.Getenv("VSB_OUTPUT"); env != "" {
+		return env
+	}
 	if current.DefaultOutput != "" {
 		return current.DefaultOutput
 	}

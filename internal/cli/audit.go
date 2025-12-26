@@ -71,21 +71,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 		Foreground(styles.Primary).
 		MarginTop(1)
 
-	labelStyle := lipgloss.NewStyle().
-		Foreground(styles.Gray).
-		Width(20)
-
-	passStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(styles.Green)
-
-	failStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(styles.Red)
-
-	warnStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(styles.Yellow)
+	labelStyle := styles.LabelStyle
 
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -120,7 +106,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 
 		// SPF
 		if auth.SPF != nil {
-			spfResult := formatAuthResult(auth.SPF.Status, passStyle, failStyle, warnStyle)
+			spfResult := styles.FormatAuthResult(auth.SPF.Status)
 			fmt.Printf("%s %s\n", labelStyle.Render("SPF:"), spfResult)
 			if auth.SPF.Domain != "" {
 				fmt.Printf("%s %s\n", labelStyle.Render("  Domain:"), auth.SPF.Domain)
@@ -130,7 +116,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 		// DKIM (it's a slice)
 		if len(auth.DKIM) > 0 {
 			dkim := auth.DKIM[0]
-			dkimResult := formatAuthResult(dkim.Status, passStyle, failStyle, warnStyle)
+			dkimResult := styles.FormatAuthResult(dkim.Status)
 			fmt.Printf("%s %s\n", labelStyle.Render("DKIM:"), dkimResult)
 			if dkim.Selector != "" {
 				fmt.Printf("%s %s\n", labelStyle.Render("  Selector:"), dkim.Selector)
@@ -142,7 +128,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 
 		// DMARC
 		if auth.DMARC != nil {
-			dmarcResult := formatAuthResult(auth.DMARC.Status, passStyle, failStyle, warnStyle)
+			dmarcResult := styles.FormatAuthResult(auth.DMARC.Status)
 			fmt.Printf("%s %s\n", labelStyle.Render("DMARC:"), dmarcResult)
 			if auth.DMARC.Policy != "" {
 				fmt.Printf("%s %s\n", labelStyle.Render("  Policy:"), auth.DMARC.Policy)
@@ -151,7 +137,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 
 		// Reverse DNS
 		if auth.ReverseDNS != nil {
-			rdnsResult := formatAuthResult(auth.ReverseDNS.Status(), passStyle, failStyle, warnStyle)
+			rdnsResult := styles.FormatAuthResult(auth.ReverseDNS.Status())
 			fmt.Printf("%s %s\n", labelStyle.Render("Reverse DNS:"), rdnsResult)
 			if auth.ReverseDNS.Hostname != "" {
 				fmt.Printf("%s %s\n", labelStyle.Render("  Hostname:"), auth.ReverseDNS.Hostname)
@@ -167,9 +153,9 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	tlsVersion := extractHeader(email.Headers, "X-TLS-Version", "TLS 1.3")
 	cipherSuite := extractHeader(email.Headers, "X-TLS-Cipher", "ECDHE-RSA-AES256-GCM-SHA384")
 
-	fmt.Printf("%s %s\n", labelStyle.Render("TLS Version:"), passStyle.Render(tlsVersion))
+	fmt.Printf("%s %s\n", labelStyle.Render("TLS Version:"), styles.PassStyle.Render(tlsVersion))
 	fmt.Printf("%s %s\n", labelStyle.Render("Cipher Suite:"), cipherSuite)
-	fmt.Printf("%s %s\n", labelStyle.Render("E2E Encryption:"), passStyle.Render("ML-KEM-768 + AES-256-GCM"))
+	fmt.Printf("%s %s\n", labelStyle.Render("E2E Encryption:"), styles.PassStyle.Render("ML-KEM-768 + AES-256-GCM"))
 
 	// MIME Structure
 	fmt.Println()
@@ -181,12 +167,12 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	// Summary
 	fmt.Println()
 	score := security.CalculateScore(email)
-	scoreColor := passStyle
+	scoreColor := styles.PassStyle
 	if score < 80 {
-		scoreColor = warnStyle
+		scoreColor = styles.WarnStyle
 	}
 	if score < 60 {
-		scoreColor = failStyle
+		scoreColor = styles.FailStyle
 	}
 
 	summary := fmt.Sprintf("Security Score: %s", scoreColor.Render(fmt.Sprintf("%d/100", score)))
@@ -196,22 +182,6 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	return nil
 }
 
-func formatAuthResult(result string, pass, fail, warn lipgloss.Style) string {
-	switch strings.ToLower(result) {
-	case "pass":
-		return pass.Render("PASS")
-	case "fail", "hardfail":
-		return fail.Render("FAIL")
-	case "softfail":
-		return warn.Render("SOFTFAIL")
-	case "none":
-		return warn.Render("NONE")
-	case "neutral":
-		return warn.Render("NEUTRAL")
-	default:
-		return result
-	}
-}
 
 func extractHeader(headers map[string]string, key, defaultVal string) string {
 	if val, ok := headers[key]; ok && val != "" {

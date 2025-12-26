@@ -42,18 +42,14 @@ func runInboxDelete(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	partial := args[0]
 
-	keystore, err := config.LoadKeystore()
+	ks, err := LoadKeystoreOrError()
 	if err != nil {
-		return fmt.Errorf("failed to load keystore: %w", err)
+		return err
 	}
 
-	// Find inbox with partial matching
-	inbox, matches, err := keystore.FindInbox(partial)
-	if err == config.ErrMultipleMatches {
-		return fmt.Errorf("multiple inboxes match '%s': %v", partial, matches)
-	}
+	inbox, err := GetInbox(ks, partial)
 	if err != nil {
-		return fmt.Errorf("inbox not found: %s", partial)
+		return err
 	}
 	email := inbox.Email
 
@@ -74,7 +70,7 @@ func runInboxDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Delete from keystore
-	if err := keystore.RemoveInbox(email); err != nil {
+	if err := ks.RemoveInbox(email); err != nil {
 		if errors.Is(err, config.ErrInboxNotFound) {
 			return fmt.Errorf("inbox not found in keystore: %s", email)
 		}

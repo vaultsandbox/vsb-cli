@@ -1,11 +1,9 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/output"
 )
 
@@ -31,24 +29,17 @@ func init() {
 func runInboxUse(cmd *cobra.Command, args []string) error {
 	partial := args[0]
 
-	keystore, err := config.LoadKeystore()
-	if err != nil {
-		return fmt.Errorf("failed to load keystore: %w", err)
-	}
-
-	// Find inbox with partial matching
-	inbox, matches, err := keystore.FindInbox(partial)
-	if err == config.ErrMultipleMatches {
-		return fmt.Errorf("multiple inboxes match '%s': %v", partial, matches)
-	}
-	if errors.Is(err, config.ErrInboxNotFound) {
-		return fmt.Errorf("inbox not found: %s", partial)
-	}
+	ks, err := LoadKeystoreOrError()
 	if err != nil {
 		return err
 	}
 
-	if err := keystore.SetActiveInbox(inbox.Email); err != nil {
+	inbox, err := GetInbox(ks, partial)
+	if err != nil {
+		return err
+	}
+
+	if err := ks.SetActiveInbox(inbox.Email); err != nil {
 		return err
 	}
 

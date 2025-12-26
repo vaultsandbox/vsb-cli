@@ -1,6 +1,10 @@
 package styles
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 var (
 	// Colors
@@ -91,4 +95,26 @@ var (
 	ErrorTitleStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(Red)
+
+	// Common result styles
+	PassStyle = lipgloss.NewStyle().Bold(true).Foreground(Green)
+	FailStyle = lipgloss.NewStyle().Bold(true).Foreground(Red)
+	WarnStyle = lipgloss.NewStyle().Bold(true).Foreground(Yellow)
+
+	// Label style for key-value displays
+	LabelStyle = lipgloss.NewStyle().Foreground(Gray).Width(20)
 )
+
+// FormatAuthResult formats an authentication result (SPF/DKIM/DMARC) with appropriate styling.
+func FormatAuthResult(result string) string {
+	switch strings.ToLower(result) {
+	case "pass":
+		return PassStyle.Render("PASS")
+	case "fail", "hardfail":
+		return FailStyle.Render("FAIL")
+	case "softfail", "none", "neutral":
+		return WarnStyle.Render(strings.ToUpper(result))
+	default:
+		return result
+	}
+}

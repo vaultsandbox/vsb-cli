@@ -19,9 +19,6 @@ func (m Model) renderSecurityView() string {
 	var sb strings.Builder
 
 	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary).Width(16)
-	passStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Green)
-	failStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Red)
-	warnStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Yellow)
 	sectionStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.White).MarginTop(1)
 
 	// Tab bar
@@ -37,7 +34,7 @@ func (m Model) renderSecurityView() string {
 
 		// SPF
 		if auth.SPF != nil {
-			spfResult := formatResult(auth.SPF.Status, passStyle, failStyle, warnStyle)
+			spfResult := styles.FormatAuthResult(auth.SPF.Status)
 			sb.WriteString(fmt.Sprintf("%s %s", labelStyle.Render("SPF:"), spfResult))
 			if auth.SPF.Domain != "" {
 				sb.WriteString(fmt.Sprintf(" (%s)", auth.SPF.Domain))
@@ -48,7 +45,7 @@ func (m Model) renderSecurityView() string {
 		// DKIM (it's a slice)
 		if len(auth.DKIM) > 0 {
 			dkim := auth.DKIM[0]
-			dkimResult := formatResult(dkim.Status, passStyle, failStyle, warnStyle)
+			dkimResult := styles.FormatAuthResult(dkim.Status)
 			sb.WriteString(fmt.Sprintf("%s %s", labelStyle.Render("DKIM:"), dkimResult))
 			if dkim.Domain != "" {
 				sb.WriteString(fmt.Sprintf(" (%s)", dkim.Domain))
@@ -58,7 +55,7 @@ func (m Model) renderSecurityView() string {
 
 		// DMARC
 		if auth.DMARC != nil {
-			dmarcResult := formatResult(auth.DMARC.Status, passStyle, failStyle, warnStyle)
+			dmarcResult := styles.FormatAuthResult(auth.DMARC.Status)
 			sb.WriteString(fmt.Sprintf("%s %s", labelStyle.Render("DMARC:"), dmarcResult))
 			if auth.DMARC.Policy != "" {
 				sb.WriteString(fmt.Sprintf(" (policy: %s)", auth.DMARC.Policy))
@@ -68,7 +65,7 @@ func (m Model) renderSecurityView() string {
 
 		// Reverse DNS
 		if auth.ReverseDNS != nil {
-			rdnsResult := formatResult(auth.ReverseDNS.Status(), passStyle, failStyle, warnStyle)
+			rdnsResult := styles.FormatAuthResult(auth.ReverseDNS.Status())
 			sb.WriteString(fmt.Sprintf("%s %s", labelStyle.Render("Reverse DNS:"), rdnsResult))
 			if auth.ReverseDNS.Hostname != "" {
 				sb.WriteString(fmt.Sprintf(" (%s)", auth.ReverseDNS.Hostname))
@@ -76,7 +73,7 @@ func (m Model) renderSecurityView() string {
 			sb.WriteString("\n")
 		}
 	} else {
-		sb.WriteString(warnStyle.Render("No authentication results available"))
+		sb.WriteString(styles.WarnStyle.Render("No authentication results available"))
 		sb.WriteString("\n")
 	}
 
@@ -84,39 +81,24 @@ func (m Model) renderSecurityView() string {
 	sb.WriteString("\n")
 	sb.WriteString(sectionStyle.Render("TRANSPORT SECURITY"))
 	sb.WriteString("\n")
-	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("TLS:"), passStyle.Render("TLS 1.3")))
-	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("E2E:"), passStyle.Render("ML-KEM-768 + AES-256-GCM")))
+	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("TLS:"), styles.PassStyle.Render("TLS 1.3")))
+	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("E2E:"), styles.PassStyle.Render("ML-KEM-768 + AES-256-GCM")))
 
 	// Security Score
 	sb.WriteString("\n")
 	sb.WriteString(sectionStyle.Render("SECURITY SCORE"))
 	sb.WriteString("\n")
 	score := security.CalculateScore(email)
-	scoreStyle := passStyle
+	scoreStyle := styles.PassStyle
 	if score < 80 {
-		scoreStyle = warnStyle
+		scoreStyle = styles.WarnStyle
 	}
 	if score < 60 {
-		scoreStyle = failStyle
+		scoreStyle = styles.FailStyle
 	}
 	sb.WriteString(scoreStyle.Render(fmt.Sprintf("%d/100", score)))
 	sb.WriteString("\n")
 
 	return sb.String()
-}
-
-func formatResult(result string, pass, fail, warn lipgloss.Style) string {
-	switch strings.ToLower(result) {
-	case "pass":
-		return pass.Render("PASS")
-	case "fail", "hardfail":
-		return fail.Render("FAIL")
-	case "softfail":
-		return warn.Render("SOFTFAIL")
-	case "none", "neutral":
-		return warn.Render(strings.ToUpper(result))
-	default:
-		return result
-	}
 }
 

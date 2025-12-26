@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -14,9 +13,6 @@ import (
 func getOutput(cmd *cobra.Command) string {
 	if flag := cmd.Flag("output"); flag != nil && flag.Changed {
 		return flag.Value.String()
-	}
-	if v := os.Getenv("VSB_OUTPUT"); v != "" {
-		return v
 	}
 	return config.GetDefaultOutput()
 }
