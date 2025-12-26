@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
@@ -54,20 +53,9 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	// JSON output
 	if getOutput(cmd) == "json" {
-		type emailJSON struct {
-			ID         string `json:"id"`
-			Subject    string `json:"subject"`
-			From       string `json:"from"`
-			ReceivedAt string `json:"receivedAt"`
-		}
-		var result []emailJSON
+		var result []map[string]interface{}
 		for _, email := range emails {
-			result = append(result, emailJSON{
-				ID:         email.ID,
-				Subject:    email.Subject,
-				From:       email.From,
-				ReceivedAt: email.ReceivedAt.Format(time.RFC3339),
-			})
+			result = append(result, EmailSummaryJSON(email))
 		}
 		return outputJSON(result)
 	}

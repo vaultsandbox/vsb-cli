@@ -86,19 +86,7 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 
 	// JSON output
 	if getOutput(cmd) == "json" {
-		data := map[string]interface{}{
-			"email":      stored.Email,
-			"id":         stored.ID,
-			"createdAt":  stored.CreatedAt.Format(time.RFC3339),
-			"expiresAt":  stored.ExpiresAt.Format(time.RFC3339),
-			"isExpired":  isExpired,
-			"isActive":   isActive,
-			"emailCount": emailCount,
-		}
-		if syncErr != nil {
-			data["syncError"] = syncErr.Error()
-		}
-		return outputJSON(data)
+		return outputJSON(InboxFullJSON(stored, isActive, emailCount, syncErr))
 	}
 
 	// Pretty output

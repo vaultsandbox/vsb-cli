@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -60,17 +59,7 @@ func runView(cmd *cobra.Command, args []string) error {
 
 	// JSON output
 	if getOutput(cmd) == "json" {
-		data := map[string]interface{}{
-			"id":         email.ID,
-			"subject":    email.Subject,
-			"from":       email.From,
-			"to":         strings.Join(email.To, ", "),
-			"receivedAt": email.ReceivedAt.Format(time.RFC3339),
-			"text":       email.Text,
-			"html":       email.HTML,
-			"links":      email.Links,
-		}
-		return outputJSON(data)
+		return outputJSON(EmailFullJSON(email))
 	}
 
 	// Raw mode - show RFC 5322 source

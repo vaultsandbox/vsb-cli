@@ -50,20 +50,10 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 
 	// JSON output
 	if getOutput(cmd) == "json" {
-		type inboxJSON struct {
-			Email     string `json:"email"`
-			ExpiresAt string `json:"expiresAt"`
-			IsActive  bool   `json:"isActive"`
-			IsExpired bool   `json:"isExpired"`
-		}
-		var result []inboxJSON
+		var result []map[string]interface{}
 		for _, inbox := range filtered {
-			result = append(result, inboxJSON{
-				Email:     inbox.Email,
-				ExpiresAt: inbox.ExpiresAt.Format(time.RFC3339),
-				IsActive:  inbox.Email == keystore.ActiveInbox,
-				IsExpired: inbox.ExpiresAt.Before(now),
-			})
+			isActive := inbox.Email == keystore.ActiveInbox
+			result = append(result, InboxSummaryJSON(&inbox, isActive, now))
 		}
 		return outputJSON(result)
 	}

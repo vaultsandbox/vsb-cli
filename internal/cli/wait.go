@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -183,7 +182,7 @@ func outputEmails(cmd *cobra.Command, emails []*vaultsandbox.Email) {
 	for _, email := range emails {
 		if getOutput(cmd) == "json" {
 			// JSON output
-			_ = outputJSON(emailToMap(email))
+			_ = outputJSON(EmailFullJSON(email))
 		} else if waitForExtractLink {
 			// Extract first link
 			if len(email.Links) > 0 {
@@ -201,24 +200,3 @@ func outputEmails(cmd *cobra.Command, emails []*vaultsandbox.Email) {
 	}
 }
 
-func emailToMap(email *vaultsandbox.Email) map[string]interface{} {
-	// Format To field - join array if present
-	var to interface{}
-	if len(email.To) > 0 {
-		to = strings.Join(email.To, ", ")
-	} else {
-		to = ""
-	}
-
-	return map[string]interface{}{
-		"id":         email.ID,
-		"subject":    email.Subject,
-		"from":       email.From,
-		"to":         to,
-		"receivedAt": email.ReceivedAt.Format(time.RFC3339),
-		"text":       email.Text,
-		"html":       email.HTML,
-		"links":      email.Links,
-		"headers":    email.Headers,
-	}
-}
