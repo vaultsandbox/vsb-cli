@@ -255,22 +255,22 @@ func (m *Model) WatchEmails(p *tea.Program) {
 }
 
 // LoadExistingEmails fetches existing emails and sends them to the program.
-// This runs synchronously to ensure existing emails are loaded before watching starts,
-// which prevents ordering issues where newer SSE events arrive before older emails.
 func (m *Model) LoadExistingEmails(p *tea.Program) {
-	for _, inbox := range m.inboxes {
-		emails, err := inbox.GetEmails(m.ctx)
-		if err != nil {
-			p.Send(errMsg{err: err})
-			continue
+	go func() {
+		for _, inbox := range m.inboxes {
+			emails, err := inbox.GetEmails(m.ctx)
+			if err != nil {
+				p.Send(errMsg{err: err})
+				continue
+			}
+			for _, email := range emails {
+				p.Send(emailReceivedMsg{
+					email:      email,
+					inboxLabel: inbox.EmailAddress(),
+				})
+			}
 		}
-		for _, email := range emails {
-			p.Send(emailReceivedMsg{
-				email:      email,
-				inboxLabel: inbox.EmailAddress(),
-			})
-		}
-	}
+	}()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
