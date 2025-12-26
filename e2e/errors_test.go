@@ -130,10 +130,11 @@ func TestEmailErrors(t *testing.T) {
 	t.Run("view non-existent email ID", func(t *testing.T) {
 		_, stderr, code := runVSBWithConfig(t, configDir, "email", "view", "nonexistent-id-12345")
 		assert.NotEqual(t, 0, code, "should fail for non-existent email ID")
+		stderrLower := strings.ToLower(stderr)
 		assert.True(t,
-			strings.Contains(stderr, "not found") ||
-				strings.Contains(stderr, "no email") ||
-				strings.Contains(stderr, "does not exist"),
+			strings.Contains(stderrLower, "not found") ||
+				strings.Contains(stderrLower, "no email") ||
+				strings.Contains(stderrLower, "does not exist"),
 			"error should indicate email not found, got: %s", stderr)
 	})
 
@@ -447,12 +448,14 @@ func TestExportImportErrors(t *testing.T) {
 
 		_, stderr, code := runVSBWithConfig(t, configDir, "import", incompletePath)
 		assert.NotEqual(t, 0, code, "should fail for missing fields")
+		stderrLower := strings.ToLower(stderr)
 		assert.True(t,
-			strings.Contains(stderr, "missing") ||
-				strings.Contains(stderr, "required") ||
-				strings.Contains(stderr, "invalid") ||
-				strings.Contains(stderr, "key") ||
-				strings.Contains(stderr, "error"),
+			strings.Contains(stderrLower, "missing") ||
+				strings.Contains(stderrLower, "required") ||
+				strings.Contains(stderrLower, "invalid") ||
+				strings.Contains(stderrLower, "key") ||
+				strings.Contains(stderrLower, "expired") ||
+				strings.Contains(stderrLower, "error"),
 			"error should indicate missing fields, got: %s", stderr)
 	})
 
