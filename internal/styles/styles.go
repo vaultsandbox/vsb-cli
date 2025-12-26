@@ -1,9 +1,11 @@
 package styles
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vaultsandbox/client-go/authresults"
 )
 
 var (
@@ -131,4 +133,92 @@ func FormatAuthResult(result string) string {
 	default:
 		return result
 	}
+}
+
+// Encryption label constant for consistent display across CLI and TUI
+const EncryptionLabel = "ML-KEM-768 + AES-256-GCM"
+
+// RenderAuthResults renders authentication results (SPF/DKIM/DMARC/ReverseDNS).
+// If compact is true, details are shown in parentheses on the same line (TUI style).
+// If compact is false, details are shown on separate indented lines (CLI style).
+func RenderAuthResults(auth *authresults.AuthResults, labelStyle lipgloss.Style, compact bool) string {
+	if auth == nil {
+		return WarnStyle.Render("No authentication results available")
+	}
+
+	var lines []string
+
+	// SPF
+	if auth.SPF != nil {
+		spfResult := FormatAuthResult(auth.SPF.Status)
+		if compact {
+			line := fmt.Sprintf("%s %s", labelStyle.Render("SPF:"), spfResult)
+			if auth.SPF.Domain != "" {
+				line += fmt.Sprintf(" (%s)", auth.SPF.Domain)
+			}
+			lines = append(lines, line)
+		} else {
+			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("SPF:"), spfResult))
+			if auth.SPF.Domain != "" {
+				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Domain:"), auth.SPF.Domain))
+			}
+		}
+	}
+
+	// DKIM (it's a slice)
+	if len(auth.DKIM) > 0 {
+		dkim := auth.DKIM[0]
+		dkimResult := FormatAuthResult(dkim.Status)
+		if compact {
+			line := fmt.Sprintf("%s %s", labelStyle.Render("DKIM:"), dkimResult)
+			if dkim.Domain != "" {
+				line += fmt.Sprintf(" (%s)", dkim.Domain)
+			}
+			lines = append(lines, line)
+		} else {
+			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("DKIM:"), dkimResult))
+			if dkim.Selector != "" {
+				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Selector:"), dkim.Selector))
+			}
+			if dkim.Domain != "" {
+				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Domain:"), dkim.Domain))
+			}
+		}
+	}
+
+	// DMARC
+	if auth.DMARC != nil {
+		dmarcResult := FormatAuthResult(auth.DMARC.Status)
+		if compact {
+			line := fmt.Sprintf("%s %s", labelStyle.Render("DMARC:"), dmarcResult)
+			if auth.DMARC.Policy != "" {
+				line += fmt.Sprintf(" (policy: %s)", auth.DMARC.Policy)
+			}
+			lines = append(lines, line)
+		} else {
+			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("DMARC:"), dmarcResult))
+			if auth.DMARC.Policy != "" {
+				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Policy:"), auth.DMARC.Policy))
+			}
+		}
+	}
+
+	// Reverse DNS
+	if auth.ReverseDNS != nil {
+		rdnsResult := FormatAuthResult(auth.ReverseDNS.Status())
+		if compact {
+			line := fmt.Sprintf("%s %s", labelStyle.Render("Reverse DNS:"), rdnsResult)
+			if auth.ReverseDNS.Hostname != "" {
+				line += fmt.Sprintf(" (%s)", auth.ReverseDNS.Hostname)
+			}
+			lines = append(lines, line)
+		} else {
+			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Reverse DNS:"), rdnsResult))
+			if auth.ReverseDNS.Hostname != "" {
+				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Hostname:"), auth.ReverseDNS.Hostname))
+			}
+		}
+	}
+
+	return strings.Join(lines, "\n")
 }

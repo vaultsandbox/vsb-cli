@@ -98,52 +98,9 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	fmt.Printf("%s %s\n", labelStyle.Render("Received:"), email.ReceivedAt.Format("2006-01-02 15:04:05 MST"))
 
 	// Authentication Results
-	if email.AuthResults != nil {
-		fmt.Println()
-		fmt.Println(sectionStyle.Render("AUTHENTICATION"))
-
-		auth := email.AuthResults
-
-		// SPF
-		if auth.SPF != nil {
-			spfResult := styles.FormatAuthResult(auth.SPF.Status)
-			fmt.Printf("%s %s\n", labelStyle.Render("SPF:"), spfResult)
-			if auth.SPF.Domain != "" {
-				fmt.Printf("%s %s\n", labelStyle.Render("  Domain:"), auth.SPF.Domain)
-			}
-		}
-
-		// DKIM (it's a slice)
-		if len(auth.DKIM) > 0 {
-			dkim := auth.DKIM[0]
-			dkimResult := styles.FormatAuthResult(dkim.Status)
-			fmt.Printf("%s %s\n", labelStyle.Render("DKIM:"), dkimResult)
-			if dkim.Selector != "" {
-				fmt.Printf("%s %s\n", labelStyle.Render("  Selector:"), dkim.Selector)
-			}
-			if dkim.Domain != "" {
-				fmt.Printf("%s %s\n", labelStyle.Render("  Domain:"), dkim.Domain)
-			}
-		}
-
-		// DMARC
-		if auth.DMARC != nil {
-			dmarcResult := styles.FormatAuthResult(auth.DMARC.Status)
-			fmt.Printf("%s %s\n", labelStyle.Render("DMARC:"), dmarcResult)
-			if auth.DMARC.Policy != "" {
-				fmt.Printf("%s %s\n", labelStyle.Render("  Policy:"), auth.DMARC.Policy)
-			}
-		}
-
-		// Reverse DNS
-		if auth.ReverseDNS != nil {
-			rdnsResult := styles.FormatAuthResult(auth.ReverseDNS.Status())
-			fmt.Printf("%s %s\n", labelStyle.Render("Reverse DNS:"), rdnsResult)
-			if auth.ReverseDNS.Hostname != "" {
-				fmt.Printf("%s %s\n", labelStyle.Render("  Hostname:"), auth.ReverseDNS.Hostname)
-			}
-		}
-	}
+	fmt.Println()
+	fmt.Println(sectionStyle.Render("AUTHENTICATION"))
+	fmt.Println(styles.RenderAuthResults(email.AuthResults, labelStyle, false))
 
 	// Transport Security
 	fmt.Println()
@@ -161,7 +118,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 
 	fmt.Printf("%s %s\n", labelStyle.Render("TLS Version:"), styles.PassStyle.Render(tlsVersion))
 	fmt.Printf("%s %s\n", labelStyle.Render("Cipher Suite:"), cipherSuite)
-	fmt.Printf("%s %s\n", labelStyle.Render("E2E Encryption:"), styles.PassStyle.Render("ML-KEM-768 + AES-256-GCM"))
+	fmt.Printf("%s %s\n", labelStyle.Render("E2E Encryption:"), styles.PassStyle.Render(styles.EncryptionLabel))
 
 	// MIME Structure
 	fmt.Println()

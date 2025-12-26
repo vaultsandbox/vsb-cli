@@ -92,7 +92,7 @@ func ViewEmailHTML(subject, from string, receivedAt time.Time, emailHTML string)
         }
         .header {
             background: #1cc2e3;
-            color: white;
+            color: #242424ff;
             padding: 20px;
             border-radius: 8px 8px 0 0;
         }

@@ -299,3 +299,34 @@ func (s *StoredInbox) ToExportedInbox() *vaultsandbox.ExportedInbox {
 		ExportedAt:   s.CreatedAt,
 	}
 }
+
+// ToExportFile converts StoredInbox to ExportedInboxFile for file export
+func (s *StoredInbox) ToExportFile() ExportedInboxFile {
+	return ExportedInboxFile{
+		Version:      1,
+		EmailAddress: s.Email,
+		InboxHash:    s.ID,
+		ExpiresAt:    s.ExpiresAt,
+		ExportedAt:   time.Now(),
+		Keys: ExportedKeys{
+			KEMPrivate:  s.Keys.KEMPrivate,
+			KEMPublic:   s.Keys.KEMPublic,
+			ServerSigPK: s.Keys.ServerSigPK,
+		},
+	}
+}
+
+// ToStoredInbox converts ExportedInboxFile to StoredInbox for import
+func (e *ExportedInboxFile) ToStoredInbox() StoredInbox {
+	return StoredInbox{
+		Email:     e.EmailAddress,
+		ID:        e.InboxHash,
+		CreatedAt: e.ExportedAt,
+		ExpiresAt: e.ExpiresAt,
+		Keys: InboxKeys{
+			KEMPrivate:  e.Keys.KEMPrivate,
+			KEMPublic:   e.Keys.KEMPublic,
+			ServerSigPK: e.Keys.ServerSigPK,
+		},
+	}
+}

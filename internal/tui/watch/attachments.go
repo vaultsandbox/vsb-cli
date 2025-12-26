@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/dustin/go-humanize"
 	"github.com/vaultsandbox/vsb-cli/internal/files"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
@@ -42,7 +43,7 @@ func (m Model) renderAttachmentsView() string {
 	sb.WriteString("\n\n")
 
 	for i, att := range email.Attachments {
-		info := fmt.Sprintf(" (%s, %s)", att.ContentType, formatSize(att.Size))
+		info := fmt.Sprintf(" (%s, %s)", att.ContentType, humanize.Bytes(uint64(att.Size)))
 		if i == m.selectedAttachment {
 			sb.WriteString(selectedStyle.Render(">"))
 			sb.WriteString(" " + att.Filename + sizeStyle.Render(info) + "\n")
@@ -60,16 +61,6 @@ func (m Model) renderAttachmentsView() string {
 	sb.WriteString(styles.HelpStyle.Render("↑/↓: select • enter: save to current directory"))
 
 	return sb.String()
-}
-
-func formatSize(bytes int) string {
-	if bytes < 1024 {
-		return fmt.Sprintf("%d B", bytes)
-	}
-	if bytes < 1024*1024 {
-		return fmt.Sprintf("%.1f KB", float64(bytes)/1024)
-	}
-	return fmt.Sprintf("%.1f MB", float64(bytes)/(1024*1024))
 }
 
 // saveAttachment saves the attachment at the given index

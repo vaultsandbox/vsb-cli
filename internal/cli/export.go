@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -87,18 +86,7 @@ func runExport(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create export data
-	exportData := config.ExportedInboxFile{
-		Version:      1,
-		EmailAddress: stored.Email,
-		InboxHash:    stored.ID,
-		ExpiresAt:    stored.ExpiresAt,
-		ExportedAt:   time.Now(),
-		Keys: config.ExportedKeys{
-			KEMPrivate:  stored.Keys.KEMPrivate,
-			KEMPublic:   stored.Keys.KEMPublic,
-			ServerSigPK: stored.Keys.ServerSigPK,
-		},
-	}
+	exportData := stored.ToExportFile()
 
 	// Marshal to JSON
 	data, err := json.MarshalIndent(exportData, "", "  ")

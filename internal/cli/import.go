@@ -119,17 +119,7 @@ func runImport(cmd *cobra.Command, args []string) error {
 	}
 
 	// Save to keystore
-	stored := config.StoredInbox{
-		Email:     exported.EmailAddress,
-		ID:        exported.InboxHash,
-		CreatedAt: exported.ExportedAt,
-		ExpiresAt: exported.ExpiresAt,
-		Keys: config.InboxKeys{
-			KEMPrivate:  exported.Keys.KEMPrivate,
-			KEMPublic:   exported.Keys.KEMPublic,
-			ServerSigPK: exported.Keys.ServerSigPK,
-		},
-	}
+	stored := exported.ToStoredInbox()
 
 	if err := keystore.AddInbox(stored); err != nil {
 		return err
