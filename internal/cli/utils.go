@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -29,17 +30,17 @@ func outputJSON(v interface{}) error {
 
 // sanitizeFilename replaces unsafe characters for use in filenames.
 func sanitizeFilename(email string) string {
-	// Replace @ and . with underscores for safe filename
-	result := ""
+	var b strings.Builder
+	b.Grow(len(email))
 	for _, r := range email {
 		if r == '@' || r == '.' {
-			result += "_"
+			b.WriteByte('_')
 		} else if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
 			(r >= '0' && r <= '9') || r == '-' || r == '_' {
-			result += string(r)
+			b.WriteRune(r)
 		}
 	}
-	return result
+	return b.String()
 }
 
 // formatDuration formats a duration as a human-readable string (e.g., "5m", "2h", "3d").

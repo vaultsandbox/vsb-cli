@@ -54,6 +54,14 @@ func init() {
 	configCmd.AddCommand(configSetCmd)
 }
 
+// maskAPIKey masks an API key for display, showing first 7 and last 4 characters.
+func maskAPIKey(key string) string {
+	if len(key) >= 11 {
+		return key[:7] + "..." + key[len(key)-4:]
+	}
+	return "****"
+}
+
 func runConfigInteractive(cmd *cobra.Command, args []string) error {
 	reader := bufio.NewReader(os.Stdin)
 
@@ -78,12 +86,7 @@ func runConfigInteractive(cmd *cobra.Command, args []string) error {
 	// Prompt for API key
 	prompt := "API Key: "
 	if existing.APIKey != "" {
-		if len(existing.APIKey) >= 11 {
-			masked := existing.APIKey[:7] + "..." + existing.APIKey[len(existing.APIKey)-4:]
-			prompt = fmt.Sprintf("API Key [%s]: ", masked)
-		} else {
-			prompt = "API Key [****]: "
-		}
+		prompt = fmt.Sprintf("API Key [%s]: ", maskAPIKey(existing.APIKey))
 	}
 	fmt.Print(prompt)
 	apiKey, _ := reader.ReadString('\n')
@@ -124,11 +127,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	// Mask API key for display
 	maskedKey := ""
 	if cfg.APIKey != "" {
-		if len(cfg.APIKey) >= 11 {
-			maskedKey = cfg.APIKey[:7] + "..." + cfg.APIKey[len(cfg.APIKey)-4:]
-		} else {
-			maskedKey = "****"
-		}
+		maskedKey = maskAPIKey(cfg.APIKey)
 	}
 
 	baseURL := cfg.BaseURL
