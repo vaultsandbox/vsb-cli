@@ -5,10 +5,12 @@ package e2e
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -740,4 +742,178 @@ func runVSBWithConfigAndEnv(t *testing.T, configDir string, envOverrides map[str
 	}
 
 	return stdoutBuf.String(), stderrBuf.String(), exitCode
+}
+
+// ============================================================================
+// Concurrent Operation Tests
+// ============================================================================
+// These tests verify the CLI handles concurrent operations correctly.
+
+// TestConcurrentInboxOperations tests creating multiple inboxes concurrently.
+func TestConcurrentInboxOperations(t *testing.T) {
+	configDir := t.TempDir()
+
+	t.Run("create multiple inboxes concurrently", func(t *testing.T) {
+		const numInboxes = 5
+		var wg sync.WaitGroup
+		results := make(chan struct {
+			email string
+			err   error
+		}, numInboxes)
+
+		for i := 0; i < numInboxes; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				stdout, stderr, code := runVSBWithConfig(t, configDir, "inbox", "create", "--output", "json")
+				if code != 0 {
+					results <- struct {
+						email string
+						err   error
+					}{err: fmt.Errorf("inbox create failed: code=%d, stderr=%s", code, stderr)}
+					return
+				}
+
+				var result struct {
+					Email string `json:"email"`
+				}
+				if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+					results <- struct {
+						email string
+						err   error
+					}{err: fmt.Errorf("failed to parse JSON: %w", err)}
+					return
+				}
+
+				results <- struct {
+					email string
+					err   error
+				}{email: result.Email}
+			}()
+		}
+
+		wg.Wait()
+		close(results)
+
+		var emails []string
+		for res := range results {
+			if res.err != nil {
+				t.Error(res.err)
+				continue
+			}
+			emails = append(emails, res.email)
+		}
+
+		// All inboxes should have been created
+		assert.Len(t, emails, numInboxes, "expected %d inboxes to be created", numInboxes)
+
+		// Verify all inboxes are unique
+		emailSet := make(map[string]bool)
+		for _, email := range emails {
+			assert.False(t, emailSet[email], "duplicate email found: %s", email)
+			emailSet[email] = true
+		}
+
+		// Verify list shows correct count
+		stdout, _, code := runVSBWithConfig(t, configDir, "inbox", "list", "--output", "json")
+		require.Equal(t, 0, code)
+
+		var listResult []struct {
+			Email string `json:"email"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(stdout), &listResult))
+		assert.Equal(t, numInboxes, len(listResult), "list count should match created inboxes")
+
+		// Cleanup
+		t.Cleanup(func() {
+			for _, email := range emails {
+				runVSBWithConfig(t, configDir, "inbox", "delete", email)
+			}
+		})
+	})
+
+	t.Run("concurrent list operations", func(t *testing.T) {
+		// Create an inbox first
+		stdout, _, code := runVSBWithConfig(t, configDir, "inbox", "create", "--output", "json")
+		require.Equal(t, 0, code)
+
+		var result struct {
+			Email string `json:"email"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+
+		t.Cleanup(func() {
+			runVSBWithConfig(t, configDir, "inbox", "delete", result.Email)
+		})
+
+		// Run concurrent list operations
+		const numLists = 10
+		var wg sync.WaitGroup
+		errors := make(chan error, numLists)
+
+		for i := 0; i < numLists; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, stderr, code := runVSBWithConfig(t, configDir, "inbox", "list")
+				if code != 0 {
+					errors <- fmt.Errorf("inbox list failed: stderr=%s", stderr)
+				}
+			}()
+		}
+
+		wg.Wait()
+		close(errors)
+
+		for err := range errors {
+			t.Error(err)
+		}
+	})
+}
+
+// TestConcurrentEmailOperations tests concurrent email listing.
+func TestConcurrentEmailOperations(t *testing.T) {
+	skipIfNoSMTP(t)
+	configDir := t.TempDir()
+
+	// Create inbox
+	stdout, _, code := runVSBWithConfig(t, configDir, "inbox", "create", "--output", "json")
+	require.Equal(t, 0, code)
+
+	var createResult struct {
+		Email string `json:"email"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &createResult))
+
+	t.Cleanup(func() {
+		runVSBWithConfig(t, configDir, "inbox", "delete", createResult.Email)
+	})
+
+	// Send test email
+	sendTestEmail(t, createResult.Email, "Concurrent Test Email", "Test body")
+	time.Sleep(2 * time.Second)
+
+	t.Run("concurrent email list operations", func(t *testing.T) {
+		const numReads = 5
+		var wg sync.WaitGroup
+		errors := make(chan error, numReads)
+
+		for i := 0; i < numReads; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, stderr, code := runVSBWithConfig(t, configDir, "email", "list")
+				if code != 0 {
+					errors <- fmt.Errorf("email list failed: stderr=%s", stderr)
+				}
+			}()
+		}
+
+		wg.Wait()
+		close(errors)
+
+		for err := range errors {
+			t.Error(err)
+		}
+	})
 }
