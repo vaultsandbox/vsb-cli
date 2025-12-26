@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -203,8 +202,7 @@ func outputEmails(emails []*vaultsandbox.Email) {
 	for _, email := range emails {
 		if config.GetOutput() == "json" {
 			// JSON output
-			data, _ := json.MarshalIndent(emailToMap(email), "", "  ")
-			fmt.Println(string(data))
+			_ = outputJSON(emailToMap(email))
 		} else if waitForExtractLink {
 			// Extract first link
 			if len(email.Links) > 0 {

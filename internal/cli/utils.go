@@ -1,9 +1,20 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
+
+// outputJSON marshals v to indented JSON and prints it to stdout.
+func outputJSON(v interface{}) error {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
+	return nil
+}
 
 // orDefault returns s if non-empty, otherwise def.
 func orDefault(s, def string) string {

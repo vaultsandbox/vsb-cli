@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"html"
 	"strings"
@@ -73,9 +72,7 @@ func runView(cmd *cobra.Command, args []string) error {
 			"html":       email.HTML,
 			"links":      email.Links,
 		}
-		output, _ := json.MarshalIndent(data, "", "  ")
-		fmt.Println(string(output))
-		return nil
+		return outputJSON(data)
 	}
 
 	// Raw mode - show RFC 5322 source

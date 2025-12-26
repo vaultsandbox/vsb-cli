@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -66,9 +65,7 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 				IsExpired: inbox.ExpiresAt.Before(now),
 			})
 		}
-		data, _ := json.MarshalIndent(result, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		return outputJSON(result)
 	}
 
 	// Pretty output

@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -81,8 +80,7 @@ func runURL(cmd *cobra.Command, args []string) error {
 
 	// Default: list all URLs
 	if config.GetOutput() == "json" {
-		data, _ := json.MarshalIndent(email.Links, "", "  ")
-		fmt.Println(string(data))
+		return outputJSON(email.Links)
 	} else {
 		for i, url := range email.Links {
 			fmt.Printf("%d. %s\n", i+1, url)

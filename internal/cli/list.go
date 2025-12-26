@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -71,9 +70,7 @@ func runList(cmd *cobra.Command, args []string) error {
 				ReceivedAt: email.ReceivedAt.Format(time.RFC3339),
 			})
 		}
-		data, _ := json.MarshalIndent(result, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		return outputJSON(result)
 	}
 
 	// Pretty output

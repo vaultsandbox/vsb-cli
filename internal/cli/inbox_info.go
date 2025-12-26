@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -99,9 +98,7 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 		if syncErr != nil {
 			data["syncError"] = syncErr.Error()
 		}
-		out, _ := json.MarshalIndent(data, "", "  ")
-		fmt.Println(string(out))
-		return nil
+		return outputJSON(data)
 	}
 
 	// Pretty output

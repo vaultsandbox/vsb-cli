@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -339,7 +338,5 @@ func renderAuditJSON(email *vaultsandbox.Email) error {
 		data["authResults"] = authData
 	}
 
-	output, _ := json.MarshalIndent(data, "", "  ")
-	fmt.Println(string(output))
-	return nil
+	return outputJSON(data)
 }

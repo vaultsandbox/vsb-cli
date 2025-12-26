@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -94,8 +93,7 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 			"expiresAt": stored.ExpiresAt.Format(time.RFC3339),
 			"createdAt": stored.CreatedAt.Format(time.RFC3339),
 		}
-		out, _ := json.MarshalIndent(data, "", "  ")
-		fmt.Println(string(out))
+		return outputJSON(data)
 	} else {
 		printInboxCreated(stored)
 	}

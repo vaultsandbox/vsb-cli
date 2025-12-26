@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -114,8 +113,7 @@ func runAttachment(cmd *cobra.Command, args []string) error {
 				Checksum:    att.Checksum,
 			}
 		}
-		data, _ := json.MarshalIndent(infos, "", "  ")
-		fmt.Println(string(data))
+		return outputJSON(infos)
 	} else {
 		fmt.Printf("Attachments (%d):\n\n", len(email.Attachments))
 		for i, att := range email.Attachments {
