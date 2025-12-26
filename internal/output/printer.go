@@ -6,7 +6,7 @@ import (
 
 var (
 	// Colors
-	Primary = lipgloss.Color("#7C3AED") // Purple
+	Primary = lipgloss.Color("#1cc2e3")
 	Success = lipgloss.Color("#10B981") // Green
 	Warning = lipgloss.Color("#F59E0B") // Amber
 	Error   = lipgloss.Color("#EF4444") // Red

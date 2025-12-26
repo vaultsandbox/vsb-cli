@@ -26,8 +26,8 @@ func (m Model) renderAttachmentsView() string {
 	email := m.viewedEmail.Email
 	var sb strings.Builder
 
-	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
-	selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
+	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
+	selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
 	sizeStyle := lipgloss.NewStyle().Foreground(styles.Gray)
 
 	// Tab bar

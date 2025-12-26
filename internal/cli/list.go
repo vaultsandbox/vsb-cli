@@ -86,7 +86,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	headerStyle := styles.HeaderStyle.MarginBottom(0)
 	idStyle := lipgloss.NewStyle().Foreground(styles.Gray)
 	subjectStyle := lipgloss.NewStyle().Bold(true)
-	fromStyle := lipgloss.NewStyle().Foreground(styles.Purple)
+	fromStyle := lipgloss.NewStyle().Foreground(styles.Primary)
 	timeStyle := lipgloss.NewStyle().Foreground(styles.Gray)
 
 	// Header

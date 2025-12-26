@@ -69,7 +69,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	// Styles
 	sectionStyle := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(styles.Purple).
+		Foreground(styles.Primary).
 		MarginTop(1)
 
 	labelStyle := lipgloss.NewStyle().
@@ -90,14 +90,14 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.Purple).
+		BorderForeground(styles.Primary).
 		Padding(1, 2)
 
 	// Title
 	title := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(styles.White).
-		Background(styles.Purple).
+		Background(styles.Primary).
 		Padding(0, 2).
 		Render(" EMAIL AUDIT REPORT ")
 

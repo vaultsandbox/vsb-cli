@@ -18,7 +18,7 @@ func (m Model) renderSecurityView() string {
 	email := m.viewedEmail.Email
 	var sb strings.Builder
 
-	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple).Width(16)
+	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary).Width(16)
 	passStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Green)
 	failStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Red)
 	warnStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Yellow)

@@ -17,8 +17,8 @@ func (m Model) renderLinksView() string {
 	email := m.viewedEmail.Email
 	var sb strings.Builder
 
-	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
-	selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
+	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
+	selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
 
 	// Tab bar
 	sb.WriteString(m.renderTabs())

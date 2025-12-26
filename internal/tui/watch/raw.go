@@ -18,7 +18,7 @@ func (m Model) renderRawView() string {
 	email := m.viewedEmail.Email
 	var sb strings.Builder
 
-	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
+	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
 	headerKeyStyle := lipgloss.NewStyle().Foreground(styles.Gray)
 	headerValStyle := lipgloss.NewStyle().Foreground(styles.White)
 

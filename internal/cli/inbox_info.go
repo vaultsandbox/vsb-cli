@@ -113,11 +113,11 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(styles.Purple)
+		Foreground(styles.Primary)
 
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.Purple).
+		BorderForeground(styles.Primary).
 		Padding(1, 2)
 
 	// Build content

@@ -4,7 +4,7 @@ import "github.com/charmbracelet/lipgloss"
 
 var (
 	// Colors
-	Purple   = lipgloss.Color("#7C3AED")
+	Primary = lipgloss.Color("#1cc2e3")
 	Green    = lipgloss.Color("#10B981")
 	Red      = lipgloss.Color("#EF4444")
 	Yellow   = lipgloss.Color("#F59E0B")
@@ -19,7 +19,7 @@ var (
 	// Header
 	HeaderStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(Purple).
+			Foreground(Primary).
 			MarginBottom(1)
 
 	// Status bar
@@ -35,7 +35,7 @@ var (
 			MarginBottom(1)
 
 	EmailItemSelectedStyle = EmailItemStyle.
-				BorderForeground(Purple)
+				BorderForeground(Primary)
 
 	// Email fields
 	SubjectStyle = lipgloss.NewStyle().
@@ -51,7 +51,7 @@ var (
 
 	// Labels/badges
 	InboxLabelStyle = lipgloss.NewStyle().
-			Background(Purple).
+			Background(Primary).
 			Foreground(White).
 			Padding(0, 1).
 			MarginRight(1)
@@ -63,7 +63,7 @@ var (
 	// Preview pane
 	PreviewStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(Purple).
+			BorderForeground(Primary).
 			Padding(1, 2)
 
 	// Help
@@ -77,7 +77,7 @@ var (
 
 	TabActiveStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(Purple).
+			Foreground(Primary).
 			Background(DarkGray).
 			Padding(0, 1)
 
@@ -95,13 +95,13 @@ var (
 	EmailBoxStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(White).
-			Background(Purple).
+			Background(Primary).
 			Padding(0, 2)
 
 	// Success box
 	SuccessBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(Purple).
+			BorderForeground(Primary).
 			Padding(1, 2)
 
 	// Success title

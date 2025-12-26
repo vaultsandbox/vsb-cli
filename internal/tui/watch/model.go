@@ -182,8 +182,8 @@ func NewModel(client *vaultsandbox.Client, inboxes []*vaultsandbox.Inbox, active
 	// Create list with custom delegate
 	delegate := list.NewDefaultDelegate()
 	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
-		Foreground(styles.Purple).
-		BorderForeground(styles.Purple)
+		Foreground(styles.Primary).
+		BorderForeground(styles.Primary)
 	delegate.Styles.SelectedDesc = delegate.Styles.SelectedDesc.
 		Foreground(styles.Gray)
 
@@ -564,7 +564,7 @@ func (m Model) renderEmailDetail() string {
 	sb.WriteString("\n\n")
 
 	// Field styles
-	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
+	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
 	valueStyle := lipgloss.NewStyle().Foreground(styles.White)
 
 	// From

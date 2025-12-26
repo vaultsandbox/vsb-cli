@@ -124,7 +124,7 @@ func runView(cmd *cobra.Command, args []string) error {
             background: #f5f5f5;
         }
         .header {
-            background: #7C3AED;
+            background: #1cc2e3;
             color: white;
             padding: 20px;
             border-radius: 8px 8px 0 0;
