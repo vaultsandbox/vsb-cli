@@ -175,7 +175,8 @@ var DefaultKeyMap = KeyMap{
 }
 
 // NewModel creates a new watch TUI model
-func NewModel(client *vaultsandbox.Client, inboxes []*vaultsandbox.Inbox) Model {
+// activeIdx is the index of the initially selected inbox
+func NewModel(client *vaultsandbox.Client, inboxes []*vaultsandbox.Inbox, activeIdx int) Model {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Create list with custom delegate
@@ -192,10 +193,15 @@ func NewModel(client *vaultsandbox.Client, inboxes []*vaultsandbox.Inbox) Model 
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
 
+	// Clamp activeIdx to valid range
+	if activeIdx < 0 || activeIdx >= len(inboxes) {
+		activeIdx = 0
+	}
+
 	return Model{
 		list:            l,
 		emails:          []EmailItem{},
-		currentInboxIdx: 0,
+		currentInboxIdx: activeIdx,
 		ctx:             ctx,
 		cancel:          cancel,
 		client:          client,
@@ -423,10 +429,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetSize(msg.Width-4, msg.Height-6)
 		m.viewport.Width = msg.Width - 4
 		m.viewport.Height = msg.Height - 8
+		// Refresh list after sizing
+		if m.connected {
+			m.updateFilteredList()
+		}
 
 	case connectedMsg:
 		m.connected = true
-		m.updateTitle()
+		m.updateFilteredList()
 
 	case emailReceivedMsg:
 		// Check if email already exists (avoid duplicates)

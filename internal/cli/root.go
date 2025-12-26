@@ -14,28 +14,17 @@ import (
 
 var cfgFile string
 
-var (
-	rootAll   bool
-	rootEmail string
-)
-
 var rootCmd = &cobra.Command{
 	Use:   "vsb",
 	Short: "VaultSandbox CLI - Test email flows with quantum-safe encryption",
 	Long: `vsb is a developer companion for testing email flows.
+https://vaultsandbox.com
 
-It provides temporary inboxes with end-to-end encryption using
-quantum-safe algorithms (ML-KEM-768, ML-DSA-65).
+It provides temporary inboxes with quantum-safe encryption
+(ML-KEM-768, ML-DSA-65). Emails are encrypted on receipt and
+can only be decrypted locally with your private keys.
 
-The server never sees your email content - all decryption
-happens locally on your machine.
-
-Running 'vsb' with no subcommand opens the real-time email dashboard.
-
-Examples:
-  vsb                 # Watch active inbox
-  vsb -a              # Watch all stored inboxes
-  vsb --email abc@vaultsandbox.com`,
+Running 'vsb' opens the real-time email dashboard for all inboxes.`,
 	RunE: runRoot,
 }
 
@@ -53,12 +42,6 @@ func init() {
 	output := rootCmd.PersistentFlags().StringP("output", "o", "", "Output format: pretty, json")
 
 	config.SetFlagPointers(output)
-
-	// Root command flags (TUI)
-	rootCmd.Flags().BoolVarP(&rootAll, "all", "a", false,
-		"Watch all stored inboxes")
-	rootCmd.Flags().StringVar(&rootEmail, "email", "",
-		"Watch specific inbox by email address")
 }
 
 func initConfig() {
@@ -84,20 +67,21 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Determine which inboxes to watch
-	var storedInboxes []config.StoredInbox
+	// Load all inboxes
+	storedInboxes := keystore.ListInboxes()
+	if len(storedInboxes) == 0 {
+		return fmt.Errorf("no inboxes found. Create one with 'vsb inbox create'")
+	}
 
-	if rootAll {
-		storedInboxes = keystore.ListInboxes()
-		if len(storedInboxes) == 0 {
-			return fmt.Errorf("no inboxes found. Create one with 'vsb inbox create'")
+	// Find active inbox index
+	activeIdx := 0
+	if activeInbox, err := keystore.GetActiveInbox(); err == nil {
+		for i, stored := range storedInboxes {
+			if stored.Email == activeInbox.Email {
+				activeIdx = i
+				break
+			}
 		}
-	} else {
-		inbox, err := GetInbox(keystore, rootEmail)
-		if err != nil {
-			return err
-		}
-		storedInboxes = []config.StoredInbox{*inbox}
 	}
 
 	// Create SDK client
@@ -118,8 +102,8 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		inboxes = append(inboxes, inbox)
 	}
 
-	// Create TUI model
-	model := watch.NewModel(client, inboxes)
+	// Create TUI model starting on active inbox
+	model := watch.NewModel(client, inboxes, activeIdx)
 
 	// Create and run TUI program
 	p := tea.NewProgram(&model, tea.WithAltScreen())
