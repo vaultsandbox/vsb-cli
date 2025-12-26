@@ -163,6 +163,77 @@ Delete `convert.go`.
 
 ---
 
+## 5. Delete Unused `WithClient` Function (LOW)
+
+**Problem:** `WithClient` in `internal/config/client.go` is never called. Dead code adds maintenance burden.
+
+**File:** `internal/config/client.go`
+
+**Changes:**
+
+Delete this unused function:
+```go
+// DELETE THIS
+func WithClient(ctx context.Context, fn func(context.Context, *vaultsandbox.Client) error) error {
+    client, err := NewClient()
+    if err != nil {
+        return err
+    }
+    defer client.Close()
+
+    return fn(ctx, client)
+}
+```
+
+**Impact:** -10 lines, removes dead code
+
+---
+
+## 6. Fix Duplicate Save Logic in Keystore (LOW)
+
+**Problem:** `Save()` and `saveLocked()` in `internal/config/keystore.go` have identical implementations (marshal JSON + write file). Only difference is locking.
+
+**File:** `internal/config/keystore.go`
+
+**Changes:**
+
+```go
+// Before: Two separate implementations
+func (ks *Keystore) Save() error {
+    ks.mu.RLock()
+    defer ks.mu.RUnlock()
+    // ... duplicate marshal/write logic
+}
+
+func (ks *Keystore) saveLocked() error {
+    // ... duplicate marshal/write logic
+}
+
+// After: Save() wraps saveLocked()
+func (ks *Keystore) Save() error {
+    ks.mu.Lock()
+    defer ks.mu.Unlock()
+    return ks.saveLocked()
+}
+
+func (ks *Keystore) saveLocked() error {
+    if err := EnsureDir(); err != nil {
+        return err
+    }
+    data, err := json.MarshalIndent(ks, "", "  ")
+    if err != nil {
+        return err
+    }
+    return os.WriteFile(ks.path, data, 0600)
+}
+```
+
+Note: Changed `RLock` to `Lock` since `Save()` is a write operation.
+
+**Impact:** -8 lines, removes duplication, fixes incorrect lock type
+
+---
+
 ## Not Changing
 
 ### Auth Results Rendering (audit.go vs security.go)
@@ -177,6 +248,14 @@ Extracting to shared code would require format parameters, adding complexity. Le
 
 Simple 5-line function, but used pattern. Keep for readability.
 
+### Email JSON Helper (view.go vs wait.go)
+
+The JSON maps differ intentionally: `view.go` omits `headers`, `wait.go` includes it. A shared helper would either change behavior or require parameters. Two similar maps is acceptable.
+
+### `getEmailID(args)` Helper
+
+The pattern `if len(args) > 0 { emailID = args[0] }` is 4 lines of idiomatic Go. A helper function for this would be over-abstracting.
+
 ---
 
 ## Execution Order
@@ -185,6 +264,8 @@ Simple 5-line function, but used pattern. Keep for readability.
 2. **Add ScoreStyle** - Quick win
 3. **Inline extractHeader** - Minor cleanup
 4. **Merge convert.go** - Optional, lowest priority
+5. **Delete WithClient** - Dead code removal
+6. **Fix duplicate save** - Correctness fix
 
 ---
 
