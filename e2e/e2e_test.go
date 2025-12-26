@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -85,7 +86,22 @@ func runVSBWithConfig(t *testing.T, configDir string, args ...string) (stdout, s
 
 	cmd := exec.Command(vsbBinPath, args...)
 	cmd.Dir = configDir // Run from the config directory for relative paths
-	cmd.Env = append(os.Environ(),
+
+	// Build environment, converting GOCOVERDIR to absolute path relative to project root
+	env := os.Environ()
+	for i, e := range env {
+		if strings.HasPrefix(e, "GOCOVERDIR=") {
+			coverDir := strings.TrimPrefix(e, "GOCOVERDIR=")
+			if !filepath.IsAbs(coverDir) {
+				// Resolve relative to project root (where vsb binary is)
+				projectRoot := filepath.Dir(vsbBinPath)
+				env[i] = "GOCOVERDIR=" + filepath.Join(projectRoot, coverDir)
+			}
+			break
+		}
+	}
+
+	cmd.Env = append(env,
 		"VSB_API_KEY="+apiKey,
 		"VSB_BASE_URL="+baseURL,
 		"VSB_CONFIG_DIR="+configDir,
