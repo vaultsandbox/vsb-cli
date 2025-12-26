@@ -42,4 +42,4 @@ require (
 )
 
 // Local SDK (not yet published)
-replace github.com/vaultsandbox/client-go => /home/vs/Desktop/dev/client-go
+replace github.com/vaultsandbox/client-go => /home/ap/Desktop/dev/client-go

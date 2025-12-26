@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -136,7 +137,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	cfg := loadExistingConfig(configPath)
 
 	// Mask API key for display
-	maskedKey := "(not set)"
+	maskedKey := ""
 	if cfg.APIKey != "" {
 		if len(cfg.APIKey) >= 11 {
 			maskedKey = cfg.APIKey[:7] + "..." + cfg.APIKey[len(cfg.APIKey)-4:]
@@ -147,7 +148,24 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 
 	baseURL := cfg.BaseURL
 	if baseURL == "" {
-		baseURL = "(default: https://api.vaultsandbox.com)"
+		baseURL = "https://api.vaultsandbox.com"
+	}
+
+	// JSON output
+	if config.GetOutput() == "json" {
+		data := map[string]interface{}{
+			"configFile": configPath,
+			"apiKey":     maskedKey,
+			"baseUrl":    baseURL,
+		}
+		out, _ := json.MarshalIndent(data, "", "  ")
+		fmt.Println(string(out))
+		return nil
+	}
+
+	// Pretty output
+	if maskedKey == "" {
+		maskedKey = "(not set)"
 	}
 
 	fmt.Printf("Config file: %s\n\n", configPath)
