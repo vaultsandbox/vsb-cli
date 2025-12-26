@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
@@ -67,12 +66,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	labelStyle := styles.LabelStyle
 
 	// Title
-	title := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(styles.White).
-		Background(styles.Primary).
-		Padding(0, 2).
-		Render(" EMAIL AUDIT REPORT ")
+	title := styles.AuditTitleStyle.Render(" EMAIL AUDIT REPORT ")
 
 	fmt.Println()
 	fmt.Println(title)

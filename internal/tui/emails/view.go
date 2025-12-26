@@ -69,45 +69,41 @@ func (m Model) renderEmailDetail() string {
 	sb.WriteString(m.renderTabs())
 	sb.WriteString("\n\n")
 
-	// Field styles
-	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
-	valueStyle := lipgloss.NewStyle().Foreground(styles.White)
-
 	// From
-	sb.WriteString(labelStyle.Render("From:    "))
-	sb.WriteString(valueStyle.Render(email.From))
+	sb.WriteString(styles.DetailLabelStyle.Render("From:    "))
+	sb.WriteString(styles.DetailValueStyle.Render(email.From))
 	sb.WriteString("\n")
 
 	// To
-	sb.WriteString(labelStyle.Render("To:      "))
-	sb.WriteString(valueStyle.Render(strings.Join(email.To, ", ")))
+	sb.WriteString(styles.DetailLabelStyle.Render("To:      "))
+	sb.WriteString(styles.DetailValueStyle.Render(strings.Join(email.To, ", ")))
 	sb.WriteString("\n")
 
 	// Date
-	sb.WriteString(labelStyle.Render("Date:    "))
-	sb.WriteString(valueStyle.Render(email.ReceivedAt.Format("2006-01-02 15:04:05")))
+	sb.WriteString(styles.DetailLabelStyle.Render("Date:    "))
+	sb.WriteString(styles.DetailValueStyle.Render(email.ReceivedAt.Format("2006-01-02 15:04:05")))
 	sb.WriteString("\n")
 
 	// Subject
-	sb.WriteString(labelStyle.Render("Subject: "))
+	sb.WriteString(styles.DetailLabelStyle.Render("Subject: "))
 	subject := email.Subject
 	if subject == "" {
 		subject = noSubject
 	}
-	sb.WriteString(valueStyle.Render(subject))
+	sb.WriteString(styles.DetailValueStyle.Render(subject))
 	sb.WriteString("\n")
 
 	// Links (if any)
 	if len(email.Links) > 0 {
-		sb.WriteString(labelStyle.Render("Links:   "))
-		sb.WriteString(valueStyle.Render(fmt.Sprintf("%d found", len(email.Links))))
+		sb.WriteString(styles.DetailLabelStyle.Render("Links:   "))
+		sb.WriteString(styles.DetailValueStyle.Render(fmt.Sprintf("%d found", len(email.Links))))
 		sb.WriteString("\n")
 	}
 
 	// Attachments (if any)
 	if len(email.Attachments) > 0 {
-		sb.WriteString(labelStyle.Render("Attach:  "))
-		sb.WriteString(valueStyle.Render(fmt.Sprintf("%d files", len(email.Attachments))))
+		sb.WriteString(styles.DetailLabelStyle.Render("Attach:  "))
+		sb.WriteString(styles.DetailValueStyle.Render(fmt.Sprintf("%d files", len(email.Attachments))))
 		sb.WriteString("\n")
 	}
 

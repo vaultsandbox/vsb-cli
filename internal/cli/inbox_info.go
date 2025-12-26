@@ -90,19 +90,13 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 	}
 
 	// Pretty output
-	labelStyle := lipgloss.NewStyle().
-		Foreground(styles.Gray).
-		Width(14)
-
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(styles.Primary)
+	labelStyle := styles.LabelStyle.Width(14)
 
 	// Build content
 	var content string
 
 	// Title with active badge
-	title := titleStyle.Render(stored.Email)
+	title := styles.TitleStyle.Render(stored.Email)
 	if isActive {
 		badge := lipgloss.NewStyle().
 			Background(styles.Green).

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
@@ -66,12 +65,7 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Styles
 	headerStyle := styles.HeaderStyle.MarginBottom(0)
-	idStyle := lipgloss.NewStyle().Foreground(styles.Gray)
-	subjectStyle := lipgloss.NewStyle().Bold(true)
-	fromStyle := lipgloss.NewStyle().Foreground(styles.Primary)
-	timeStyle := lipgloss.NewStyle().Foreground(styles.Gray)
 
 	// Header
 	fmt.Println()
@@ -90,10 +84,10 @@ func runList(cmd *cobra.Command, args []string) error {
 		received := formatRelativeTime(email.ReceivedAt)
 
 		fmt.Printf("  %s  %s  %s  %s\n",
-			idStyle.Render(fmt.Sprintf("%-8s", id)),
-			subjectStyle.Render(fmt.Sprintf("%-30s", subject)),
-			fromStyle.Render(fmt.Sprintf("%-25s", from)),
-			timeStyle.Render(received))
+			styles.IDStyle.Render(fmt.Sprintf("%-8s", id)),
+			styles.SubjectStyle.Render(fmt.Sprintf("%-30s", subject)),
+			styles.FromStyle.Render(fmt.Sprintf("%-25s", from)),
+			styles.TimeStyle.Render(received))
 	}
 
 	fmt.Println()

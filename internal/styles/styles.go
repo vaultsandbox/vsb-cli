@@ -121,6 +121,37 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(Primary).
 			Padding(1, 2)
+
+	// Common list/table styles
+	IDStyle      = lipgloss.NewStyle().Foreground(Gray)
+	SubjectStyle = lipgloss.NewStyle().Bold(true)
+	FromStyle    = lipgloss.NewStyle().Foreground(Primary)
+	TimeStyle    = lipgloss.NewStyle().Foreground(Gray)
+
+	// Title style for sections
+	TitleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(Primary)
+
+	// Audit report title
+	AuditTitleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(White).
+			Background(Primary).
+			Padding(0, 2)
+
+	// TUI detail view styles
+	DetailLabelStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(Primary)
+
+	DetailValueStyle = lipgloss.NewStyle().
+				Foreground(White)
+
+	DetailSectionStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(White).
+				MarginTop(1)
 )
 
 // ScoreStyle returns the appropriate style for a security score (0-100).
