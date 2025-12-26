@@ -1,0 +1,286 @@
+package emails
+
+import (
+	"fmt"
+
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
+)
+
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		// Handle detail view keys
+		if m.viewing {
+			switch {
+			case key.Matches(msg, DefaultKeyMap.Quit):
+				m.cancel()
+				return m, tea.Quit
+			case key.Matches(msg, DefaultKeyMap.Back):
+				m.viewing = false
+				m.viewedEmail = nil
+				m.detailView = ViewContent
+				return m, nil
+			case key.Matches(msg, DefaultKeyMap.ViewHTML):
+				if m.viewedEmail != nil && m.viewedEmail.Email.HTML != "" {
+					return m, m.viewHTML()
+				}
+			// Links/Attachments view: up/down to navigate, enter to open/save
+			case key.Matches(msg, DefaultKeyMap.Up):
+				if m.viewedEmail != nil {
+					if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
+						m.selectedLink = wrapIndex(m.selectedLink, -1, len(m.viewedEmail.Email.Links))
+						m.viewport.SetContent(m.renderLinksView())
+						return m, nil
+					}
+					if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
+						m.selectedAttachment = wrapIndex(m.selectedAttachment, -1, len(m.viewedEmail.Email.Attachments))
+						m.viewport.SetContent(m.renderAttachmentsView())
+						return m, nil
+					}
+				}
+			case key.Matches(msg, DefaultKeyMap.Down):
+				if m.viewedEmail != nil {
+					if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
+						m.selectedLink = wrapIndex(m.selectedLink, 1, len(m.viewedEmail.Email.Links))
+						m.viewport.SetContent(m.renderLinksView())
+						return m, nil
+					}
+					if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
+						m.selectedAttachment = wrapIndex(m.selectedAttachment, 1, len(m.viewedEmail.Email.Attachments))
+						m.viewport.SetContent(m.renderAttachmentsView())
+						return m, nil
+					}
+				}
+			case key.Matches(msg, DefaultKeyMap.Enter):
+				if m.viewedEmail != nil {
+					if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
+						return m, m.openLinkByIndex(m.selectedLink)
+					}
+					if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
+						return m, m.saveAttachment(m.selectedAttachment)
+					}
+				}
+			// Number keys: switch tabs
+			default:
+				if m.viewedEmail != nil && len(msg.String()) == 1 {
+					r := msg.String()[0]
+					switch r {
+					case '1':
+						m.detailView = ViewContent
+						m.viewport.SetContent(m.renderEmailDetail())
+						m.viewport.GotoTop()
+					case '2':
+						m.detailView = ViewSecurity
+						m.viewport.SetContent(m.renderSecurityView())
+						m.viewport.GotoTop()
+					case '3':
+						m.detailView = ViewLinks
+						m.selectedLink = 0
+						m.viewport.SetContent(m.renderLinksView())
+						m.viewport.GotoTop()
+					case '4':
+						m.detailView = ViewAttachments
+						m.selectedAttachment = 0
+						m.viewport.SetContent(m.renderAttachmentsView())
+						m.viewport.GotoTop()
+					case '5':
+						m.detailView = ViewRaw
+						m.viewport.SetContent(m.renderRawView())
+						m.viewport.GotoTop()
+					}
+					return m, nil
+				}
+			}
+			// Update viewport for scrolling
+			var cmd tea.Cmd
+			m.viewport, cmd = m.viewport.Update(msg)
+			return m, cmd
+		}
+
+		// Don't handle keys when filtering
+		if m.list.FilterState() == list.Filtering {
+			break
+		}
+
+		switch {
+		case key.Matches(msg, DefaultKeyMap.Quit):
+			m.cancel()
+			return m, tea.Quit
+		case key.Matches(msg, DefaultKeyMap.Enter):
+			if len(m.filteredEmails()) > 0 {
+				if i := m.list.Index(); i >= 0 && i < len(m.filteredEmails()) {
+					filtered := m.filteredEmails()
+					m.viewing = true
+					m.viewedEmail = &filtered[i]
+					m.viewport.SetContent(m.renderEmailDetail())
+					m.viewport.GotoTop()
+				}
+			}
+			return m, nil
+		case key.Matches(msg, DefaultKeyMap.OpenURL):
+			if len(m.filteredEmails()) > 0 {
+				return m, m.openFirstURL()
+			}
+		case key.Matches(msg, DefaultKeyMap.ViewHTML):
+			if len(m.filteredEmails()) > 0 {
+				return m, m.viewHTML()
+			}
+		case key.Matches(msg, DefaultKeyMap.Delete):
+			if len(m.filteredEmails()) > 0 {
+				return m, m.deleteEmail()
+			}
+		case key.Matches(msg, DefaultKeyMap.PrevInbox):
+			if len(m.inboxes) > 0 {
+				m.currentInboxIdx = wrapIndex(m.currentInboxIdx, -1, len(m.inboxes))
+				m.updateFilteredList()
+			}
+			return m, nil
+		case key.Matches(msg, DefaultKeyMap.NextInbox):
+			if len(m.inboxes) > 0 {
+				m.currentInboxIdx = wrapIndex(m.currentInboxIdx, 1, len(m.inboxes))
+				m.updateFilteredList()
+			}
+			return m, nil
+		case key.Matches(msg, DefaultKeyMap.NewInbox):
+			return m, m.createNewInbox()
+		}
+
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		m.list.SetSize(msg.Width-4, msg.Height-6)
+		m.viewport.Width = msg.Width - 4
+		m.viewport.Height = msg.Height - 8
+		// Refresh list after sizing
+		if m.connected {
+			m.updateFilteredList()
+		}
+
+	case connectedMsg:
+		m.connected = true
+		m.updateFilteredList()
+
+	case emailReceivedMsg:
+		// Check if email already exists (avoid duplicates)
+		for _, existing := range m.emails {
+			if existing.Email.ID == msg.email.ID {
+				return m, nil
+			}
+		}
+
+		item := EmailItem{
+			Email:      msg.email,
+			InboxLabel: msg.inboxLabel,
+		}
+		// Add to front (newest first)
+		m.emails = append([]EmailItem{item}, m.emails...)
+
+		// Update list
+		m.updateFilteredList()
+
+	case errMsg:
+		m.lastError = msg.err
+		m.connected = false
+		m.updateTitle()
+
+	case emailDeletedMsg:
+		if msg.err != nil {
+			m.lastError = msg.err
+			return m, nil
+		}
+		// Remove email from local state
+		for i, e := range m.emails {
+			if e.Email.ID == msg.emailID {
+				m.emails = append(m.emails[:i], m.emails[i+1:]...)
+				break
+			}
+		}
+		// Update list items
+		m.updateFilteredList()
+
+	case attachmentSavedMsg:
+		if msg.err != nil {
+			m.lastError = msg.err
+		} else {
+			m.lastSavedFile = msg.filename
+		}
+		m.viewport.SetContent(m.renderAttachmentsView())
+		return m, nil
+
+	case inboxCreatedMsg:
+		if msg.err != nil {
+			m.lastError = msg.err
+			return m, nil
+		}
+		// Save to keystore
+		if m.keystore != nil {
+			exported := msg.inbox.Export()
+			if err := m.keystore.SaveInbox(exported); err != nil {
+				m.lastError = err
+				return m, nil
+			}
+		}
+		// Add inbox and switch to it
+		m.inboxes = append(m.inboxes, msg.inbox)
+		m.currentInboxIdx = len(m.inboxes) - 1
+		m.updateFilteredList()
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
+}
+
+// filteredEmails returns emails for the current inbox filter
+func (m Model) filteredEmails() []EmailItem {
+	if m.currentInboxIdx < 0 || m.currentInboxIdx >= len(m.inboxes) {
+		return m.emails // show all
+	}
+	currentInbox := m.inboxes[m.currentInboxIdx].EmailAddress()
+	var filtered []EmailItem
+	for _, e := range m.emails {
+		if e.InboxLabel == currentInbox {
+			filtered = append(filtered, e)
+		}
+	}
+	return filtered
+}
+
+// updateFilteredList updates the list with filtered emails
+func (m *Model) updateFilteredList() {
+	filtered := m.filteredEmails()
+	items := make([]list.Item, len(filtered))
+	for i, e := range filtered {
+		items[i] = e
+	}
+	m.list.SetItems(items)
+	m.updateTitle()
+}
+
+// updateTitle updates the list title with current inbox info
+func (m *Model) updateTitle() {
+	var title string
+	if !m.connected {
+		title = "Disconnected"
+	} else if m.lastError != nil {
+		title = "Error: " + m.lastError.Error()
+	} else if len(m.inboxes) > 1 {
+		title = fmt.Sprintf("[%d/%d] %s • %d emails", m.currentInboxIdx+1, len(m.inboxes), m.currentInboxLabel(), len(m.filteredEmails()))
+	} else if len(m.inboxes) == 1 {
+		title = fmt.Sprintf("%s • %d emails", m.currentInboxLabel(), len(m.filteredEmails()))
+	} else {
+		title = "No inboxes"
+	}
+	m.list.Title = title
+}
+
+// currentInboxLabel returns the label for the current inbox
+func (m Model) currentInboxLabel() string {
+	if m.currentInboxIdx >= 0 && m.currentInboxIdx < len(m.inboxes) {
+		return m.inboxes[m.currentInboxIdx].EmailAddress()
+	}
+	return "all"
+}

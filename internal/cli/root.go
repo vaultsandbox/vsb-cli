@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
-	"github.com/vaultsandbox/vsb-cli/internal/tui/watch"
+	"github.com/vaultsandbox/vsb-cli/internal/tui/emails"
 )
 
 var cfgFile string
@@ -101,7 +101,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create TUI model starting on active inbox
-	model := watch.NewModel(client, inboxes, activeIdx, keystore)
+	model := emails.NewModel(client, inboxes, activeIdx, keystore)
 
 	// Create and run TUI program
 	p := tea.NewProgram(&model, tea.WithAltScreen())
