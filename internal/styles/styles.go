@@ -151,9 +151,10 @@ func FormatAuthResult(result string) string {
 // Encryption label constant for consistent display across CLI and TUI
 const EncryptionLabel = "ML-KEM-768 + AES-256-GCM"
 
-// RenderAuthResults renders authentication results in compact format (for TUI).
-// Details are shown in parentheses on the same line.
-func RenderAuthResults(auth *authresults.AuthResults, labelStyle lipgloss.Style) string {
+// RenderAuthResults renders authentication results.
+// When verbose is false (compact mode), details are shown in parentheses on the same line.
+// When verbose is true, details are shown on separate indented lines.
+func RenderAuthResults(auth *authresults.AuthResults, labelStyle lipgloss.Style, verbose bool) string {
 	if auth == nil {
 		return WarnStyle.Render("No authentication results available")
 	}
@@ -163,7 +164,12 @@ func RenderAuthResults(auth *authresults.AuthResults, labelStyle lipgloss.Style)
 	if auth.SPF != nil {
 		line := fmt.Sprintf("%s %s", labelStyle.Render("SPF:"), FormatAuthResult(auth.SPF.Status))
 		if auth.SPF.Domain != "" {
-			line += fmt.Sprintf(" (%s)", auth.SPF.Domain)
+			if verbose {
+				lines = append(lines, line)
+				line = fmt.Sprintf("%s %s", labelStyle.Render("  Domain:"), auth.SPF.Domain)
+			} else {
+				line += fmt.Sprintf(" (%s)", auth.SPF.Domain)
+			}
 		}
 		lines = append(lines, line)
 	}
@@ -171,16 +177,31 @@ func RenderAuthResults(auth *authresults.AuthResults, labelStyle lipgloss.Style)
 	if len(auth.DKIM) > 0 {
 		dkim := auth.DKIM[0]
 		line := fmt.Sprintf("%s %s", labelStyle.Render("DKIM:"), FormatAuthResult(dkim.Status))
-		if dkim.Domain != "" {
-			line += fmt.Sprintf(" (%s)", dkim.Domain)
+		if verbose {
+			lines = append(lines, line)
+			if dkim.Selector != "" {
+				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Selector:"), dkim.Selector))
+			}
+			if dkim.Domain != "" {
+				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Domain:"), dkim.Domain))
+			}
+		} else {
+			if dkim.Domain != "" {
+				line += fmt.Sprintf(" (%s)", dkim.Domain)
+			}
+			lines = append(lines, line)
 		}
-		lines = append(lines, line)
 	}
 
 	if auth.DMARC != nil {
 		line := fmt.Sprintf("%s %s", labelStyle.Render("DMARC:"), FormatAuthResult(auth.DMARC.Status))
 		if auth.DMARC.Policy != "" {
-			line += fmt.Sprintf(" (policy: %s)", auth.DMARC.Policy)
+			if verbose {
+				lines = append(lines, line)
+				line = fmt.Sprintf("%s %s", labelStyle.Render("  Policy:"), auth.DMARC.Policy)
+			} else {
+				line += fmt.Sprintf(" (policy: %s)", auth.DMARC.Policy)
+			}
 		}
 		lines = append(lines, line)
 	}
@@ -188,7 +209,12 @@ func RenderAuthResults(auth *authresults.AuthResults, labelStyle lipgloss.Style)
 	if auth.ReverseDNS != nil {
 		line := fmt.Sprintf("%s %s", labelStyle.Render("Reverse DNS:"), FormatAuthResult(auth.ReverseDNS.Status()))
 		if auth.ReverseDNS.Hostname != "" {
-			line += fmt.Sprintf(" (%s)", auth.ReverseDNS.Hostname)
+			if verbose {
+				lines = append(lines, line)
+				line = fmt.Sprintf("%s %s", labelStyle.Render("  Hostname:"), auth.ReverseDNS.Hostname)
+			} else {
+				line += fmt.Sprintf(" (%s)", auth.ReverseDNS.Hostname)
+			}
 		}
 		lines = append(lines, line)
 	}

@@ -44,7 +44,7 @@ func (m Model) handleListViewUpdate(msg tea.Msg) (Model, tea.Cmd)
 
 **Problem:** Near-identical `map[string]interface{}` construction for email data.
 
-**Solution:** Export and reuse existing `emailToMap()` from `wait.go`, or create shared version in `helpers.go`.
+**Solution:** create shared version in `helpers.go`.
 
 ### 5. Inline Styles Scattered Across Commands
 **Location:** `list.go`, `inbox_info.go`, `view.go`, TUI files

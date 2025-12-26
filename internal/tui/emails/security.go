@@ -27,7 +27,7 @@ func (m Model) renderSecurityView() string {
 	// Authentication
 	sb.WriteString(sectionStyle.Render("AUTHENTICATION"))
 	sb.WriteString("\n")
-	sb.WriteString(styles.RenderAuthResults(email.AuthResults, labelStyle))
+	sb.WriteString(styles.RenderAuthResults(email.AuthResults, labelStyle, false))
 	sb.WriteString("\n")
 
 	// Transport Security

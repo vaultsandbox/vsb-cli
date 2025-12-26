@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
-	"github.com/vaultsandbox/client-go/authresults"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -89,7 +88,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	// Authentication Results
 	fmt.Println()
 	fmt.Println(styles.SectionStyle.Render("AUTHENTICATION"))
-	printAuthResults(email.AuthResults, labelStyle)
+	fmt.Println(styles.RenderAuthResults(email.AuthResults, labelStyle, true))
 
 	// Transport Security
 	fmt.Println()
@@ -217,42 +216,3 @@ func renderAuditJSON(email *vaultsandbox.Email) error {
 	return outputJSON(data)
 }
 
-// printAuthResults prints authentication results in verbose CLI format.
-func printAuthResults(auth *authresults.AuthResults, labelStyle lipgloss.Style) {
-	if auth == nil {
-		fmt.Println(styles.WarnStyle.Render("No authentication results available"))
-		return
-	}
-
-	if auth.SPF != nil {
-		fmt.Printf("%s %s\n", labelStyle.Render("SPF:"), styles.FormatAuthResult(auth.SPF.Status))
-		if auth.SPF.Domain != "" {
-			fmt.Printf("%s %s\n", labelStyle.Render("  Domain:"), auth.SPF.Domain)
-		}
-	}
-
-	if len(auth.DKIM) > 0 {
-		dkim := auth.DKIM[0]
-		fmt.Printf("%s %s\n", labelStyle.Render("DKIM:"), styles.FormatAuthResult(dkim.Status))
-		if dkim.Selector != "" {
-			fmt.Printf("%s %s\n", labelStyle.Render("  Selector:"), dkim.Selector)
-		}
-		if dkim.Domain != "" {
-			fmt.Printf("%s %s\n", labelStyle.Render("  Domain:"), dkim.Domain)
-		}
-	}
-
-	if auth.DMARC != nil {
-		fmt.Printf("%s %s\n", labelStyle.Render("DMARC:"), styles.FormatAuthResult(auth.DMARC.Status))
-		if auth.DMARC.Policy != "" {
-			fmt.Printf("%s %s\n", labelStyle.Render("  Policy:"), auth.DMARC.Policy)
-		}
-	}
-
-	if auth.ReverseDNS != nil {
-		fmt.Printf("%s %s\n", labelStyle.Render("Reverse DNS:"), styles.FormatAuthResult(auth.ReverseDNS.Status()))
-		if auth.ReverseDNS.Hostname != "" {
-			fmt.Printf("%s %s\n", labelStyle.Render("  Hostname:"), auth.ReverseDNS.Hostname)
-		}
-	}
-}
