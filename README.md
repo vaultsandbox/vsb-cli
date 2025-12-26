@@ -25,8 +25,7 @@ go test ./...
 With coverage:
 
 ```bash
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out -o coverage.html
+go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
 ```
 
 ### E2E Tests
@@ -50,15 +49,18 @@ With coverage:
 
 ```bash
 go build -o vsb ./cmd/vsb
-go test -tags=e2e -coverprofile=coverage-e2e.out -timeout 10m ./e2e/...
-go tool cover -html=coverage-e2e.out -o coverage-e2e.html
+go test -tags=e2e -coverprofile=coverage.out -timeout 10m ./e2e/... && go tool cover -func=coverage.out
 ```
 
 ### All Tests with Coverage
 
 ```bash
 go build -o vsb ./cmd/vsb
-go test -tags=e2e -coverprofile=coverage.out -timeout 10m ./...
-go tool cover -func=coverage.out   # Summary
-go tool cover -html=coverage.out   # Open in browser
+go test -tags=e2e -coverprofile=coverage.out -timeout 10m ./... && go tool cover -func=coverage.out
+```
+
+To view coverage in browser:
+
+```bash
+go tool cover -html=coverage.out
 ```

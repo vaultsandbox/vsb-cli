@@ -8,8 +8,11 @@
 *.so
 *.dylib
 *.test
-*.out
 vendor/
+
+# Coverage
+*.out
+coverage*.html
 
 # Environment files
 .env
