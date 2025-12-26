@@ -65,6 +65,7 @@ const (
 	ViewContent DetailView = iota
 	ViewSecurity
 	ViewLinks
+	ViewAttachments
 	ViewRaw
 )
 
@@ -77,10 +78,12 @@ type Model struct {
 	currentInboxIdx int // index into inboxes slice
 
 	// Detail view state
-	viewing      bool
-	viewedEmail  *EmailItem
-	detailView   DetailView
-	selectedLink int // selected link index in links view
+	viewing            bool
+	viewedEmail        *EmailItem
+	detailView         DetailView
+	selectedLink       int    // selected link index in links view
+	selectedAttachment int    // selected attachment index in attachments view
+	lastSavedFile      string // last saved attachment filename
 
 	// Connection status
 	connected bool
@@ -275,28 +278,53 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.viewedEmail != nil && m.viewedEmail.Email.HTML != "" {
 					return m, m.viewHTML()
 				}
-			// Links view: up/down to navigate, enter to open
+			// Links/Attachments view: up/down to navigate, enter to open/save
 			case key.Matches(msg, DefaultKeyMap.Up):
-				if m.detailView == ViewLinks && m.viewedEmail != nil && len(m.viewedEmail.Email.Links) > 0 {
-					m.selectedLink--
-					if m.selectedLink < 0 {
-						m.selectedLink = len(m.viewedEmail.Email.Links) - 1
+				if m.viewedEmail != nil {
+					if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
+						m.selectedLink--
+						if m.selectedLink < 0 {
+							m.selectedLink = len(m.viewedEmail.Email.Links) - 1
+						}
+						m.viewport.SetContent(m.renderLinksView())
+						return m, nil
 					}
-					m.viewport.SetContent(m.renderLinksView())
-					return m, nil
+					if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
+						m.selectedAttachment--
+						if m.selectedAttachment < 0 {
+							m.selectedAttachment = len(m.viewedEmail.Email.Attachments) - 1
+						}
+						m.viewport.SetContent(m.renderAttachmentsView())
+						return m, nil
+					}
 				}
 			case key.Matches(msg, DefaultKeyMap.Down):
-				if m.detailView == ViewLinks && m.viewedEmail != nil && len(m.viewedEmail.Email.Links) > 0 {
-					m.selectedLink++
-					if m.selectedLink >= len(m.viewedEmail.Email.Links) {
-						m.selectedLink = 0
+				if m.viewedEmail != nil {
+					if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
+						m.selectedLink++
+						if m.selectedLink >= len(m.viewedEmail.Email.Links) {
+							m.selectedLink = 0
+						}
+						m.viewport.SetContent(m.renderLinksView())
+						return m, nil
 					}
-					m.viewport.SetContent(m.renderLinksView())
-					return m, nil
+					if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
+						m.selectedAttachment++
+						if m.selectedAttachment >= len(m.viewedEmail.Email.Attachments) {
+							m.selectedAttachment = 0
+						}
+						m.viewport.SetContent(m.renderAttachmentsView())
+						return m, nil
+					}
 				}
 			case key.Matches(msg, DefaultKeyMap.Enter):
-				if m.detailView == ViewLinks && m.viewedEmail != nil && len(m.viewedEmail.Email.Links) > 0 {
-					return m, m.openLinkByIndex(m.selectedLink)
+				if m.viewedEmail != nil {
+					if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
+						return m, m.openLinkByIndex(m.selectedLink)
+					}
+					if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
+						return m, m.saveAttachment(m.selectedAttachment)
+					}
 				}
 			// Number keys: switch tabs
 			default:
@@ -317,6 +345,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.viewport.SetContent(m.renderLinksView())
 						m.viewport.GotoTop()
 					case '4':
+						m.detailView = ViewAttachments
+						m.selectedAttachment = 0
+						m.viewport.SetContent(m.renderAttachmentsView())
+						m.viewport.GotoTop()
+					case '5':
 						m.detailView = ViewRaw
 						m.viewport.SetContent(m.renderRawView())
 						m.viewport.GotoTop()
@@ -433,6 +466,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update list items
 		m.updateFilteredList()
 
+	case attachmentSavedMsg:
+		if msg.err != nil {
+			m.lastError = msg.err
+		} else {
+			m.lastSavedFile = msg.filename
+		}
+		m.viewport.SetContent(m.renderAttachmentsView())
+		return m, nil
+
 	case inboxCreatedMsg:
 		if msg.err != nil {
 			m.lastError = msg.err
@@ -475,7 +517,7 @@ func (m Model) viewDetail() string {
 	}
 
 	// Help text
-	help := styles.HelpStyle.Render("1-4: tabs • v: html • esc: back • q: quit")
+	help := styles.HelpStyle.Render("1-5: tabs • v: html • esc: back • q: quit")
 
 	// Combine
 	content := lipgloss.JoinVertical(lipgloss.Left,
@@ -488,7 +530,7 @@ func (m Model) viewDetail() string {
 
 // renderTabs renders the tab bar with the active tab highlighted
 func (m Model) renderTabs() string {
-	tabs := []string{"Content", "Security", "Links", "Raw"}
+	tabs := []string{"Content", "Security", "Links", "Attach", "Raw"}
 	var rendered []string
 	for i, tab := range tabs {
 		if DetailView(i) == m.detailView {
