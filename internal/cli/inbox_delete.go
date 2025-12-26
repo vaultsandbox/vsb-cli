@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
-	"github.com/vaultsandbox/vsb-cli/internal/output"
+	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 var inboxDeleteCmd = &cobra.Command{
@@ -63,9 +63,9 @@ func runInboxDelete(cmd *cobra.Command, args []string) error {
 
 		if err := client.DeleteInbox(ctx, email); err != nil {
 			// Continue with local deletion even if server fails
-			fmt.Println(output.PrintError(fmt.Sprintf("Warning: server deletion failed: %v", err)))
+			fmt.Println(styles.FailStyle.Render(fmt.Sprintf("✗ Warning: server deletion failed: %v", err)))
 		} else {
-			fmt.Println(output.PrintSuccess("Deleted from server"))
+			fmt.Println(styles.PassStyle.Render("✓ Deleted from server"))
 		}
 	}
 
@@ -77,6 +77,6 @@ func runInboxDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(output.PrintSuccess("Deleted from keystore"))
+	fmt.Println(styles.PassStyle.Render("✓ Deleted from keystore"))
 	return nil
 }

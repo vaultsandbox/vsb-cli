@@ -1,7 +1,6 @@
 package config
 
 import (
-	"context"
 	"errors"
 
 	vaultsandbox "github.com/vaultsandbox/client-go"
@@ -23,16 +22,4 @@ func NewClient() (*vaultsandbox.Client, error) {
 	}
 
 	return vaultsandbox.New(apiKey, opts...)
-}
-
-// WithClient creates a client, passes it to the callback, and ensures cleanup.
-// This is the recommended way to use the client for simple operations.
-func WithClient(ctx context.Context, fn func(context.Context, *vaultsandbox.Client) error) error {
-	client, err := NewClient()
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
-	return fn(ctx, client)
 }

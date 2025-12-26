@@ -103,7 +103,21 @@ var (
 
 	// Label style for key-value displays
 	LabelStyle = lipgloss.NewStyle().Foreground(Gray).Width(20)
+
+	// Muted style for info messages
+	MutedStyle = lipgloss.NewStyle().Foreground(Gray)
 )
+
+// ScoreStyle returns the appropriate style for a security score (0-100).
+func ScoreStyle(score int) lipgloss.Style {
+	if score < 60 {
+		return FailStyle
+	}
+	if score < 80 {
+		return WarnStyle
+	}
+	return PassStyle
+}
 
 // FormatAuthResult formats an authentication result (SPF/DKIM/DMARC) with appropriate styling.
 func FormatAuthResult(result string) string {

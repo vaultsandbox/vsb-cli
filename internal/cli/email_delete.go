@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/vaultsandbox/vsb-cli/internal/output"
+	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 var emailDeleteCmd = &cobra.Command{
@@ -48,6 +48,6 @@ func runEmailDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete email: %w", err)
 	}
 
-	fmt.Println(output.PrintSuccess(fmt.Sprintf("Deleted email %s", emailID)))
+	fmt.Println(styles.PassStyle.Render(fmt.Sprintf("✓ Deleted email %s", emailID)))
 	return nil
 }

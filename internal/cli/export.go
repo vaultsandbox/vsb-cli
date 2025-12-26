@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/vaultsandbox/vsb-cli/internal/output"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -151,5 +150,5 @@ File: %s`,
 	fmt.Println()
 	fmt.Println(styles.WarningBoxStyle.Render(warning))
 	fmt.Println()
-	fmt.Println(output.PrintSuccess("Export complete"))
+	fmt.Println(styles.PassStyle.Render("✓ Export complete"))
 }

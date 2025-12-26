@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
-	"github.com/vaultsandbox/vsb-cli/internal/output"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -86,7 +85,7 @@ func runImport(cmd *cobra.Command, args []string) error {
 
 	// Server verification (unless --local)
 	if !importLocal {
-		fmt.Println(output.PrintInfo("Verifying with server..."))
+		fmt.Println(styles.MutedStyle.Render("• Verifying with server..."))
 
 		client, err := config.NewClient()
 		if err != nil {
@@ -113,9 +112,9 @@ func runImport(cmd *cobra.Command, args []string) error {
 		// Check sync status
 		status, err := inbox.GetSyncStatus(ctx)
 		if err != nil {
-			fmt.Println(output.PrintInfo("Warning: Could not verify sync status"))
+			fmt.Println(styles.MutedStyle.Render("• Warning: Could not verify sync status"))
 		} else {
-			fmt.Println(output.PrintSuccess(fmt.Sprintf("Inbox verified: %d emails", status.EmailCount)))
+			fmt.Println(styles.PassStyle.Render(fmt.Sprintf("✓ Inbox verified: %d emails", status.EmailCount)))
 		}
 	}
 

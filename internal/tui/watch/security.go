@@ -89,14 +89,7 @@ func (m Model) renderSecurityView() string {
 	sb.WriteString(sectionStyle.Render("SECURITY SCORE"))
 	sb.WriteString("\n")
 	score := security.CalculateScore(email)
-	scoreStyle := styles.PassStyle
-	if score < 80 {
-		scoreStyle = styles.WarnStyle
-	}
-	if score < 60 {
-		scoreStyle = styles.FailStyle
-	}
-	sb.WriteString(scoreStyle.Render(fmt.Sprintf("%d/100", score)))
+	sb.WriteString(styles.ScoreStyle(score).Render(fmt.Sprintf("%d/100", score)))
 	sb.WriteString("\n")
 
 	return sb.String()

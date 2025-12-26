@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/files"
-	"github.com/vaultsandbox/vsb-cli/internal/output"
+	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 var attachmentCmd = &cobra.Command{
@@ -133,7 +133,7 @@ func downloadAttachment(filename string, content []byte) error {
 		return err
 	}
 
-	fmt.Println(output.PrintSuccess(fmt.Sprintf("Saved: %s (%s)", path, humanize.Bytes(uint64(len(content))))))
+	fmt.Println(styles.PassStyle.Render(fmt.Sprintf("✓ Saved: %s (%s)", path, humanize.Bytes(uint64(len(content))))))
 	return nil
 }
 
@@ -141,14 +141,14 @@ func downloadAllAttachments(attachments []vaultsandbox.Attachment) error {
 	saved := 0
 	for _, att := range attachments {
 		if err := downloadAttachment(att.Filename, att.Content); err != nil {
-			fmt.Println(output.PrintError(fmt.Sprintf("Failed to save %s: %v", att.Filename, err)))
+			fmt.Println(styles.FailStyle.Render(fmt.Sprintf("✗ Failed to save %s: %v", att.Filename, err)))
 		} else {
 			saved++
 		}
 	}
 
 	if saved == len(attachments) {
-		fmt.Printf("\n%s\n", output.PrintSuccess(fmt.Sprintf("Downloaded all %d attachments", saved)))
+		fmt.Printf("\n%s\n", styles.PassStyle.Render(fmt.Sprintf("✓ Downloaded all %d attachments", saved)))
 	} else {
 		fmt.Printf("\nDownloaded %d of %d attachments\n", saved, len(attachments))
 	}

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	vaultsandbox "github.com/vaultsandbox/client-go"
 )
 
 var (
@@ -84,20 +86,9 @@ func LoadKeystore() (*Keystore, error) {
 
 // Save writes the keystore to disk with secure permissions
 func (ks *Keystore) Save() error {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-
-	if err := EnsureDir(); err != nil {
-		return err
-	}
-
-	data, err := json.MarshalIndent(ks, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	// Write with restrictive permissions (owner read/write only)
-	return os.WriteFile(ks.path, data, 0600)
+	ks.mu.Lock()
+	defer ks.mu.Unlock()
+	return ks.saveLocked()
 }
 
 // AddInbox adds a new inbox to the keystore
@@ -279,4 +270,32 @@ func (ks *Keystore) saveLocked() error {
 		return err
 	}
 	return os.WriteFile(ks.path, data, 0600)
+}
+
+// StoredInboxFromExport converts SDK ExportedInbox to StoredInbox
+func StoredInboxFromExport(exp *vaultsandbox.ExportedInbox) StoredInbox {
+	return StoredInbox{
+		Email:     exp.EmailAddress,
+		ID:        exp.InboxHash,
+		CreatedAt: exp.ExportedAt,
+		ExpiresAt: exp.ExpiresAt,
+		Keys: InboxKeys{
+			KEMPrivate:  exp.SecretKeyB64,
+			KEMPublic:   exp.PublicKeyB64,
+			ServerSigPK: exp.ServerSigPk,
+		},
+	}
+}
+
+// ToExportedInbox converts StoredInbox to SDK ExportedInbox for import
+func (s *StoredInbox) ToExportedInbox() *vaultsandbox.ExportedInbox {
+	return &vaultsandbox.ExportedInbox{
+		EmailAddress: s.Email,
+		ExpiresAt:    s.ExpiresAt,
+		InboxHash:    s.ID,
+		ServerSigPk:  s.Keys.ServerSigPK,
+		PublicKeyB64: s.Keys.KEMPublic,
+		SecretKeyB64: s.Keys.KEMPrivate,
+		ExportedAt:   s.CreatedAt,
+	}
 }

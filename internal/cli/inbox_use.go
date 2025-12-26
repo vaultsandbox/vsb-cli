@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/vaultsandbox/vsb-cli/internal/output"
+	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 var inboxUseCmd = &cobra.Command{
@@ -43,6 +43,6 @@ func runInboxUse(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(output.PrintSuccess(fmt.Sprintf("Active inbox set to %s", inbox.Email)))
+	fmt.Println(styles.PassStyle.Render(fmt.Sprintf("✓ Active inbox set to %s", inbox.Email)))
 	return nil
 }

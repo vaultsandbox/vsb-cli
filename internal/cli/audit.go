@@ -150,8 +150,14 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	fmt.Println(sectionStyle.Render("TRANSPORT SECURITY"))
 
 	// Extract from headers if available
-	tlsVersion := extractHeader(email.Headers, "X-TLS-Version", "TLS 1.3")
-	cipherSuite := extractHeader(email.Headers, "X-TLS-Cipher", "ECDHE-RSA-AES256-GCM-SHA384")
+	tlsVersion := "TLS 1.3"
+	if v := email.Headers["X-TLS-Version"]; v != "" {
+		tlsVersion = v
+	}
+	cipherSuite := "ECDHE-RSA-AES256-GCM-SHA384"
+	if v := email.Headers["X-TLS-Cipher"]; v != "" {
+		cipherSuite = v
+	}
 
 	fmt.Printf("%s %s\n", labelStyle.Render("TLS Version:"), styles.PassStyle.Render(tlsVersion))
 	fmt.Printf("%s %s\n", labelStyle.Render("Cipher Suite:"), cipherSuite)
@@ -167,27 +173,11 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	// Summary
 	fmt.Println()
 	score := security.CalculateScore(email)
-	scoreColor := styles.PassStyle
-	if score < 80 {
-		scoreColor = styles.WarnStyle
-	}
-	if score < 60 {
-		scoreColor = styles.FailStyle
-	}
-
-	summary := fmt.Sprintf("Security Score: %s", scoreColor.Render(fmt.Sprintf("%d/100", score)))
+	summary := fmt.Sprintf("Security Score: %s", styles.ScoreStyle(score).Render(fmt.Sprintf("%d/100", score)))
 	fmt.Println(boxStyle.Render(summary))
 	fmt.Println()
 
 	return nil
-}
-
-
-func extractHeader(headers map[string]string, key, defaultVal string) string {
-	if val, ok := headers[key]; ok && val != "" {
-		return val
-	}
-	return defaultVal
 }
 
 func buildMIMETree(email *vaultsandbox.Email) string {

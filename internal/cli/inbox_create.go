@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
-	"github.com/vaultsandbox/vsb-cli/internal/output"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -52,7 +51,7 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 
 	// Show progress (not in JSON mode)
 	if !jsonMode {
-		fmt.Println(output.PrintInfo("Generating quantum-safe keys..."))
+		fmt.Println(styles.MutedStyle.Render("• Generating quantum-safe keys..."))
 	}
 
 	// Create client
@@ -64,7 +63,7 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 
 	// Create inbox with SDK
 	if !jsonMode {
-		fmt.Println(output.PrintInfo("Registering with VaultSandbox..."))
+		fmt.Println(styles.MutedStyle.Render("• Registering with VaultSandbox..."))
 	}
 
 	inbox, err := client.CreateInbox(ctx, vaultsandbox.WithTTL(ttl))
