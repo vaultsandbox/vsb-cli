@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
+	"github.com/vaultsandbox/vsb-cli/internal/security"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -180,7 +181,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 
 	// Summary
 	fmt.Println()
-	score := calculateSecurityScore(email)
+	score := security.CalculateScore(email)
 	scoreColor := passStyle
 	if score < 80 {
 		scoreColor = warnStyle
@@ -269,36 +270,6 @@ func buildMIMETree(email *vaultsandbox.Email) string {
 	return sb.String()
 }
 
-func calculateSecurityScore(email *vaultsandbox.Email) int {
-	score := 50 // Base score for having E2E encryption
-
-	if email.AuthResults != nil {
-		auth := email.AuthResults
-
-		// SPF
-		if auth.SPF != nil && strings.EqualFold(auth.SPF.Status, "pass") {
-			score += 15
-		}
-
-		// DKIM (it's a slice)
-		if len(auth.DKIM) > 0 && strings.EqualFold(auth.DKIM[0].Status, "pass") {
-			score += 20
-		}
-
-		// DMARC
-		if auth.DMARC != nil && strings.EqualFold(auth.DMARC.Status, "pass") {
-			score += 10
-		}
-
-		// Reverse DNS
-		if auth.ReverseDNS != nil && strings.EqualFold(auth.ReverseDNS.Status(), "pass") {
-			score += 5
-		}
-	}
-
-	return score
-}
-
 func renderAuditJSON(email *vaultsandbox.Email) error {
 	data := map[string]interface{}{
 		"id":            email.ID,
@@ -306,7 +277,7 @@ func renderAuditJSON(email *vaultsandbox.Email) error {
 		"from":          email.From,
 		"to":            email.To,
 		"receivedAt":    email.ReceivedAt,
-		"securityScore": calculateSecurityScore(email),
+		"securityScore": security.CalculateScore(email),
 	}
 
 	if email.AuthResults != nil {

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/security"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -91,7 +91,7 @@ func (m Model) renderSecurityView() string {
 	sb.WriteString("\n")
 	sb.WriteString(sectionStyle.Render("SECURITY SCORE"))
 	sb.WriteString("\n")
-	score := calculateScore(email)
+	score := security.CalculateScore(email)
 	scoreStyle := passStyle
 	if score < 80 {
 		scoreStyle = warnStyle
@@ -120,23 +120,3 @@ func formatResult(result string, pass, fail, warn lipgloss.Style) string {
 	}
 }
 
-func calculateScore(email *vaultsandbox.Email) int {
-	score := 50 // Base for E2E
-
-	if email.AuthResults != nil {
-		if email.AuthResults.SPF != nil && strings.EqualFold(email.AuthResults.SPF.Status, "pass") {
-			score += 15
-		}
-		if len(email.AuthResults.DKIM) > 0 && strings.EqualFold(email.AuthResults.DKIM[0].Status, "pass") {
-			score += 20
-		}
-		if email.AuthResults.DMARC != nil && strings.EqualFold(email.AuthResults.DMARC.Status, "pass") {
-			score += 10
-		}
-		if email.AuthResults.ReverseDNS != nil && strings.EqualFold(email.AuthResults.ReverseDNS.Status(), "pass") {
-			score += 5
-		}
-	}
-
-	return score
-}
