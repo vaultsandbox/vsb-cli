@@ -19,8 +19,14 @@ const DefaultBaseURL = "https://"
 // Package-level state
 var current Config
 
-// Dir returns the vsb config directory path
+// Dir returns the vsb config directory path.
+// Respects VSB_CONFIG_DIR environment variable if set.
 func Dir() (string, error) {
+	// Check for explicit config directory override
+	if dir := os.Getenv("VSB_CONFIG_DIR"); dir != "" {
+		return dir, nil
+	}
+
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
