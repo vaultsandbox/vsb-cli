@@ -18,7 +18,6 @@ func (m Model) renderLinksView() string {
 	var sb strings.Builder
 
 	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
-	linkStyle := lipgloss.NewStyle().Foreground(styles.White)
 	selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Purple)
 
 	// Tab bar
@@ -30,15 +29,16 @@ func (m Model) renderLinksView() string {
 		return sb.String()
 	}
 
-	sb.WriteString(labelStyle.Render(fmt.Sprintf("Found %d links:\n\n", len(email.Links))))
+	sb.WriteString(labelStyle.Render(fmt.Sprintf("Found %d links:", len(email.Links))))
+	sb.WriteString("\n\n")
 
 	for i, link := range email.Links {
 		if i == m.selectedLink {
-			sb.WriteString(selectedStyle.Render("> " + link))
+			sb.WriteString(selectedStyle.Render(">"))
+			sb.WriteString(" " + link + "\n")
 		} else {
-			sb.WriteString(linkStyle.Render("  " + link))
+			sb.WriteString("  " + link + "\n")
 		}
-		sb.WriteString("\n")
 	}
 
 	sb.WriteString("\n")
