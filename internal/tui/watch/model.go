@@ -181,11 +181,18 @@ func NewModel(client *vaultsandbox.Client, inboxes []*vaultsandbox.Inbox, active
 
 	// Create list with custom delegate
 	delegate := list.NewDefaultDelegate()
+	delegate.Styles.NormalTitle = delegate.Styles.NormalTitle.
+		Foreground(styles.White).
+		BorderForeground(styles.DarkGray)
+	delegate.Styles.NormalDesc = delegate.Styles.NormalDesc.
+		Foreground(styles.Gray).
+		BorderForeground(styles.DarkGray)
 	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
 		Foreground(styles.Primary).
 		BorderForeground(styles.Primary)
 	delegate.Styles.SelectedDesc = delegate.Styles.SelectedDesc.
-		Foreground(styles.Gray)
+		Foreground(styles.Gray).
+		BorderForeground(styles.Primary)
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
 	l.Title = "Connecting..."
