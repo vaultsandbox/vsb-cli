@@ -92,7 +92,7 @@ func ViewEmailHTML(subject, from string, receivedAt time.Time, emailHTML string)
         }
         .header {
             background: #1cc2e3;
-            color: #242424ff;
+            color: #0e0e0eff;
             padding: 20px;
             border-radius: 8px 8px 0 0;
         }
@@ -110,19 +110,11 @@ func ViewEmailHTML(subject, from string, receivedAt time.Time, emailHTML string)
             border-radius: 0 0 8px 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
-        .vsb-badge {
-            background: #10B981;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            margin-left: 10px;
-        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>%s <span class="vsb-badge">VaultSandbox</span></h1>
+        <h1>%s</h1>
         <div class="meta">
             <strong>From:</strong> %s<br>
             <strong>Date:</strong> %s

@@ -34,6 +34,23 @@ type InboxKeys struct {
 	ServerSigPK string `json:"server_sig_pk"` // pinned server key
 }
 
+// ExportedInboxFile is the file format for exported inboxes
+type ExportedInboxFile struct {
+	Version      int          `json:"version"`
+	EmailAddress string       `json:"emailAddress"`
+	InboxHash    string       `json:"inboxHash"`
+	ExpiresAt    time.Time    `json:"expiresAt"`
+	ExportedAt   time.Time    `json:"exportedAt"`
+	Keys         ExportedKeys `json:"keys"`
+}
+
+// ExportedKeys contains the cryptographic keys in an export file
+type ExportedKeys struct {
+	KEMPrivate  string `json:"kemPrivate"`
+	KEMPublic   string `json:"kemPublic"`
+	ServerSigPK string `json:"serverSigPk"`
+}
+
 // Keystore manages inbox persistence
 type Keystore struct {
 	Inboxes     []StoredInbox `json:"inboxes"`

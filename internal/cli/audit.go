@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
-	"github.com/vaultsandbox/vsb-cli/internal/security"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -129,7 +128,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 
 	// Summary
 	fmt.Println()
-	score := security.CalculateScore(email)
+	score := styles.CalculateScore(email)
 	summary := fmt.Sprintf("Security Score: %s", styles.ScoreStyle(score).Render(fmt.Sprintf("%d/100", score)))
 	fmt.Println(boxStyle.Render(summary))
 	fmt.Println()
@@ -193,7 +192,7 @@ func renderAuditJSON(email *vaultsandbox.Email) error {
 		"from":          email.From,
 		"to":            email.To,
 		"receivedAt":    email.ReceivedAt,
-		"securityScore": security.CalculateScore(email),
+		"securityScore": styles.CalculateScore(email),
 	}
 
 	if email.AuthResults != nil {

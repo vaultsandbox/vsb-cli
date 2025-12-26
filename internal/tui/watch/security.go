@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/vaultsandbox/vsb-cli/internal/security"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -42,7 +41,7 @@ func (m Model) renderSecurityView() string {
 	sb.WriteString("\n")
 	sb.WriteString(sectionStyle.Render("SECURITY SCORE"))
 	sb.WriteString("\n")
-	score := security.CalculateScore(email)
+	score := styles.CalculateScore(email)
 	sb.WriteString(styles.ScoreStyle(score).Render(fmt.Sprintf("%d/100", score)))
 	sb.WriteString("\n")
 
