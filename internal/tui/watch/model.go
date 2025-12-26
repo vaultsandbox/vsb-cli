@@ -183,7 +183,7 @@ func NewModel(client *vaultsandbox.Client, inboxes []*vaultsandbox.Inbox) Model 
 		Foreground(styles.Gray)
 
 	l := list.New([]list.Item{}, delegate, 0, 0)
-	l.Title = "Incoming Emails"
+	l.Title = "Connecting..."
 	l.Styles.Title = styles.HeaderStyle
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
@@ -385,6 +385,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case connectedMsg:
 		m.connected = true
+		m.updateTitle()
 
 	case emailReceivedMsg:
 		// Check if email already exists (avoid duplicates)
@@ -402,15 +403,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.emails = append([]EmailItem{item}, m.emails...)
 
 		// Update list
-		items := make([]list.Item, len(m.emails))
-		for i, e := range m.emails {
-			items[i] = e
-		}
-		m.list.SetItems(items)
+		m.updateFilteredList()
 
 	case errMsg:
 		m.lastError = msg.err
 		m.connected = false
+		m.updateTitle()
 
 	case emailDeletedMsg:
 		if msg.err != nil {
@@ -453,32 +451,10 @@ func (m Model) View() string {
 }
 
 func (m Model) viewList() string {
-	// Status bar
-	status := "Watching"
-	if len(m.inboxes) > 1 {
-		status += fmt.Sprintf(" [%d/%d] %s", m.currentInboxIdx+1, len(m.inboxes), m.currentInboxLabel())
-	} else if len(m.inboxes) == 1 {
-		status += " " + m.currentInboxLabel()
-	}
-	if !m.connected {
-		status = styles.HelpStyle.Foreground(styles.Red).Render("Disconnected")
-	}
-	if m.lastError != nil {
-		status = styles.HelpStyle.Foreground(styles.Red).Render("Error: " + m.lastError.Error())
-	}
-
-	filtered := m.filteredEmails()
-	statusBar := styles.StatusBarStyle.Render(
-		fmt.Sprintf("%s • %d emails • Press ? for help",
-			status, len(filtered)))
-
-	// Help text
 	help := styles.HelpStyle.Render("q: quit • enter: view • o: open • v: html • d: delete • ←/→: inbox • n: new")
 
-	// Combine
 	content := lipgloss.JoinVertical(lipgloss.Left,
 		m.list.View(),
-		statusBar,
 		help,
 	)
 
@@ -600,6 +576,24 @@ func (m *Model) updateFilteredList() {
 		items[i] = e
 	}
 	m.list.SetItems(items)
+	m.updateTitle()
+}
+
+// updateTitle updates the list title with current inbox info
+func (m *Model) updateTitle() {
+	var title string
+	if !m.connected {
+		title = "Disconnected"
+	} else if m.lastError != nil {
+		title = "Error: " + m.lastError.Error()
+	} else if len(m.inboxes) > 1 {
+		title = fmt.Sprintf("[%d/%d] %s • %d emails", m.currentInboxIdx+1, len(m.inboxes), m.currentInboxLabel(), len(m.filteredEmails()))
+	} else if len(m.inboxes) == 1 {
+		title = fmt.Sprintf("%s • %d emails", m.currentInboxLabel(), len(m.filteredEmails()))
+	} else {
+		title = "No inboxes"
+	}
+	m.list.Title = title
 }
 
 // currentInboxLabel returns the label for the current inbox
