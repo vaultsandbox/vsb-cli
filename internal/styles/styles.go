@@ -27,45 +27,6 @@ var (
 			Foreground(Gray).
 			MarginTop(1)
 
-	// Email list item
-	EmailItemStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(DarkGray).
-			Padding(0, 1).
-			MarginBottom(1)
-
-	EmailItemSelectedStyle = EmailItemStyle.
-				BorderForeground(Primary)
-
-	// Email fields
-	SubjectStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(White)
-
-	FromStyle = lipgloss.NewStyle().
-			Foreground(Gray)
-
-	TimeStyle = lipgloss.NewStyle().
-			Foreground(Gray).
-			Italic(true)
-
-	// Labels/badges
-	InboxLabelStyle = lipgloss.NewStyle().
-			Background(Primary).
-			Foreground(White).
-			Padding(0, 1).
-			MarginRight(1)
-
-	UnreadBadge = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(Green)
-
-	// Preview pane
-	PreviewStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(Primary).
-			Padding(1, 2)
-
 	// Help
 	HelpStyle = lipgloss.NewStyle().
 			Foreground(Gray)

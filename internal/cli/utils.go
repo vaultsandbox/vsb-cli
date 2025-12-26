@@ -64,3 +64,21 @@ func formatDuration(d time.Duration) string {
 	}
 	return fmt.Sprintf("%dd", int(d.Hours()/24))
 }
+
+// formatRelativeTime formats a time as a human-readable relative string (e.g., "just now", "5m ago").
+func formatRelativeTime(t time.Time) string {
+	diff := time.Since(t)
+
+	switch {
+	case diff < time.Minute:
+		return "just now"
+	case diff < time.Hour:
+		return fmt.Sprintf("%dm ago", int(diff.Minutes()))
+	case diff < 24*time.Hour:
+		return fmt.Sprintf("%dh ago", int(diff.Hours()))
+	case diff < 7*24*time.Hour:
+		return fmt.Sprintf("%dd ago", int(diff.Hours()/24))
+	default:
+		return t.Format("Jan 2")
+	}
+}
