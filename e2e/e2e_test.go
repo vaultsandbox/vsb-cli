@@ -22,6 +22,7 @@ import (
 	"net/smtp"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"testing"
 
@@ -30,8 +31,9 @@ import (
 )
 
 var (
-	apiKey  string
-	baseURL string
+	apiKey     string
+	baseURL    string
+	vsbBinPath string // Absolute path to the vsb binary
 )
 
 func TestMain(m *testing.M) {
@@ -53,8 +55,9 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 
-	// Check that the vsb binary exists
-	if _, err := os.Stat("../vsb"); os.IsNotExist(err) {
+	// Check that the vsb binary exists and get absolute path
+	vsbBinPath, _ = filepath.Abs("../vsb")
+	if _, err := os.Stat(vsbBinPath); os.IsNotExist(err) {
 		fmt.Fprintln(os.Stderr, "Error: vsb binary not found. Run 'go build -o vsb ./cmd/vsb' first")
 		os.Exit(1)
 	}
@@ -80,7 +83,7 @@ func runVSB(t *testing.T, args ...string) (stdout, stderr string, exitCode int) 
 func runVSBWithConfig(t *testing.T, configDir string, args ...string) (stdout, stderr string, exitCode int) {
 	t.Helper()
 
-	cmd := exec.Command("../vsb", args...)
+	cmd := exec.Command(vsbBinPath, args...)
 	cmd.Dir = configDir // Run from the config directory for relative paths
 	cmd.Env = append(os.Environ(),
 		"VSB_API_KEY="+apiKey,
