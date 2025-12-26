@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run e2e tests with coverage
+# Run all tests (unit + e2e) with combined coverage
 
 set -e
 
@@ -16,14 +16,22 @@ if [ -f .env ]; then
     set +a
 fi
 
-# Parse arguments
-COVERAGE=false
+# Default: run everything
+SKIP_UNIT=false
+SKIP_E2E=false
+SKIP_COVERAGE=false
 VERBOSE=false
 
 for arg in "$@"; do
     case $arg in
-        --coverage)
-            COVERAGE=true
+        --skip-unit)
+            SKIP_UNIT=true
+            ;;
+        --skip-e2e)
+            SKIP_E2E=true
+            ;;
+        --skip-coverage)
+            SKIP_COVERAGE=true
             ;;
         -v|--verbose)
             VERBOSE=true
@@ -31,59 +39,115 @@ for arg in "$@"; do
         --help)
             echo "Usage: $0 [options]"
             echo ""
+            echo "By default, runs all tests (unit + e2e) with combined coverage."
+            echo ""
             echo "Options:"
-            echo "  --coverage     Generate coverage report"
-            echo "  -v, --verbose  Verbose output"
-            echo "  --help         Show this help"
+            echo "  --skip-unit      Skip unit tests"
+            echo "  --skip-e2e       Skip e2e tests"
+            echo "  --skip-coverage  Skip coverage collection"
+            echo "  -v, --verbose    Verbose output"
+            echo "  --help           Show this help"
             exit 0
             ;;
     esac
 done
 
-# Validate required env vars
-if [ -z "$VAULTSANDBOX_API_KEY" ]; then
-    echo "Error: VAULTSANDBOX_API_KEY not set"
-    echo "Create a .env file with VAULTSANDBOX_API_KEY and VAULTSANDBOX_URL"
-    exit 1
-fi
-if [ -z "$VAULTSANDBOX_URL" ]; then
-    echo "Error: VAULTSANDBOX_URL not set"
-    exit 1
+# Validate required env vars for e2e
+if [ "$SKIP_E2E" = false ]; then
+    if [ -z "$VAULTSANDBOX_API_KEY" ]; then
+        echo "Error: VAULTSANDBOX_API_KEY not set"
+        echo "Create a .env file with VAULTSANDBOX_API_KEY and VAULTSANDBOX_URL"
+        echo "Or use --skip-e2e to run only unit tests"
+        exit 1
+    fi
+    if [ -z "$VAULTSANDBOX_URL" ]; then
+        echo "Error: VAULTSANDBOX_URL not set"
+        echo "Or use --skip-e2e to run only unit tests"
+        exit 1
+    fi
+    echo "Using API URL: $VAULTSANDBOX_URL"
 fi
 
-echo "Using API URL: $VAULTSANDBOX_URL"
-
-# Build binary (with coverage instrumentation if needed)
-if [ "$COVERAGE" = true ]; then
-    echo "Building vsb binary with coverage instrumentation..."
-    go build -cover -o vsb ./cmd/vsb
+# Setup coverage directories
+if [ "$SKIP_COVERAGE" = false ]; then
     rm -rf coverage
-    mkdir -p coverage
-    export GOCOVERDIR=coverage
-else
-    echo "Building vsb binary..."
-    go build -o vsb ./cmd/vsb
+    mkdir -p coverage/unit coverage/e2e
 fi
 
-# Build test command
-CMD="go test -tags=e2e -timeout 10m"
+# Run unit tests
+if [ "$SKIP_UNIT" = false ]; then
+    echo ""
+    echo "=== Running unit tests ==="
 
-if [ "$VERBOSE" = true ]; then
-    CMD="$CMD -v"
+    UNIT_CMD="go test"
+    if [ "$SKIP_COVERAGE" = false ]; then
+        UNIT_CMD="$UNIT_CMD -coverprofile=coverage/unit.out"
+    fi
+    if [ "$VERBOSE" = true ]; then
+        UNIT_CMD="$UNIT_CMD -v"
+    fi
+    UNIT_CMD="$UNIT_CMD ./internal/..."
+
+    echo "Running: $UNIT_CMD"
+    $UNIT_CMD
 fi
 
-CMD="$CMD ./e2e/..."
+# Run e2e tests
+if [ "$SKIP_E2E" = false ]; then
+    echo ""
+    echo "=== Running e2e tests ==="
 
-echo "Running: $CMD"
-$CMD
+    # Build binary with coverage instrumentation
+    if [ "$SKIP_COVERAGE" = false ]; then
+        echo "Building vsb binary with coverage instrumentation..."
+        go build -cover -o vsb ./cmd/vsb
+        export GOCOVERDIR=coverage/e2e
+    else
+        echo "Building vsb binary..."
+        go build -o vsb ./cmd/vsb
+    fi
 
-if [ "$COVERAGE" = true ]; then
+    E2E_CMD="go test -tags=e2e -timeout 10m"
+    if [ "$VERBOSE" = true ]; then
+        E2E_CMD="$E2E_CMD -v"
+    fi
+    E2E_CMD="$E2E_CMD ./e2e/..."
+
+    echo "Running: $E2E_CMD"
+    $E2E_CMD
+fi
+
+# Generate combined coverage report
+if [ "$SKIP_COVERAGE" = false ]; then
     echo ""
-    echo "Processing coverage data..."
-    go tool covdata textfmt -i=coverage -o=coverage.out
+    echo "=== Coverage Report ==="
+
+    # Convert e2e binary coverage to text format (if e2e was run)
+    if [ "$SKIP_E2E" = false ] && [ -d coverage/e2e ] && [ "$(ls -A coverage/e2e 2>/dev/null)" ]; then
+        go tool covdata textfmt -i=coverage/e2e -o=coverage/e2e.out
+    fi
+
+    # Combine coverage files
+    if [ "$SKIP_UNIT" = false ] && [ "$SKIP_E2E" = false ] && [ -f coverage/unit.out ] && [ -f coverage/e2e.out ]; then
+        # Merge coverage files (remove mode line from second file)
+        head -1 coverage/unit.out > coverage/combined.out
+        tail -n +2 coverage/unit.out >> coverage/combined.out
+        tail -n +2 coverage/e2e.out >> coverage/combined.out
+        COVERAGE_FILE=coverage/combined.out
+        echo "Combined unit + e2e coverage:"
+    elif [ -f coverage/unit.out ]; then
+        COVERAGE_FILE=coverage/unit.out
+        echo "Unit test coverage:"
+    elif [ -f coverage/e2e.out ]; then
+        COVERAGE_FILE=coverage/e2e.out
+        echo "E2E test coverage:"
+    else
+        echo "No coverage data collected"
+        exit 0
+    fi
+
+    # Show summary
+    go tool cover -func="$COVERAGE_FILE" | tail -1
     echo ""
-    echo "Coverage summary:"
-    go tool cover -func=coverage.out | tail -1
-    echo ""
-    echo "To view HTML report: go tool cover -html=coverage.out"
+    echo "To view HTML report: go tool cover -html=$COVERAGE_FILE"
 fi
