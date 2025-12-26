@@ -18,7 +18,8 @@ func LoadKeystoreOrError() (*config.Keystore, error) {
 }
 
 // GetInbox returns an inbox by email flag (with partial matching), or the active inbox if emailFlag is empty.
-func GetInbox(ks *config.Keystore, emailFlag string) (*config.StoredInbox, error) {
+// Accepts KeystoreReader interface to allow testing with mock implementations.
+func GetInbox(ks KeystoreReader, emailFlag string) (*config.StoredInbox, error) {
 	if emailFlag != "" {
 		inbox, matches, err := ks.FindInbox(emailFlag)
 		if err == config.ErrMultipleMatches {

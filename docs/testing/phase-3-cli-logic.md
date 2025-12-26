@@ -517,21 +517,21 @@ func TestInboxFullJSON(t *testing.T) {
 
 Before writing tests, these refactoring changes are needed:
 
-- [ ] Create `internal/cli/interfaces.go` with Keystore and Client interfaces
-- [ ] Extract `matchesFilter()` function from `wait.go`
-- [ ] Make `buildMIMETree()` exported or move to testable location
-- [ ] Ensure `downloadAttachment()` accepts directory parameter
-- [ ] Update helper functions to accept interfaces instead of concrete types
+- [x] Create `internal/cli/interfaces.go` with Keystore and Client interfaces
+- [x] ~~Extract `matchesFilter()` function from `wait.go`~~ (N/A: filtering uses SDK options)
+- [x] ~~Make `buildMIMETree()` exported or move to testable location~~ (tested via same package)
+- [x] ~~Ensure `downloadAttachment()` accepts directory parameter~~ (tested via global var)
+- [x] Update helper functions to accept interfaces instead of concrete types
 
 ## Test Files Checklist
 
-- [ ] Create `internal/cli/interfaces.go`
-- [ ] Create `internal/cli/helpers_test.go`
-- [ ] Create `internal/cli/wait_test.go`
-- [ ] Create `internal/cli/audit_test.go`
-- [ ] Create `internal/cli/attachment_test.go`
-- [ ] Create `internal/cli/json_test.go`
-- [ ] Run `go test ./internal/cli/...`
+- [x] Create `internal/cli/interfaces.go`
+- [x] Create `internal/cli/helpers_test.go`
+- [x] Create `internal/cli/wait_test.go`
+- [x] Create `internal/cli/audit_test.go`
+- [x] Create `internal/cli/attachment_test.go`
+- [x] Create `internal/cli/json_test.go` (already existed)
+- [x] Run `go test ./internal/cli/...`
 
 ## Commands
 
