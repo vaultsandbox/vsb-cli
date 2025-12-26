@@ -101,7 +101,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create TUI model starting on active inbox
-	model := watch.NewModel(client, inboxes, activeIdx)
+	model := watch.NewModel(client, inboxes, activeIdx, keystore)
 
 	// Create and run TUI program
 	p := tea.NewProgram(&model, tea.WithAltScreen())

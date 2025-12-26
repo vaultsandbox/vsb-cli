@@ -41,6 +41,11 @@ func (e EmailItem) FilterValue() string {
 	return e.Email.Subject + " " + e.Email.From
 }
 
+// Keystore interface for saving inboxes
+type Keystore interface {
+	SaveInbox(exported *vaultsandbox.ExportedInbox) error
+}
+
 // Messages
 type emailReceivedMsg struct {
 	email      *vaultsandbox.Email
@@ -100,6 +105,9 @@ type Model struct {
 	// SDK components
 	client  *vaultsandbox.Client
 	inboxes []*vaultsandbox.Inbox
+
+	// Keystore for saving new inboxes
+	keystore Keystore
 }
 
 // KeyMap defines the keybindings
@@ -176,7 +184,7 @@ var DefaultKeyMap = KeyMap{
 
 // NewModel creates a new watch TUI model
 // activeIdx is the index of the initially selected inbox
-func NewModel(client *vaultsandbox.Client, inboxes []*vaultsandbox.Inbox, activeIdx int) Model {
+func NewModel(client *vaultsandbox.Client, inboxes []*vaultsandbox.Inbox, activeIdx int, keystore Keystore) Model {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Create list with custom delegate
@@ -213,6 +221,7 @@ func NewModel(client *vaultsandbox.Client, inboxes []*vaultsandbox.Inbox, active
 		cancel:          cancel,
 		client:          client,
 		inboxes:         inboxes,
+		keystore:        keystore,
 	}
 }
 
@@ -496,6 +505,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.lastError = msg.err
 			return m, nil
+		}
+		// Save to keystore
+		if m.keystore != nil {
+			exported := msg.inbox.Export()
+			if err := m.keystore.SaveInbox(exported); err != nil {
+				m.lastError = err
+				return m, nil
+			}
 		}
 		// Add inbox and switch to it
 		m.inboxes = append(m.inboxes, msg.inbox)

@@ -122,6 +122,12 @@ func (ks *Keystore) AddInbox(inbox StoredInbox) error {
 	return ks.saveLocked()
 }
 
+// SaveInbox saves an exported inbox to the keystore
+func (ks *Keystore) SaveInbox(exported *vaultsandbox.ExportedInbox) error {
+	stored := StoredInboxFromExport(exported)
+	return ks.AddInbox(stored)
+}
+
 // GetInbox retrieves an inbox by email address (exact match)
 func (ks *Keystore) GetInbox(email string) (*StoredInbox, error) {
 	ks.mu.RLock()
