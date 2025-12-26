@@ -16,12 +16,10 @@ var cfgFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "vsb",
-	Short: "VaultSandbox CLI - Test email flows with quantum-safe encryption",
+	Short: "VaultSandbox CLI - https://vaultsandbox.com",
 	Long: `vsb is a developer companion for testing email flows.
-https://vaultsandbox.com
 
-It provides temporary inboxes with quantum-safe encryption
-(ML-KEM-768, ML-DSA-65). Emails are encrypted on receipt and
+It provides temporary encrypted inboxes. Emails are encrypted on receipt and
 can only be decrypted locally with your private keys.
 
 Running 'vsb' opens the real-time email dashboard for all inboxes.`,

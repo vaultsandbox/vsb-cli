@@ -13,7 +13,7 @@
 
 ### `vsb inbox create`
 
-Create a new temporary inbox with quantum-safe encryption.
+Create a new temporary encrypted inbox.
 
 **Flags:**
 | Flag | Default | Description |

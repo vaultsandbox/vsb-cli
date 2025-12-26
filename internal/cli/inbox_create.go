@@ -16,7 +16,7 @@ import (
 var inboxCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new temporary inbox",
-	Long: `Create a new temporary email inbox with quantum-safe encryption.
+	Long: `Create a new temporary encrypted email inbox.
 
 The inbox uses ML-KEM-768 for key encapsulation and ML-DSA-65 for signatures.
 Your private key never leaves your machine - all decryption happens locally.
@@ -51,7 +51,7 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 
 	// Show progress (not in JSON mode)
 	if !jsonMode {
-		fmt.Println(styles.MutedStyle.Render("• Generating quantum-safe keys..."))
+		fmt.Println(styles.MutedStyle.Render("• Generating keys..."))
 	}
 
 	// Create client
