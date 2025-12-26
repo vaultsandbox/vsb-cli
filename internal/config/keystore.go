@@ -136,19 +136,16 @@ func (ks *Keystore) FindInbox(partial string) (*StoredInbox, []string, error) {
 	ks.mu.RLock()
 	defer ks.mu.RUnlock()
 
-	// First try exact match
-	for i := range ks.Inboxes {
-		if ks.Inboxes[i].Email == partial {
-			return &ks.Inboxes[i], nil, nil
-		}
-	}
-
-	// Try partial match (contains)
-	var matches []StoredInbox
+	// Single-pass: check exact and collect partial matches together
+	var matches []*StoredInbox
 	var matchEmails []string
 	for i := range ks.Inboxes {
+		if ks.Inboxes[i].Email == partial {
+			// Exact match - return immediately
+			return &ks.Inboxes[i], nil, nil
+		}
 		if strings.Contains(ks.Inboxes[i].Email, partial) {
-			matches = append(matches, ks.Inboxes[i])
+			matches = append(matches, &ks.Inboxes[i])
 			matchEmails = append(matchEmails, ks.Inboxes[i].Email)
 		}
 	}
@@ -157,7 +154,7 @@ func (ks *Keystore) FindInbox(partial string) (*StoredInbox, []string, error) {
 		return nil, nil, ErrInboxNotFound
 	}
 	if len(matches) == 1 {
-		return &matches[0], nil, nil
+		return matches[0], nil, nil
 	}
 	return nil, matchEmails, ErrMultipleMatches
 }
@@ -184,15 +181,7 @@ func (ks *Keystore) SetActiveInbox(email string) error {
 	ks.mu.Lock()
 	defer ks.mu.Unlock()
 
-	// Verify inbox exists
-	found := false
-	for _, inbox := range ks.Inboxes {
-		if inbox.Email == email {
-			found = true
-			break
-		}
-	}
-	if !found {
+	if !ks.inboxExistsLocked(email) {
 		return ErrInboxNotFound
 	}
 
@@ -247,20 +236,11 @@ func (ks *Keystore) pruneExpired() {
 		ks.Inboxes = active
 
 		// Fix active inbox if it was pruned
-		if ks.ActiveInbox != "" {
-			found := false
-			for _, inbox := range ks.Inboxes {
-				if inbox.Email == ks.ActiveInbox {
-					found = true
-					break
-				}
-			}
-			if !found {
-				if len(ks.Inboxes) > 0 {
-					ks.ActiveInbox = ks.Inboxes[0].Email
-				} else {
-					ks.ActiveInbox = ""
-				}
+		if ks.ActiveInbox != "" && !ks.inboxExistsLocked(ks.ActiveInbox) {
+			if len(ks.Inboxes) > 0 {
+				ks.ActiveInbox = ks.Inboxes[0].Email
+			} else {
+				ks.ActiveInbox = ""
 			}
 		}
 
@@ -270,6 +250,15 @@ func (ks *Keystore) pruneExpired() {
 }
 
 // Internal helpers
+
+func (ks *Keystore) inboxExistsLocked(email string) bool {
+	for i := range ks.Inboxes {
+		if ks.Inboxes[i].Email == email {
+			return true
+		}
+	}
+	return false
+}
 
 func (ks *Keystore) removeInboxLocked(email string) bool {
 	for i, inbox := range ks.Inboxes {
