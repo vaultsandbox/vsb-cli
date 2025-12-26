@@ -11,141 +11,13 @@ import (
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Handle detail view keys
 		if m.viewing {
-			switch {
-			case key.Matches(msg, DefaultKeyMap.Quit):
-				m.cancel()
-				return m, tea.Quit
-			case key.Matches(msg, DefaultKeyMap.Back):
-				m.viewing = false
-				m.viewedEmail = nil
-				m.detailView = ViewContent
-				return m, nil
-			case key.Matches(msg, DefaultKeyMap.ViewHTML):
-				if m.viewedEmail != nil && m.viewedEmail.Email.HTML != "" {
-					return m, m.viewHTML()
-				}
-			// Links/Attachments view: up/down to navigate, enter to open/save
-			case key.Matches(msg, DefaultKeyMap.Up):
-				if m.viewedEmail != nil {
-					if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
-						m.selectedLink = wrapIndex(m.selectedLink, -1, len(m.viewedEmail.Email.Links))
-						m.viewport.SetContent(m.renderLinksView())
-						return m, nil
-					}
-					if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
-						m.selectedAttachment = wrapIndex(m.selectedAttachment, -1, len(m.viewedEmail.Email.Attachments))
-						m.viewport.SetContent(m.renderAttachmentsView())
-						return m, nil
-					}
-				}
-			case key.Matches(msg, DefaultKeyMap.Down):
-				if m.viewedEmail != nil {
-					if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
-						m.selectedLink = wrapIndex(m.selectedLink, 1, len(m.viewedEmail.Email.Links))
-						m.viewport.SetContent(m.renderLinksView())
-						return m, nil
-					}
-					if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
-						m.selectedAttachment = wrapIndex(m.selectedAttachment, 1, len(m.viewedEmail.Email.Attachments))
-						m.viewport.SetContent(m.renderAttachmentsView())
-						return m, nil
-					}
-				}
-			case key.Matches(msg, DefaultKeyMap.Enter):
-				if m.viewedEmail != nil {
-					if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
-						return m, m.openLinkByIndex(m.selectedLink)
-					}
-					if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
-						return m, m.saveAttachment(m.selectedAttachment)
-					}
-				}
-			// Number keys: switch tabs
-			default:
-				if m.viewedEmail != nil && len(msg.String()) == 1 {
-					r := msg.String()[0]
-					switch r {
-					case '1':
-						m.detailView = ViewContent
-						m.viewport.SetContent(m.renderEmailDetail())
-						m.viewport.GotoTop()
-					case '2':
-						m.detailView = ViewSecurity
-						m.viewport.SetContent(m.renderSecurityView())
-						m.viewport.GotoTop()
-					case '3':
-						m.detailView = ViewLinks
-						m.selectedLink = 0
-						m.viewport.SetContent(m.renderLinksView())
-						m.viewport.GotoTop()
-					case '4':
-						m.detailView = ViewAttachments
-						m.selectedAttachment = 0
-						m.viewport.SetContent(m.renderAttachmentsView())
-						m.viewport.GotoTop()
-					case '5':
-						m.detailView = ViewRaw
-						m.viewport.SetContent(m.renderRawView())
-						m.viewport.GotoTop()
-					}
-					return m, nil
-				}
-			}
-			// Update viewport for scrolling
-			var cmd tea.Cmd
-			m.viewport, cmd = m.viewport.Update(msg)
-			return m, cmd
+			return m.handleDetailViewUpdate(msg)
 		}
-
-		// Don't handle keys when filtering
 		if m.list.FilterState() == list.Filtering {
 			break
 		}
-
-		switch {
-		case key.Matches(msg, DefaultKeyMap.Quit):
-			m.cancel()
-			return m, tea.Quit
-		case key.Matches(msg, DefaultKeyMap.Enter):
-			if len(m.filteredEmails()) > 0 {
-				if i := m.list.Index(); i >= 0 && i < len(m.filteredEmails()) {
-					filtered := m.filteredEmails()
-					m.viewing = true
-					m.viewedEmail = &filtered[i]
-					m.viewport.SetContent(m.renderEmailDetail())
-					m.viewport.GotoTop()
-				}
-			}
-			return m, nil
-		case key.Matches(msg, DefaultKeyMap.OpenURL):
-			if len(m.filteredEmails()) > 0 {
-				return m, m.openFirstURL()
-			}
-		case key.Matches(msg, DefaultKeyMap.ViewHTML):
-			if len(m.filteredEmails()) > 0 {
-				return m, m.viewHTML()
-			}
-		case key.Matches(msg, DefaultKeyMap.Delete):
-			if len(m.filteredEmails()) > 0 {
-				return m, m.deleteEmail()
-			}
-		case key.Matches(msg, DefaultKeyMap.PrevInbox):
-			if len(m.inboxes) > 0 {
-				m.currentInboxIdx = wrapIndex(m.currentInboxIdx, -1, len(m.inboxes))
-				m.updateFilteredList()
-			}
-			return m, nil
-		case key.Matches(msg, DefaultKeyMap.NextInbox):
-			if len(m.inboxes) > 0 {
-				m.currentInboxIdx = wrapIndex(m.currentInboxIdx, 1, len(m.inboxes))
-				m.updateFilteredList()
-			}
-			return m, nil
-		case key.Matches(msg, DefaultKeyMap.NewInbox):
-			return m, m.createNewInbox()
-		}
+		return m.handleListViewUpdate(msg)
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -283,4 +155,149 @@ func (m Model) currentInboxLabel() string {
 		return m.inboxes[m.currentInboxIdx].EmailAddress()
 	}
 	return "all"
+}
+
+// handleDetailViewUpdate handles key events when viewing an email detail
+func (m Model) handleDetailViewUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, DefaultKeyMap.Quit):
+		m.cancel()
+		return m, tea.Quit
+	case key.Matches(msg, DefaultKeyMap.Back):
+		m.viewing = false
+		m.viewedEmail = nil
+		m.detailView = ViewContent
+		return m, nil
+	case key.Matches(msg, DefaultKeyMap.ViewHTML):
+		if m.viewedEmail != nil && m.viewedEmail.Email.HTML != "" {
+			return m, m.viewHTML()
+		}
+	case key.Matches(msg, DefaultKeyMap.Up):
+		if m.viewedEmail != nil {
+			if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
+				m.selectedLink = wrapIndex(m.selectedLink, -1, len(m.viewedEmail.Email.Links))
+				m.viewport.SetContent(m.renderLinksView())
+				return m, nil
+			}
+			if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
+				m.selectedAttachment = wrapIndex(m.selectedAttachment, -1, len(m.viewedEmail.Email.Attachments))
+				m.viewport.SetContent(m.renderAttachmentsView())
+				return m, nil
+			}
+		}
+	case key.Matches(msg, DefaultKeyMap.Down):
+		if m.viewedEmail != nil {
+			if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
+				m.selectedLink = wrapIndex(m.selectedLink, 1, len(m.viewedEmail.Email.Links))
+				m.viewport.SetContent(m.renderLinksView())
+				return m, nil
+			}
+			if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
+				m.selectedAttachment = wrapIndex(m.selectedAttachment, 1, len(m.viewedEmail.Email.Attachments))
+				m.viewport.SetContent(m.renderAttachmentsView())
+				return m, nil
+			}
+		}
+	case key.Matches(msg, DefaultKeyMap.Enter):
+		if m.viewedEmail != nil {
+			if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
+				return m, m.openLinkByIndex(m.selectedLink)
+			}
+			if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
+				return m, m.saveAttachment(m.selectedAttachment)
+			}
+		}
+	default:
+		// Number keys: switch tabs
+		if m.viewedEmail != nil && len(msg.String()) == 1 {
+			if cmd := m.handleTabSwitch(msg.String()[0]); cmd != nil {
+				return m, cmd
+			}
+		}
+	}
+	// Update viewport for scrolling
+	var cmd tea.Cmd
+	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
+}
+
+// handleListViewUpdate handles key events when viewing the email list
+func (m Model) handleListViewUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, DefaultKeyMap.Quit):
+		m.cancel()
+		return m, tea.Quit
+	case key.Matches(msg, DefaultKeyMap.Enter):
+		if len(m.filteredEmails()) > 0 {
+			if i := m.list.Index(); i >= 0 && i < len(m.filteredEmails()) {
+				filtered := m.filteredEmails()
+				m.viewing = true
+				m.viewedEmail = &filtered[i]
+				m.viewport.SetContent(m.renderEmailDetail())
+				m.viewport.GotoTop()
+			}
+		}
+		return m, nil
+	case key.Matches(msg, DefaultKeyMap.OpenURL):
+		if len(m.filteredEmails()) > 0 {
+			return m, m.openFirstURL()
+		}
+	case key.Matches(msg, DefaultKeyMap.ViewHTML):
+		if len(m.filteredEmails()) > 0 {
+			return m, m.viewHTML()
+		}
+	case key.Matches(msg, DefaultKeyMap.Delete):
+		if len(m.filteredEmails()) > 0 {
+			return m, m.deleteEmail()
+		}
+	case key.Matches(msg, DefaultKeyMap.PrevInbox):
+		if len(m.inboxes) > 0 {
+			m.currentInboxIdx = wrapIndex(m.currentInboxIdx, -1, len(m.inboxes))
+			m.updateFilteredList()
+		}
+		return m, nil
+	case key.Matches(msg, DefaultKeyMap.NextInbox):
+		if len(m.inboxes) > 0 {
+			m.currentInboxIdx = wrapIndex(m.currentInboxIdx, 1, len(m.inboxes))
+			m.updateFilteredList()
+		}
+		return m, nil
+	case key.Matches(msg, DefaultKeyMap.NewInbox):
+		return m, m.createNewInbox()
+	}
+
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
+}
+
+// handleTabSwitch handles number key presses to switch tabs in detail view
+func (m *Model) handleTabSwitch(r byte) tea.Cmd {
+	switch r {
+	case '1':
+		m.detailView = ViewContent
+		m.viewport.SetContent(m.renderEmailDetail())
+		m.viewport.GotoTop()
+	case '2':
+		m.detailView = ViewSecurity
+		m.viewport.SetContent(m.renderSecurityView())
+		m.viewport.GotoTop()
+	case '3':
+		m.detailView = ViewLinks
+		m.selectedLink = 0
+		m.viewport.SetContent(m.renderLinksView())
+		m.viewport.GotoTop()
+	case '4':
+		m.detailView = ViewAttachments
+		m.selectedAttachment = 0
+		m.viewport.SetContent(m.renderAttachmentsView())
+		m.viewport.GotoTop()
+	case '5':
+		m.detailView = ViewRaw
+		m.viewport.SetContent(m.renderRawView())
+		m.viewport.GotoTop()
+	default:
+		return nil
+	}
+	return nil
 }
