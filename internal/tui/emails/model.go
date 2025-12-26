@@ -77,39 +77,38 @@ const (
 	ViewRaw
 )
 
-// Model is the Bubble Tea model for the watch TUI
+// Model is the Bubble Tea model for the watch TUI.
+// Fields are grouped by concern: list state, detail view state, connection state, and dependencies.
 type Model struct {
-	list     list.Model
-	viewport viewport.Model
-	emails   []EmailItem
-
+	// List view state
+	list            list.Model
+	viewport        viewport.Model
+	emails          []EmailItem
 	currentInboxIdx int // index into inboxes slice
 
 	// Detail view state
 	viewing            bool
 	viewedEmail        *EmailItem
 	detailView         DetailView
-	selectedLink       int    // selected link index in links view
-	selectedAttachment int    // selected attachment index in attachments view
-	lastSavedFile      string // last saved attachment filename
+	selectedLink       int
+	selectedAttachment int
+	lastSavedFile      string
 
-	// Connection status
+	// Connection state
 	connected bool
 	lastError error
 
-	// Dimensions
+	// Layout
 	width  int
 	height int
 
-	// Context for cancellation
+	// Context
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	// SDK components
-	client  *vaultsandbox.Client
-	inboxes []*vaultsandbox.Inbox
-
-	// Keystore for saving new inboxes
+	// Dependencies
+	client   *vaultsandbox.Client
+	inboxes  []*vaultsandbox.Inbox
 	keystore Keystore
 }
 

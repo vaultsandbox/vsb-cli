@@ -37,39 +37,28 @@ func (m Model) handleListViewUpdate(msg tea.Msg) (Model, tea.Cmd)
 
 ---
 
-## Medium Priority
+## Medium Priority ✓ DONE
 
-### 4. Email-to-Map Conversion Duplication
+### 4. Email-to-Map Conversion Duplication ✓
 **Location:** `view.go`, `wait.go`, `audit.go`
 
-**Problem:** Near-identical `map[string]interface{}` construction for email data.
+**Status:** Already fixed - using `EmailFullJSON()` helper from `json.go`.
 
-**Solution:** create shared version in `helpers.go`.
-
-### 5. Inline Styles Scattered Across Commands
+### 5. Inline Styles Scattered Across Commands ✓
 **Location:** `list.go`, `inbox_info.go`, `view.go`, TUI files
 
-**Problem:** Commands define styles inline:
-```go
-idStyle := lipgloss.NewStyle().Foreground(styles.Gray)
-subjectStyle := lipgloss.NewStyle().Bold(true)
-```
+**Status:** Fixed - Added shared styles to `internal/styles/styles.go`:
+- `IDStyle`, `SubjectStyle`, `FromStyle`, `TimeStyle` - for list views
+- `TitleStyle`, `AuditTitleStyle` - for headers
+- `DetailLabelStyle`, `DetailValueStyle`, `DetailSectionStyle` - for TUI detail views
 
-**Solution:** Add to `internal/styles/styles.go`:
-```go
-var IDStyle = lipgloss.NewStyle().Foreground(Gray)
-var SubjectStyle = lipgloss.NewStyle().Bold(true)
-```
-
-### 6. TUI Model Struct Size
+### 6. TUI Model Struct Size ✓
 **Location:** `internal/tui/emails/model.go`
 
-**Problem:** Model mixes list view state, detail view state, connection state, and error state.
-
-**Solution:** Consider splitting into sub-models for better testability:
-- `ListModel` - list navigation state
-- `DetailModel` - email detail view state
-- `ConnectionModel` - SSE connection state
+**Status:** Already well-structured:
+- Update handlers already extracted (`handleDetailViewUpdate`, `handleListViewUpdate`, `handleTabSwitch`)
+- Added documentation comments grouping fields by concern
+- Sub-models would add complexity without benefit due to tight coupling
 
 ---
 
