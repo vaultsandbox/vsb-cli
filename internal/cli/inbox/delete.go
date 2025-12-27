@@ -1,4 +1,4 @@
-package cli
+package inbox
 
 import (
 	"context"
@@ -6,11 +6,12 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
-var inboxDeleteCmd = &cobra.Command{
+var deleteCmd = &cobra.Command{
 	Use:   "delete <email>",
 	Short: "Delete an inbox",
 	Long: `Delete an inbox from both the server and local keystore.
@@ -24,7 +25,7 @@ Examples:
   vsb inbox delete abc -l    # Local only (don't delete on server)`,
 	Aliases: []string{"rm"},
 	Args:    cobra.ExactArgs(1),
-	RunE:    runInboxDelete,
+	RunE:    runDelete,
 }
 
 var (
@@ -32,22 +33,22 @@ var (
 )
 
 func init() {
-	inboxCmd.AddCommand(inboxDeleteCmd)
+	Cmd.AddCommand(deleteCmd)
 
-	inboxDeleteCmd.Flags().BoolVarP(&deleteLocal, "local", "l", false,
+	deleteCmd.Flags().BoolVarP(&deleteLocal, "local", "l", false,
 		"Only remove from local keystore, don't delete on server")
 }
 
-func runInboxDelete(cmd *cobra.Command, args []string) error {
+func runDelete(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	partial := args[0]
 
-	ks, err := LoadKeystoreOrError()
+	ks, err := cliutil.LoadKeystoreOrError()
 	if err != nil {
 		return err
 	}
 
-	inbox, err := GetInbox(ks, partial)
+	inbox, err := cliutil.GetInbox(ks, partial)
 	if err != nil {
 		return err
 	}

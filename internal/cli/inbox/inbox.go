@@ -1,4 +1,4 @@
-package cli
+package inbox
 
 import (
 	"fmt"
@@ -6,7 +6,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var inboxCmd = &cobra.Command{
+// Cmd is the inbox parent command
+var Cmd = &cobra.Command{
 	Use:   "inbox",
 	Short: "Manage temporary email inboxes",
 	Long:  `Create, list, switch, and delete temporary email inboxes.`,
@@ -16,8 +17,4 @@ var inboxCmd = &cobra.Command{
 		}
 		return cmd.Help()
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(inboxCmd)
 }

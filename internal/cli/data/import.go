@@ -1,4 +1,4 @@
-package cli
+package data
 
 import (
 	"context"
@@ -8,11 +8,13 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
-var importCmd = &cobra.Command{
+// ImportCmd is the import command
+var ImportCmd = &cobra.Command{
 	Use:   "import <file>",
 	Short: "Import inbox from export file",
 	Long: `Import an inbox from a previously exported JSON file.
@@ -34,11 +36,9 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(importCmd)
-
-	importCmd.Flags().BoolVarP(&importLocal, "local", "l", false,
+	ImportCmd.Flags().BoolVarP(&importLocal, "local", "l", false,
 		"Skip server verification")
-	importCmd.Flags().BoolVarP(&importForce, "force", "f", false,
+	ImportCmd.Flags().BoolVarP(&importForce, "force", "f", false,
 		"Overwrite existing inbox with same email")
 }
 
@@ -71,7 +71,7 @@ func runImport(cmd *cobra.Command, args []string) error {
 	}
 
 	// Use existing helper
-	keystore, err := LoadKeystoreOrError()
+	keystore, err := cliutil.LoadKeystoreOrError()
 	if err != nil {
 		return err
 	}

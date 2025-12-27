@@ -1,4 +1,4 @@
-package cli
+package inbox
 
 import (
 	"context"
@@ -9,11 +9,12 @@ import (
 
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
-var inboxCreateCmd = &cobra.Command{
+var createCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new temporary inbox",
 	Long: `Create a new temporary encrypted email inbox.
@@ -25,7 +26,7 @@ Examples:
   vsb inbox create
   vsb inbox create --ttl 1h
   vsb inbox create --ttl 7d`,
-	RunE: runInboxCreate,
+	RunE: runCreate,
 }
 
 var (
@@ -33,15 +34,15 @@ var (
 )
 
 func init() {
-	inboxCmd.AddCommand(inboxCreateCmd)
+	Cmd.AddCommand(createCmd)
 
-	inboxCreateCmd.Flags().StringVar(&createTTL, "ttl", "24h",
+	createCmd.Flags().StringVar(&createTTL, "ttl", "24h",
 		"Inbox lifetime (e.g., 1h, 24h, 7d)")
 }
 
-func runInboxCreate(cmd *cobra.Command, args []string) error {
+func runCreate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-	jsonMode := getOutput(cmd) == "json"
+	jsonMode := cliutil.GetOutput(cmd) == "json"
 
 	// Parse TTL
 	ttl, err := parseTTL(createTTL)
@@ -75,7 +76,7 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 	exported := inbox.Export()
 
 	// Save to keystore
-	keystore, err := LoadKeystoreOrError()
+	keystore, err := cliutil.LoadKeystoreOrError()
 	if err != nil {
 		return err
 	}
@@ -92,7 +93,7 @@ func runInboxCreate(cmd *cobra.Command, args []string) error {
 			"expiresAt": stored.ExpiresAt.Format(time.RFC3339),
 			"createdAt": stored.CreatedAt.Format(time.RFC3339),
 		}
-		return outputJSON(data)
+		return cliutil.OutputJSON(data)
 	} else {
 		printInboxCreated(stored)
 	}

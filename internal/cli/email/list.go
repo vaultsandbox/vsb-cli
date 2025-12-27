@@ -1,4 +1,4 @@
-package cli
+package email
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -30,7 +31,7 @@ var (
 )
 
 func init() {
-	emailCmd.AddCommand(listCmd)
+	Cmd.AddCommand(listCmd)
 
 	listCmd.Flags().StringVar(&listInbox, "inbox", "",
 		"Use specific inbox (default: active)")
@@ -39,7 +40,7 @@ func init() {
 func runList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	inbox, cleanup, err := LoadAndImportInbox(ctx, listInbox)
+	inbox, cleanup, err := cliutil.LoadAndImportInbox(ctx, listInbox)
 	if err != nil {
 		return err
 	}
@@ -51,12 +52,12 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	// JSON output
-	if getOutput(cmd) == "json" {
+	if cliutil.GetOutput(cmd) == "json" {
 		var result []map[string]interface{}
 		for _, email := range emails {
-			result = append(result, EmailSummaryJSON(email))
+			result = append(result, cliutil.EmailSummaryJSON(email))
 		}
-		return outputJSON(result)
+		return cliutil.OutputJSON(result)
 	}
 
 	// Pretty output
@@ -81,7 +82,7 @@ func runList(cmd *cobra.Command, args []string) error {
 		id := truncate(email.ID, 8)
 		subject := truncate(email.Subject, 30)
 		from := truncate(email.From, 25)
-		received := formatRelativeTime(email.ReceivedAt)
+		received := cliutil.FormatRelativeTime(email.ReceivedAt)
 
 		fmt.Printf("  %s  %s  %s  %s\n",
 			styles.IDStyle.Render(fmt.Sprintf("%-8s", id)),

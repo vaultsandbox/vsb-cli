@@ -1,4 +1,4 @@
-package cli
+package email
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/vaultsandbox/vsb-cli/internal/browser"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 )
 
 var urlCmd = &cobra.Command{
@@ -33,7 +34,7 @@ var (
 )
 
 func init() {
-	emailCmd.AddCommand(urlCmd)
+	Cmd.AddCommand(urlCmd)
 
 	urlCmd.Flags().IntVarP(&urlOpen, "open", "O", 0,
 		"Open the Nth URL in browser (1=first, 0=don't open)")
@@ -51,7 +52,7 @@ func runURL(cmd *cobra.Command, args []string) error {
 	}
 
 	// Use shared helper
-	email, _, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, urlInbox)
+	email, _, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, urlInbox)
 	if err != nil {
 		return err
 	}
@@ -59,7 +60,7 @@ func runURL(cmd *cobra.Command, args []string) error {
 
 	// Check for URLs
 	if len(email.Links) == 0 {
-		if getOutput(cmd) == "json" {
+		if cliutil.GetOutput(cmd) == "json" {
 			fmt.Println("[]")
 		} else {
 			fmt.Println("No URLs found in email")
@@ -78,8 +79,8 @@ func runURL(cmd *cobra.Command, args []string) error {
 	}
 
 	// Default: list all URLs
-	if getOutput(cmd) == "json" {
-		return outputJSON(email.Links)
+	if cliutil.GetOutput(cmd) == "json" {
+		return cliutil.OutputJSON(email.Links)
 	} else {
 		for i, url := range email.Links {
 			fmt.Printf("%d. %s\n", i+1, url)

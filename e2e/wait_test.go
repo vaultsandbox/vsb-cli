@@ -99,7 +99,7 @@ func TestWaitBasic(t *testing.T) {
 		}()
 
 		// Wait for email
-		stdout, stderr, code := runVSBWithConfig(t, configDir, "wait", "--timeout", "30s", "--output", "json")
+		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait", "--timeout", "30s", "--output", "json")
 		require.Equal(t, 0, code, "wait failed: stdout=%s, stderr=%s", stdout, stderr)
 
 		var result struct {
@@ -151,7 +151,7 @@ func TestWaitSubject(t *testing.T) {
 			<-sendTestEmailAsync(inboxEmail, uniqueSubject, "This should match")
 		}()
 
-		stdout, stderr, code := runVSBWithConfig(t, configDir, "wait", "--subject", uniqueSubject, "--timeout", "30s", "--output", "json")
+		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait", "--subject", uniqueSubject, "--timeout", "30s", "--output", "json")
 		require.Equal(t, 0, code, "wait --subject failed: stdout=%s, stderr=%s", stdout, stderr)
 
 		var result struct {
@@ -189,7 +189,7 @@ func TestWaitSubject(t *testing.T) {
 			<-sendTestEmailAsync(inboxEmail, "Password Reset Request "+timestamp, "Click here to reset password")
 		}()
 
-		stdout, stderr, code := runVSBWithConfig(t, configDir, "wait", "--subject-regex", "Password.*"+timestamp[:6], "--timeout", "30s", "--output", "json")
+		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait", "--subject-regex", "Password.*"+timestamp[:6], "--timeout", "30s", "--output", "json")
 		require.Equal(t, 0, code, "wait --subject-regex failed: stdout=%s, stderr=%s", stdout, stderr)
 
 		var result struct {
@@ -231,7 +231,7 @@ func TestWaitFrom(t *testing.T) {
 		}()
 
 		// Our test emails are from test@example.com
-		stdout, stderr, code := runVSBWithConfig(t, configDir, "wait", "--from", "test@example.com", "--timeout", "30s", "--output", "json")
+		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait", "--from", "test@example.com", "--timeout", "30s", "--output", "json")
 		require.Equal(t, 0, code, "wait --from failed: stdout=%s, stderr=%s", stdout, stderr)
 
 		var result struct {
@@ -267,7 +267,7 @@ func TestWaitFrom(t *testing.T) {
 			<-sendTestEmailAsync(inboxEmail, "From Regex Test", "Testing from regex filter")
 		}()
 
-		stdout, stderr, code := runVSBWithConfig(t, configDir, "wait", "--from-regex", "test@.*\\.com", "--timeout", "30s", "--output", "json")
+		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait", "--from-regex", "test@.*\\.com", "--timeout", "30s", "--output", "json")
 		require.Equal(t, 0, code, "wait --from-regex failed: stdout=%s, stderr=%s", stdout, stderr)
 
 		var result struct {
@@ -303,7 +303,7 @@ func TestWaitTimeout(t *testing.T) {
 		// Wait with a very short timeout, expecting no email to arrive
 		uniqueSubject := "NonExistent Subject " + time.Now().Format("150405.000")
 		start := time.Now()
-		_, stderr, code := runVSBWithConfig(t, configDir, "wait", "--timeout", "2s", "--subject", uniqueSubject)
+		_, stderr, code := runVSBWithConfig(t, configDir, "email", "wait", "--timeout", "2s", "--subject", uniqueSubject)
 		elapsed := time.Since(start)
 
 		// Should fail with timeout
@@ -349,7 +349,7 @@ func TestWaitCount(t *testing.T) {
 			<-sendTestEmailAsync(inboxEmail, subject, "Second email")
 		}()
 
-		stdout, stderr, code := runVSBWithConfig(t, configDir, "wait", "--count", "2", "--subject", subject, "--timeout", "30s", "--output", "json")
+		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait", "--count", "2", "--subject", subject, "--timeout", "30s", "--output", "json")
 		require.Equal(t, 0, code, "wait --count failed: stdout=%s, stderr=%s", stdout, stderr)
 
 		// Output should contain JSON array or multiple JSON objects
@@ -396,7 +396,7 @@ func TestWaitExtractLink(t *testing.T) {
 			<-sendTestHTMLEmailAsync(inboxEmail, subject, textBody, htmlBody)
 		}()
 
-		stdout, stderr, code := runVSBWithConfig(t, configDir, "wait", "--subject", subject, "--extract-link", "--timeout", "30s")
+		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait", "--subject", subject, "--extract-link", "--timeout", "30s")
 		require.Equal(t, 0, code, "wait --extract-link failed: stdout=%s, stderr=%s", stdout, stderr)
 
 		// Output should contain the verification URL
@@ -438,7 +438,7 @@ func TestWaitQuiet(t *testing.T) {
 			<-sendTestEmailAsync(inboxEmail, subject, "This is a quiet test")
 		}()
 
-		stdout, _, code = runVSBWithConfig(t, configDir, "wait", "--quiet", "--subject", subject, "--timeout", "30s")
+		stdout, _, code = runVSBWithConfig(t, configDir, "email", "wait", "--quiet", "--subject", subject, "--timeout", "30s")
 		require.Equal(t, 0, code)
 
 		// Quiet mode should produce no stdout output
@@ -464,7 +464,7 @@ func TestWaitQuiet(t *testing.T) {
 		})
 
 		uniqueSubject := "Nonexistent Quiet Subject " + time.Now().Format("150405.000")
-		_, _, code = runVSBWithConfig(t, configDir, "wait", "--quiet", "--timeout", "2s", "--subject", uniqueSubject)
+		_, _, code = runVSBWithConfig(t, configDir, "email", "wait", "--quiet", "--timeout", "2s", "--subject", uniqueSubject)
 
 		// Should fail with non-zero exit code
 		assert.NotEqual(t, 0, code, "wait --quiet should return non-zero on timeout")
@@ -508,7 +508,7 @@ func TestWaitWithInbox(t *testing.T) {
 		}()
 
 		// Wait using explicit --inbox flag for first inbox
-		stdout, stderr, code := runVSBWithConfig(t, configDir, "wait", "--inbox", inboxEmails[0], "--subject", subject, "--timeout", "30s", "--output", "json")
+		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait", "--inbox", inboxEmails[0], "--subject", subject, "--timeout", "30s", "--output", "json")
 		require.Equal(t, 0, code, "wait --inbox failed: stdout=%s, stderr=%s", stdout, stderr)
 
 		var result struct {

@@ -1,4 +1,4 @@
-package cli
+package data
 
 import (
 	"encoding/json"
@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
-var exportCmd = &cobra.Command{
+// ExportCmd is the export command
+var ExportCmd = &cobra.Command{
 	Use:   "export [email-address]",
 	Short: "Export inbox with private keys",
 	Long: `Export an inbox's keys and metadata to a JSON file for backup or sharing.
@@ -37,15 +39,13 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(exportCmd)
-
-	exportCmd.Flags().StringVar(&exportOut, "out", "",
+	ExportCmd.Flags().StringVar(&exportOut, "out", "",
 		"Output file path (default: <email>.json)")
 }
 
 func runExport(cmd *cobra.Command, args []string) error {
 	// Use existing helpers
-	ks, err := LoadKeystoreOrError()
+	ks, err := cliutil.LoadKeystoreOrError()
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func runExport(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		emailArg = args[0]
 	}
-	stored, err := GetInbox(ks, emailArg)
+	stored, err := cliutil.GetInbox(ks, emailArg)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func getExportPath(outFlag, email string) string {
 	if outFlag != "" {
 		return outFlag
 	}
-	return sanitizeFilename(email) + ".json"
+	return cliutil.SanitizeFilename(email) + ".json"
 }
 
 func printExportWarning(path, email string) {

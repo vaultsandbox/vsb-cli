@@ -1,4 +1,4 @@
-package cli
+package inbox
 
 import (
 	"fmt"
@@ -6,16 +6,17 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
-var inboxListCmd = &cobra.Command{
+var listCmd = &cobra.Command{
 	Use:     "list",
 	Short:   "List all stored inboxes",
 	Long:    `Display all inboxes stored in the local keystore.`,
 	Aliases: []string{"ls"},
-	RunE:    runInboxList,
+	RunE:    runList,
 }
 
 var (
@@ -23,9 +24,9 @@ var (
 )
 
 func init() {
-	inboxCmd.AddCommand(inboxListCmd)
+	Cmd.AddCommand(listCmd)
 
-	inboxListCmd.Flags().BoolVarP(&listShowExpired, "all", "a", false,
+	listCmd.Flags().BoolVarP(&listShowExpired, "all", "a", false,
 		"Show expired inboxes too")
 }
 
@@ -42,8 +43,8 @@ func filterInboxes(inboxes []config.StoredInbox, showExpired bool, now time.Time
 	return filtered
 }
 
-func runInboxList(cmd *cobra.Command, args []string) error {
-	keystore, err := LoadKeystoreOrError()
+func runList(cmd *cobra.Command, args []string) error {
+	keystore, err := cliutil.LoadKeystoreOrError()
 	if err != nil {
 		return err
 	}
@@ -54,13 +55,13 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 	filtered := filterInboxes(inboxes, listShowExpired, now)
 
 	// JSON output
-	if getOutput(cmd) == "json" {
+	if cliutil.GetOutput(cmd) == "json" {
 		var result []map[string]interface{}
 		for _, inbox := range filtered {
 			isActive := inbox.Email == keystore.ActiveInbox
-			result = append(result, InboxSummaryJSON(&inbox, isActive, now))
+			result = append(result, cliutil.InboxSummaryJSON(&inbox, isActive, now))
 		}
-		return outputJSON(result)
+		return cliutil.OutputJSON(result)
 	}
 
 	// Pretty output
@@ -101,7 +102,7 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 			expiry = styles.ExpiredStyle.Render("expired")
 		} else {
 			remaining := inbox.ExpiresAt.Sub(now).Round(time.Minute)
-			expiry = formatDuration(remaining)
+			expiry = cliutil.FormatDuration(remaining)
 		}
 
 		fmt.Printf("%s%s  %s\n", marker, emailPadded, expiry)

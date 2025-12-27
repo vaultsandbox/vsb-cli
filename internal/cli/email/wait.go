@@ -1,4 +1,4 @@
-package cli
+package email
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 )
 
 var waitCmd = &cobra.Command{
@@ -57,7 +58,7 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(waitCmd)
+	Cmd.AddCommand(waitCmd)
 
 	// Inbox selection
 	waitCmd.Flags().StringVar(&waitForInbox, "inbox", "",
@@ -98,7 +99,7 @@ func runWait(cmd *cobra.Command, args []string) error {
 	defer cancel()
 
 	// Use shared helper
-	inbox, cleanup, err := LoadAndImportInbox(ctx, waitForInbox)
+	inbox, cleanup, err := cliutil.LoadAndImportInbox(ctx, waitForInbox)
 	if err != nil {
 		return err
 	}
@@ -180,9 +181,9 @@ func outputEmails(cmd *cobra.Command, emails []*vaultsandbox.Email) {
 	}
 
 	for _, email := range emails {
-		if getOutput(cmd) == "json" {
+		if cliutil.GetOutput(cmd) == "json" {
 			// JSON output
-			_ = outputJSON(EmailFullJSON(email))
+			_ = cliutil.OutputJSON(cliutil.EmailFullJSON(email))
 		} else if waitForExtractLink {
 			// Extract first link
 			if len(email.Links) > 0 {

@@ -1,7 +1,6 @@
-package cli
+package cliutil
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,95 +8,14 @@ import (
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
-// MockKeystore implements KeystoreReader and SetActiveInbox for testing
-type MockKeystore struct {
-	inboxes     []config.StoredInbox
-	activeEmail string
-
-	// Function overrides for custom behavior
-	GetActiveInboxFunc func() (*config.StoredInbox, error)
-	FindInboxFunc      func(partial string) (*config.StoredInbox, []string, error)
-	GetInboxFunc       func(email string) (*config.StoredInbox, error)
-	SetActiveInboxFunc func(email string) error
-}
-
-func (m *MockKeystore) GetActiveInbox() (*config.StoredInbox, error) {
-	if m.GetActiveInboxFunc != nil {
-		return m.GetActiveInboxFunc()
-	}
-	if m.activeEmail == "" {
-		return nil, config.ErrNoActiveInbox
-	}
-	for i := range m.inboxes {
-		if m.inboxes[i].Email == m.activeEmail {
-			return &m.inboxes[i], nil
-		}
-	}
-	return nil, config.ErrNoActiveInbox
-}
-
-func (m *MockKeystore) FindInbox(partial string) (*config.StoredInbox, []string, error) {
-	if m.FindInboxFunc != nil {
-		return m.FindInboxFunc(partial)
-	}
-	var matches []config.StoredInbox
-	var matchEmails []string
-	for i := range m.inboxes {
-		if m.inboxes[i].Email == partial {
-			return &m.inboxes[i], nil, nil // Exact match
-		}
-		if strings.Contains(m.inboxes[i].Email, partial) {
-			matches = append(matches, m.inboxes[i])
-			matchEmails = append(matchEmails, m.inboxes[i].Email)
-		}
-	}
-	if len(matches) == 0 {
-		return nil, nil, config.ErrInboxNotFound
-	}
-	if len(matches) > 1 {
-		return nil, matchEmails, config.ErrMultipleMatches
-	}
-	return &matches[0], nil, nil
-}
-
-func (m *MockKeystore) GetInbox(email string) (*config.StoredInbox, error) {
-	if m.GetInboxFunc != nil {
-		return m.GetInboxFunc(email)
-	}
-	for i := range m.inboxes {
-		if m.inboxes[i].Email == email {
-			return &m.inboxes[i], nil
-		}
-	}
-	return nil, config.ErrInboxNotFound
-}
-
-func (m *MockKeystore) ListInboxes() []config.StoredInbox {
-	return m.inboxes
-}
-
-func (m *MockKeystore) SetActiveInbox(email string) error {
-	if m.SetActiveInboxFunc != nil {
-		return m.SetActiveInboxFunc(email)
-	}
-	// Verify inbox exists
-	for _, inbox := range m.inboxes {
-		if inbox.Email == email {
-			m.activeEmail = email
-			return nil
-		}
-	}
-	return config.ErrInboxNotFound
-}
-
 func TestGetInbox(t *testing.T) {
 	inbox1 := config.StoredInbox{Email: "test1@example.com"}
 	inbox2 := config.StoredInbox{Email: "test2@example.com"}
 
 	t.Run("empty flag returns active inbox", func(t *testing.T) {
 		ks := &MockKeystore{
-			inboxes:     []config.StoredInbox{inbox1, inbox2},
-			activeEmail: "test1@example.com",
+			Inboxes:     []config.StoredInbox{inbox1, inbox2},
+			ActiveEmail: "test1@example.com",
 		}
 
 		result, err := GetInbox(ks, "")
@@ -107,8 +25,8 @@ func TestGetInbox(t *testing.T) {
 
 	t.Run("empty flag with no active returns error", func(t *testing.T) {
 		ks := &MockKeystore{
-			inboxes:     []config.StoredInbox{inbox1},
-			activeEmail: "",
+			Inboxes:     []config.StoredInbox{inbox1},
+			ActiveEmail: "",
 		}
 
 		_, err := GetInbox(ks, "")
@@ -118,7 +36,7 @@ func TestGetInbox(t *testing.T) {
 
 	t.Run("exact email match", func(t *testing.T) {
 		ks := &MockKeystore{
-			inboxes: []config.StoredInbox{inbox1, inbox2},
+			Inboxes: []config.StoredInbox{inbox1, inbox2},
 		}
 
 		result, err := GetInbox(ks, "test2@example.com")
@@ -128,7 +46,7 @@ func TestGetInbox(t *testing.T) {
 
 	t.Run("partial match", func(t *testing.T) {
 		ks := &MockKeystore{
-			inboxes: []config.StoredInbox{
+			Inboxes: []config.StoredInbox{
 				{Email: "unique123@example.com"},
 			},
 		}
@@ -140,7 +58,7 @@ func TestGetInbox(t *testing.T) {
 
 	t.Run("multiple matches returns error", func(t *testing.T) {
 		ks := &MockKeystore{
-			inboxes: []config.StoredInbox{inbox1, inbox2},
+			Inboxes: []config.StoredInbox{inbox1, inbox2},
 		}
 
 		_, err := GetInbox(ks, "test")
@@ -150,7 +68,7 @@ func TestGetInbox(t *testing.T) {
 
 	t.Run("no match returns error", func(t *testing.T) {
 		ks := &MockKeystore{
-			inboxes: []config.StoredInbox{inbox1},
+			Inboxes: []config.StoredInbox{inbox1},
 		}
 
 		_, err := GetInbox(ks, "nonexistent")
@@ -163,8 +81,8 @@ func TestMockKeystoreGetActiveInbox(t *testing.T) {
 	t.Run("returns active inbox when set", func(t *testing.T) {
 		inbox := config.StoredInbox{Email: "active@example.com"}
 		ks := &MockKeystore{
-			inboxes:     []config.StoredInbox{inbox},
-			activeEmail: "active@example.com",
+			Inboxes:     []config.StoredInbox{inbox},
+			ActiveEmail: "active@example.com",
 		}
 
 		result, err := ks.GetActiveInbox()
@@ -174,8 +92,8 @@ func TestMockKeystoreGetActiveInbox(t *testing.T) {
 
 	t.Run("returns error when no active", func(t *testing.T) {
 		ks := &MockKeystore{
-			inboxes:     []config.StoredInbox{{Email: "test@example.com"}},
-			activeEmail: "",
+			Inboxes:     []config.StoredInbox{{Email: "test@example.com"}},
+			ActiveEmail: "",
 		}
 
 		_, err := ks.GetActiveInbox()
@@ -199,7 +117,7 @@ func TestMockKeystoreGetActiveInbox(t *testing.T) {
 func TestMockKeystoreFindInbox(t *testing.T) {
 	t.Run("exact match returns immediately", func(t *testing.T) {
 		ks := &MockKeystore{
-			inboxes: []config.StoredInbox{
+			Inboxes: []config.StoredInbox{
 				{Email: "exact@example.com"},
 				{Email: "exactmore@example.com"},
 			},
@@ -213,7 +131,7 @@ func TestMockKeystoreFindInbox(t *testing.T) {
 
 	t.Run("returns multiple match emails", func(t *testing.T) {
 		ks := &MockKeystore{
-			inboxes: []config.StoredInbox{
+			Inboxes: []config.StoredInbox{
 				{Email: "test1@example.com"},
 				{Email: "test2@example.com"},
 			},
@@ -231,7 +149,7 @@ func TestMockKeystoreListInboxes(t *testing.T) {
 		{Email: "inbox1@example.com"},
 		{Email: "inbox2@example.com"},
 	}
-	ks := &MockKeystore{inboxes: inboxes}
+	ks := &MockKeystore{Inboxes: inboxes}
 
 	result := ks.ListInboxes()
 	assert.Len(t, result, 2)
@@ -242,19 +160,19 @@ func TestMockKeystoreListInboxes(t *testing.T) {
 func TestMockKeystoreSetActiveInbox(t *testing.T) {
 	t.Run("sets active inbox when exists", func(t *testing.T) {
 		ks := &MockKeystore{
-			inboxes: []config.StoredInbox{
+			Inboxes: []config.StoredInbox{
 				{Email: "test@example.com"},
 			},
 		}
 
 		err := ks.SetActiveInbox("test@example.com")
 		require.NoError(t, err)
-		assert.Equal(t, "test@example.com", ks.activeEmail)
+		assert.Equal(t, "test@example.com", ks.ActiveEmail)
 	})
 
 	t.Run("returns error for non-existent inbox", func(t *testing.T) {
 		ks := &MockKeystore{
-			inboxes: []config.StoredInbox{
+			Inboxes: []config.StoredInbox{
 				{Email: "test@example.com"},
 			},
 		}

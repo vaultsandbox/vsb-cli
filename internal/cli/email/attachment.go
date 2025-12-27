@@ -1,4 +1,4 @@
-package cli
+package email
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/files"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
@@ -39,7 +40,7 @@ var (
 )
 
 func init() {
-	emailCmd.AddCommand(attachmentCmd)
+	Cmd.AddCommand(attachmentCmd)
 
 	attachmentCmd.Flags().IntVarP(&attachmentSave, "save", "s", 0,
 		"Download the Nth attachment (1=first, 0=don't download)")
@@ -61,7 +62,7 @@ func runAttachment(cmd *cobra.Command, args []string) error {
 	}
 
 	// Use shared helper
-	email, _, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, attachmentInbox)
+	email, _, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, attachmentInbox)
 	if err != nil {
 		return err
 	}
@@ -69,7 +70,7 @@ func runAttachment(cmd *cobra.Command, args []string) error {
 
 	// Check for attachments
 	if len(email.Attachments) == 0 {
-		if getOutput(cmd) == "json" {
+		if cliutil.GetOutput(cmd) == "json" {
 			fmt.Println("[]")
 		} else {
 			fmt.Println("No attachments found in email")
@@ -92,7 +93,7 @@ func runAttachment(cmd *cobra.Command, args []string) error {
 	}
 
 	// Default: list all attachments
-	if getOutput(cmd) == "json" {
+	if cliutil.GetOutput(cmd) == "json" {
 		// Build JSON-friendly output (without binary content)
 		type attachmentInfo struct {
 			Index       int    `json:"index"`
@@ -111,7 +112,7 @@ func runAttachment(cmd *cobra.Command, args []string) error {
 				Checksum:    att.Checksum,
 			}
 		}
-		return outputJSON(infos)
+		return cliutil.OutputJSON(infos)
 	} else {
 		fmt.Printf("Attachments (%d):\n\n", len(email.Attachments))
 		for i, att := range email.Attachments {

@@ -1,14 +1,15 @@
-package cli
+package email
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
-var emailDeleteCmd = &cobra.Command{
+var deleteCmd = &cobra.Command{
 	Use:   "delete <email-id>",
 	Short: "Delete an email",
 	Long: `Delete an email from an inbox.
@@ -20,25 +21,25 @@ Examples:
   vsb email delete abc123 --inbox foo@vaultsandbox.com`,
 	Aliases: []string{"rm"},
 	Args:    cobra.ExactArgs(1),
-	RunE:    runEmailDelete,
+	RunE:    runDelete,
 }
 
 var (
-	emailDeleteInbox string
+	deleteInbox string
 )
 
 func init() {
-	emailCmd.AddCommand(emailDeleteCmd)
+	Cmd.AddCommand(deleteCmd)
 
-	emailDeleteCmd.Flags().StringVar(&emailDeleteInbox, "inbox", "",
+	deleteCmd.Flags().StringVar(&deleteInbox, "inbox", "",
 		"Use specific inbox (default: active)")
 }
 
-func runEmailDelete(cmd *cobra.Command, args []string) error {
+func runDelete(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	emailID := args[0]
 
-	inbox, cleanup, err := LoadAndImportInbox(ctx, emailDeleteInbox)
+	inbox, cleanup, err := cliutil.LoadAndImportInbox(ctx, deleteInbox)
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
@@ -136,7 +137,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	}
 
 	// JSON output
-	if getOutput(cmd) == "json" {
+	if cliutil.GetOutput(cmd) == "json" {
 		data := map[string]interface{}{
 			"configFile": configPath,
 			"apiKey":     maskedKey,

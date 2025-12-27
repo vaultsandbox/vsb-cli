@@ -251,7 +251,7 @@ func TestWaitErrors(t *testing.T) {
 	t.Run("wait with short timeout", func(t *testing.T) {
 		start := time.Now()
 
-		_, stderr, code := runVSBWithConfig(t, configDir, "wait",
+		_, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
 			"--timeout", "2s",
 			"--subject", "NonExistent Subject 12345")
 
@@ -272,7 +272,7 @@ func TestWaitErrors(t *testing.T) {
 	t.Run("wait without inbox", func(t *testing.T) {
 		noInboxConfigDir := t.TempDir()
 
-		_, stderr, code := runVSBWithConfig(t, noInboxConfigDir, "wait", "--timeout", "1s")
+		_, stderr, code := runVSBWithConfig(t, noInboxConfigDir, "email", "wait", "--timeout", "1s")
 		assert.NotEqual(t, 0, code, "should fail when no inbox exists")
 		assert.True(t,
 			strings.Contains(stderr, "no inbox") ||
@@ -282,7 +282,7 @@ func TestWaitErrors(t *testing.T) {
 	})
 
 	t.Run("wait with invalid regex", func(t *testing.T) {
-		_, stderr, code := runVSBWithConfig(t, configDir, "wait",
+		_, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
 			"--timeout", "1s",
 			"--subject-regex", "[invalid(regex")
 
@@ -296,7 +296,7 @@ func TestWaitErrors(t *testing.T) {
 	})
 
 	t.Run("wait with invalid from regex", func(t *testing.T) {
-		_, stderr, code := runVSBWithConfig(t, configDir, "wait",
+		_, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
 			"--timeout", "1s",
 			"--from-regex", "[bad(pattern")
 
@@ -310,7 +310,7 @@ func TestWaitErrors(t *testing.T) {
 	})
 
 	t.Run("wait with invalid timeout format", func(t *testing.T) {
-		_, stderr, code := runVSBWithConfig(t, configDir, "wait", "--timeout", "notaduration")
+		_, stderr, code := runVSBWithConfig(t, configDir, "email", "wait", "--timeout", "notaduration")
 
 		assert.NotEqual(t, 0, code, "should fail for invalid timeout")
 		assert.True(t,
@@ -322,7 +322,7 @@ func TestWaitErrors(t *testing.T) {
 	})
 
 	t.Run("wait with invalid count", func(t *testing.T) {
-		_, stderr, code := runVSBWithConfig(t, configDir, "wait",
+		_, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
 			"--timeout", "1s",
 			"--count", "-1")
 
@@ -617,7 +617,7 @@ func TestGlobalErrors(t *testing.T) {
 
 		// Try conflicting flags (both --subject and --subject-regex)
 		// Behavior depends on implementation - might use one or error
-		_, stderr, code := runVSBWithConfig(t, configDir, "wait",
+		_, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
 			"--timeout", "1s",
 			"--subject", "exact",
 			"--subject-regex", "regex.*")

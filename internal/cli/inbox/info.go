@@ -1,4 +1,4 @@
-package cli
+package inbox
 
 import (
 	"context"
@@ -7,11 +7,12 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
-var inboxInfoCmd = &cobra.Command{
+var infoCmd = &cobra.Command{
 	Use:   "info [email]",
 	Short: "Show inbox details",
 	Long: `Display detailed information about an inbox.
@@ -23,14 +24,14 @@ Examples:
   vsb inbox info abc       # Info for inbox matching 'abc'
   vsb inbox info -o json   # JSON output`,
 	Args: cobra.MaximumNArgs(1),
-	RunE: runInboxInfo,
+	RunE: runInfo,
 }
 
 func init() {
-	inboxCmd.AddCommand(inboxInfoCmd)
+	Cmd.AddCommand(infoCmd)
 }
 
-func runInboxInfo(cmd *cobra.Command, args []string) error {
+func runInfo(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	// Get email arg
@@ -40,13 +41,13 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load keystore
-	ks, err := LoadKeystoreOrError()
+	ks, err := cliutil.LoadKeystoreOrError()
 	if err != nil {
 		return err
 	}
 
 	// Get inbox
-	stored, err := GetInbox(ks, emailArg)
+	stored, err := cliutil.GetInbox(ks, emailArg)
 	if err != nil {
 		return err
 	}
@@ -85,8 +86,8 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 	isActive := stored.Email == ks.ActiveInbox
 
 	// JSON output
-	if getOutput(cmd) == "json" {
-		return outputJSON(InboxFullJSON(stored, isActive, emailCount, syncErr))
+	if cliutil.GetOutput(cmd) == "json" {
+		return cliutil.OutputJSON(cliutil.InboxFullJSON(stored, isActive, emailCount, syncErr))
 	}
 
 	// Pretty output
@@ -126,7 +127,7 @@ func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool
 	if isExpired {
 		expiryStr = lipgloss.NewStyle().Foreground(styles.Red).Render("EXPIRED")
 	} else {
-		expiryStr = fmt.Sprintf("%s (%s)", stored.ExpiresAt.Format("2006-01-02 15:04"), formatDuration(remaining))
+		expiryStr = fmt.Sprintf("%s (%s)", stored.ExpiresAt.Format("2006-01-02 15:04"), cliutil.FormatDuration(remaining))
 	}
 	content += fmt.Sprintf("%s %s\n", labelStyle.Render("Expires:"), expiryStr)
 

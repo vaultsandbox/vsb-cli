@@ -1,4 +1,4 @@
-package cli
+package cliutil
 
 import (
 	"encoding/json"
@@ -10,16 +10,16 @@ import (
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
-// getOutput returns the output format with priority: flag > env > config > default.
-func getOutput(cmd *cobra.Command) string {
+// GetOutput returns the output format with priority: flag > env > config > default.
+func GetOutput(cmd *cobra.Command) string {
 	if flag := cmd.Flag("output"); flag != nil && flag.Changed {
 		return flag.Value.String()
 	}
 	return config.GetDefaultOutput()
 }
 
-// outputJSON marshals v to indented JSON and prints it to stdout.
-func outputJSON(v interface{}) error {
+// OutputJSON marshals v to indented JSON and prints it to stdout.
+func OutputJSON(v interface{}) error {
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
@@ -28,8 +28,8 @@ func outputJSON(v interface{}) error {
 	return nil
 }
 
-// sanitizeFilename replaces unsafe characters for use in filenames.
-func sanitizeFilename(email string) string {
+// SanitizeFilename replaces unsafe characters for use in filenames.
+func SanitizeFilename(email string) string {
 	var b strings.Builder
 	b.Grow(len(email))
 	for _, r := range email {
@@ -43,8 +43,8 @@ func sanitizeFilename(email string) string {
 	return b.String()
 }
 
-// formatDuration formats a duration as a human-readable string (e.g., "5m", "2h", "3d").
-func formatDuration(d time.Duration) string {
+// FormatDuration formats a duration as a human-readable string (e.g., "5m", "2h", "3d").
+func FormatDuration(d time.Duration) string {
 	if d < time.Hour {
 		return fmt.Sprintf("%dm", int(d.Minutes()))
 	}
@@ -54,8 +54,8 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%dd", int(d.Hours()/24))
 }
 
-// formatRelativeTime formats a time as a human-readable relative string (e.g., "just now", "5m ago").
-func formatRelativeTime(t time.Time) string {
+// FormatRelativeTime formats a time as a human-readable relative string (e.g., "just now", "5m ago").
+func FormatRelativeTime(t time.Time) string {
 	diff := time.Since(t)
 
 	switch {

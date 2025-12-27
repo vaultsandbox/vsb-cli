@@ -8,6 +8,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/cli/data"
+	"github.com/vaultsandbox/vsb-cli/internal/cli/email"
+	"github.com/vaultsandbox/vsb-cli/internal/cli/inbox"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/tui/emails"
 )
@@ -38,6 +42,12 @@ func init() {
 
 	// Global output format flag
 	rootCmd.PersistentFlags().StringP("output", "o", "", "Output format: pretty, json")
+
+	// Register subpackage commands
+	rootCmd.AddCommand(inbox.Cmd)
+	rootCmd.AddCommand(email.Cmd)
+	rootCmd.AddCommand(data.ExportCmd)
+	rootCmd.AddCommand(data.ImportCmd)
 }
 
 func initConfig() {
@@ -58,7 +68,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	// Load keystore
-	keystore, err := LoadKeystoreOrError()
+	keystore, err := cliutil.LoadKeystoreOrError()
 	if err != nil {
 		return err
 	}

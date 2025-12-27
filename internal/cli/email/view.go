@@ -1,4 +1,4 @@
-package cli
+package email
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/vaultsandbox/vsb-cli/internal/browser"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 )
 
 var viewCmd = &cobra.Command{
@@ -31,7 +32,7 @@ var (
 )
 
 func init() {
-	emailCmd.AddCommand(viewCmd)
+	Cmd.AddCommand(viewCmd)
 
 	viewCmd.Flags().BoolVarP(&viewText, "text", "t", false,
 		"Show plain text version in terminal")
@@ -51,15 +52,15 @@ func runView(cmd *cobra.Command, args []string) error {
 	}
 
 	// Use shared helper (returns email, inbox, cleanup, error)
-	email, inbox, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, viewInbox)
+	email, inbox, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, viewInbox)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
 	// JSON output
-	if getOutput(cmd) == "json" {
-		return outputJSON(EmailFullJSON(email))
+	if cliutil.GetOutput(cmd) == "json" {
+		return cliutil.OutputJSON(cliutil.EmailFullJSON(email))
 	}
 
 	// Raw mode - show RFC 5322 source

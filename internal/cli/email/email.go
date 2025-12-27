@@ -1,15 +1,12 @@
-package cli
+package email
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var emailCmd = &cobra.Command{
+// Cmd is the email parent command
+var Cmd = &cobra.Command{
 	Use:   "email",
 	Short: "View and manage emails",
 	Long:  `List, view, audit, and delete emails in your inboxes.`,
-}
-
-func init() {
-	rootCmd.AddCommand(emailCmd)
 }

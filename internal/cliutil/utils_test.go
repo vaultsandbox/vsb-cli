@@ -1,4 +1,4 @@
-package cli
+package cliutil
 
 import (
 	"testing"
@@ -7,43 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestParseTTL(t *testing.T) {
-	tests := []struct {
-		input   string
-		want    time.Duration
-		wantErr bool
-	}{
-		// Valid inputs
-		{"1h", time.Hour, false},
-		{"24h", 24 * time.Hour, false},
-		{"7d", 7 * 24 * time.Hour, false},
-		{"30m", 30 * time.Minute, false},
-		{"1d", 24 * time.Hour, false},
-		{"90s", 90 * time.Second, false},
-		{"2h30m", 2*time.Hour + 30*time.Minute, false},
-
-		// Invalid inputs
-		{"", 0, true},
-		{"x", 0, true},
-		{"1y", 0, true},      // Year not supported
-		{"-1h", -time.Hour, false}, // time.ParseDuration allows negative
-		{"h", 0, true},       // No number
-		{"d", 0, true},       // No number for days
-		{"abc", 0, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got, err := parseTTL(tt.input)
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.want, got)
-			}
-		})
-	}
-}
 
 func TestFormatDuration(t *testing.T) {
 	tests := []struct {
@@ -63,7 +26,7 @@ func TestFormatDuration(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
-			got := formatDuration(tt.input)
+			got := FormatDuration(tt.input)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -85,41 +48,17 @@ func TestFormatRelativeTime(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := formatRelativeTime(tt.input)
+			got := FormatRelativeTime(tt.input)
 			assert.Equal(t, tt.want, got)
 		})
 	}
 
 	t.Run("old date shows month day", func(t *testing.T) {
 		old := now.Add(-30 * 24 * time.Hour)
-		got := formatRelativeTime(old)
+		got := FormatRelativeTime(old)
 		// Should be in "Jan 2" format
 		assert.Contains(t, got, old.Format("Jan"))
 	})
-}
-
-func TestTruncate(t *testing.T) {
-	tests := []struct {
-		input string
-		max   int
-		want  string
-	}{
-		{"short", 10, "short"},
-		{"exactly10!", 10, "exactly10!"},
-		{"this is too long", 10, "this is t…"},
-		{"", 5, ""},
-		{"abc", 3, "abc"},
-		{"abcd", 3, "ab…"},
-		{"hello world", 5, "hell…"},
-		{"a", 1, "a"},
-		{"ab", 1, "…"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got := truncate(tt.input, tt.max)
-			assert.Equal(t, tt.want, got)
-		})
-	}
 }
 
 func TestSanitizeFilename(t *testing.T) {
@@ -139,29 +78,7 @@ func TestSanitizeFilename(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got := sanitizeFilename(tt.input)
-			assert.Equal(t, tt.want, got)
-		})
-	}
-}
-
-func TestMaskAPIKey(t *testing.T) {
-	tests := []struct {
-		input string
-		want  string
-	}{
-		{"sk-ant-1234567890abcdef", "sk-ant-...cdef"},
-		{"short", "****"},
-		{"12345678901", "1234567...8901"}, // Exactly 11 chars
-		{"", "****"},
-		{"1234567890", "****"}, // 10 chars, below threshold
-		{"abcdefghijk", "abcdefg...hijk"}, // 11 chars
-		{"a", "****"},
-		{"12345", "****"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got := maskAPIKey(tt.input)
+			got := SanitizeFilename(tt.input)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -173,7 +90,7 @@ func TestGetOutput(t *testing.T) {
 		cmd.Flags().String("output", "pretty", "output format")
 		cmd.Flags().Set("output", "json")
 
-		got := getOutput(cmd)
+		got := GetOutput(cmd)
 		assert.Equal(t, "json", got)
 	})
 
@@ -182,7 +99,7 @@ func TestGetOutput(t *testing.T) {
 		cmd.Flags().String("output", "pretty", "output format")
 		// Don't set the flag
 
-		got := getOutput(cmd)
+		got := GetOutput(cmd)
 		// Should return the config default (pretty)
 		assert.NotEmpty(t, got)
 	})
@@ -191,7 +108,7 @@ func TestGetOutput(t *testing.T) {
 		cmd := &cobra.Command{}
 		// No output flag defined
 
-		got := getOutput(cmd)
+		got := GetOutput(cmd)
 		assert.NotEmpty(t, got)
 	})
 }
@@ -199,7 +116,7 @@ func TestGetOutput(t *testing.T) {
 func TestOutputJSON(t *testing.T) {
 	t.Run("outputs valid JSON", func(t *testing.T) {
 		data := map[string]string{"key": "value"}
-		err := outputJSON(data)
+		err := OutputJSON(data)
 		assert.NoError(t, err)
 	})
 
@@ -210,13 +127,13 @@ func TestOutputJSON(t *testing.T) {
 				"count": 42,
 			},
 		}
-		err := outputJSON(data)
+		err := OutputJSON(data)
 		assert.NoError(t, err)
 	})
 
 	t.Run("handles arrays", func(t *testing.T) {
 		data := []string{"a", "b", "c"}
-		err := outputJSON(data)
+		err := OutputJSON(data)
 		assert.NoError(t, err)
 	})
 }

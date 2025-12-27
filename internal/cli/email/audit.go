@@ -1,4 +1,4 @@
-package cli
+package email
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -33,7 +34,7 @@ var (
 )
 
 func init() {
-	emailCmd.AddCommand(auditCmd)
+	Cmd.AddCommand(auditCmd)
 
 	auditCmd.Flags().StringVar(&auditInbox, "inbox", "",
 		"Use specific inbox (default: active)")
@@ -49,14 +50,14 @@ func runAudit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Use shared helper to get email
-	email, _, cleanup, err := GetEmailByIDOrLatest(ctx, emailID, auditInbox)
+	email, _, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, auditInbox)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
 	// Render audit report
-	if getOutput(cmd) == "json" {
+	if cliutil.GetOutput(cmd) == "json" {
 		return renderAuditJSON(email)
 	}
 	return renderAuditReport(email)
@@ -207,6 +208,6 @@ func renderAuditJSON(email *vaultsandbox.Email) error {
 		data["authResults"] = authData
 	}
 
-	return outputJSON(data)
+	return cliutil.OutputJSON(data)
 }
 

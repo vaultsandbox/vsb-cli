@@ -70,7 +70,7 @@ func TestCIWorkflow(t *testing.T) {
 	}()
 
 	// Step 3: Wait for email with specific subject pattern
-	stdout, stderr, code = runVSBWithConfig(t, configDir, "wait",
+	stdout, stderr, code = runVSBWithConfig(t, configDir, "email", "wait",
 		"--subject-regex", "Welcome.*CI Test",
 		"--timeout", "30s",
 		"--output", "json")
@@ -359,7 +359,7 @@ func TestPasswordResetWorkflow(t *testing.T) {
 	}()
 
 	// Step 3: Wait for reset email
-	stdout, stderr, code := runVSBWithConfig(t, configDir, "wait",
+	stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
 		"--subject-regex", "Password.*Reset",
 		"--timeout", "30s",
 		"--output", "json")
@@ -441,7 +441,7 @@ func TestOrderConfirmationWorkflow(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Step 3: Wait for confirmation
-	stdout, stderr, code := runVSBWithConfig(t, configDir, "wait",
+	stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
 		"--subject-regex", "Order Confirmation.*"+orderID[:15],
 		"--timeout", "30s",
 		"--output", "json")
@@ -632,7 +632,7 @@ func TestWaitThenProcessWorkflow(t *testing.T) {
 	}()
 
 	// Wait for the specific email
-	stdout, stderr, code := runVSBWithConfig(t, configDir, "wait",
+	stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
 		"--subject", uniqueSubject,
 		"--timeout", "30s",
 		"--output", "json")
