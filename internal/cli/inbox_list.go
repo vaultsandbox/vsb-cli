@@ -29,6 +29,19 @@ func init() {
 		"Show expired inboxes too")
 }
 
+// filterInboxes returns inboxes, optionally filtering out expired ones.
+func filterInboxes(inboxes []config.StoredInbox, showExpired bool, now time.Time) []config.StoredInbox {
+	var filtered []config.StoredInbox
+	for _, inbox := range inboxes {
+		isExpired := inbox.ExpiresAt.Before(now)
+		if isExpired && !showExpired {
+			continue
+		}
+		filtered = append(filtered, inbox)
+	}
+	return filtered
+}
+
 func runInboxList(cmd *cobra.Command, args []string) error {
 	keystore, err := LoadKeystoreOrError()
 	if err != nil {
@@ -38,15 +51,7 @@ func runInboxList(cmd *cobra.Command, args []string) error {
 	inboxes := keystore.ListInboxes()
 	now := time.Now()
 
-	// Filter expired if needed
-	var filtered []config.StoredInbox
-	for _, inbox := range inboxes {
-		isExpired := inbox.ExpiresAt.Before(now)
-		if isExpired && !listShowExpired {
-			continue
-		}
-		filtered = append(filtered, inbox)
-	}
+	filtered := filterInboxes(inboxes, listShowExpired, now)
 
 	// JSON output
 	if getOutput(cmd) == "json" {

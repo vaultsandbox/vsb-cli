@@ -67,12 +67,7 @@ func runExport(cmd *cobra.Command, args []string) error {
 	}
 
 	// Determine output file
-	outPath := exportOut
-	if outPath == "" {
-		// Default to email.json in current directory
-		safeEmail := sanitizeFilename(stored.Email)
-		outPath = safeEmail + ".json"
-	}
+	outPath := getExportPath(exportOut, stored.Email)
 
 	// Convert to absolute path
 	absPath, err := filepath.Abs(outPath)
@@ -106,6 +101,15 @@ func runExport(cmd *cobra.Command, args []string) error {
 }
 
 
+
+// getExportPath returns the output path for an export.
+// If outFlag is provided, it is used directly. Otherwise, generates <email>.json.
+func getExportPath(outFlag, email string) string {
+	if outFlag != "" {
+		return outFlag
+	}
+	return sanitizeFilename(email) + ".json"
+}
 
 func printExportWarning(path, email string) {
 	warning := fmt.Sprintf(`%s
