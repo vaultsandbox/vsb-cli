@@ -95,6 +95,71 @@ func TestOpenURL_SchemeCaseInsensitive(t *testing.T) {
 // XSS Prevention Tests
 // ============================================================================
 
+func TestBuildEmailHTMLTemplate(t *testing.T) {
+	testTime := time.Date(2024, 6, 15, 14, 30, 0, 0, time.UTC)
+
+	t.Run("includes subject in title and header", func(t *testing.T) {
+		result := BuildEmailHTMLTemplate("Test Subject", "sender@example.com", testTime, "<p>body</p>")
+
+		assert.Contains(t, result, "<title>Test Subject</title>")
+		assert.Contains(t, result, "<h1>Test Subject</h1>")
+	})
+
+	t.Run("includes from address", func(t *testing.T) {
+		result := BuildEmailHTMLTemplate("Subject", "sender@example.com", testTime, "<p>body</p>")
+
+		assert.Contains(t, result, "sender@example.com")
+		assert.Contains(t, result, "<strong>From:</strong>")
+	})
+
+	t.Run("includes formatted date", func(t *testing.T) {
+		result := BuildEmailHTMLTemplate("Subject", "from@x.com", testTime, "<p>body</p>")
+
+		assert.Contains(t, result, "June 15, 2024 at 2:30 PM")
+		assert.Contains(t, result, "<strong>Date:</strong>")
+	})
+
+	t.Run("includes email body content", func(t *testing.T) {
+		emailBody := "<p>This is the email body with <strong>formatting</strong></p>"
+		result := BuildEmailHTMLTemplate("Subject", "from@x.com", testTime, emailBody)
+
+		assert.Contains(t, result, emailBody)
+		assert.Contains(t, result, `class="content"`)
+	})
+
+	t.Run("escapes subject to prevent XSS", func(t *testing.T) {
+		maliciousSubject := "<script>alert('xss')</script>"
+		result := BuildEmailHTMLTemplate(maliciousSubject, "from@x.com", testTime, "<p>body</p>")
+
+		assert.NotContains(t, result, "<script>alert")
+		assert.Contains(t, result, "&lt;script&gt;")
+	})
+
+	t.Run("escapes from to prevent XSS", func(t *testing.T) {
+		maliciousFrom := "<img src=x onerror=alert(1)>"
+		result := BuildEmailHTMLTemplate("Subject", maliciousFrom, testTime, "<p>body</p>")
+
+		assert.NotContains(t, result, "<img src=x")
+		assert.Contains(t, result, "&lt;img")
+	})
+
+	t.Run("includes proper HTML structure", func(t *testing.T) {
+		result := BuildEmailHTMLTemplate("Subject", "from@x.com", testTime, "<p>body</p>")
+
+		assert.Contains(t, result, "<!DOCTYPE html>")
+		assert.Contains(t, result, `<meta charset="utf-8">`)
+		assert.Contains(t, result, `class="header"`)
+		assert.Contains(t, result, `class="content"`)
+		assert.Contains(t, result, "</html>")
+	})
+
+	t.Run("includes VaultSandbox branding color", func(t *testing.T) {
+		result := BuildEmailHTMLTemplate("Subject", "from@x.com", testTime, "<p>body</p>")
+
+		assert.Contains(t, result, "#1cc2e3") // VaultSandbox brand color
+	})
+}
+
 func TestViewEmailHTML_XSSPrevention(t *testing.T) {
 	t.Run("escapes malicious subject", func(t *testing.T) {
 		subject := "<script>alert('xss')</script>"

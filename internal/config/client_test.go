@@ -52,4 +52,5 @@ func TestNewClient(t *testing.T) {
 		_, err := NewClient()
 		assert.ErrorIs(t, err, ErrNoAPIKey)
 	})
+
 }

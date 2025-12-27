@@ -1,9 +1,11 @@
 package emails
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	vaultsandbox "github.com/vaultsandbox/client-go"
 )
 
 func TestWrapIndex(t *testing.T) {
@@ -350,6 +352,30 @@ func TestSaveAttachment(t *testing.T) {
 		msg := cmd()
 		assert.Nil(t, msg)
 	})
+
+	t.Run("saves attachment and returns message", func(t *testing.T) {
+		emailWithAttachments := EmailItem{
+			Email: testEmailWithAttachments("1", "Test", "from@x.com", []vaultsandbox.Attachment{
+				{Filename: "test-save.txt", ContentType: "text/plain", Size: 5, Content: []byte("hello")},
+			}),
+			InboxLabel: "inbox",
+		}
+		m := testModelDetailView(emailWithAttachments)
+
+		cmd := m.saveAttachment(0)
+		msg := cmd()
+
+		// Should return an attachmentSavedMsg
+		savedMsg, ok := msg.(attachmentSavedMsg)
+		assert.True(t, ok, "expected attachmentSavedMsg")
+		assert.NoError(t, savedMsg.err)
+		assert.Contains(t, savedMsg.filename, "test-save") // may have _N suffix
+
+		// Cleanup: remove the saved file
+		if savedMsg.filename != "" {
+			os.Remove(savedMsg.filename)
+		}
+	})
 }
 
 func TestOpenFirstURL(t *testing.T) {
@@ -369,6 +395,7 @@ func TestOpenFirstURL(t *testing.T) {
 		msg := cmd()
 		assert.Nil(t, msg)
 	})
+
 }
 
 func TestOpenLinkByIndex(t *testing.T) {
@@ -398,6 +425,7 @@ func TestOpenLinkByIndex(t *testing.T) {
 		msg := cmd()
 		assert.Nil(t, msg)
 	})
+
 }
 
 func TestViewHTML(t *testing.T) {

@@ -90,9 +90,19 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 	}
 
 	// Pretty output
+	content := formatInboxInfoContent(stored, isActive, isExpired, remaining, emailCount, syncErr)
+
+	fmt.Println()
+	fmt.Println(styles.BoxStyle.Render(content))
+	fmt.Println()
+
+	return nil
+}
+
+// formatInboxInfoContent builds the formatted content string for inbox info display.
+func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool, remaining time.Duration, emailCount int, syncErr error) string {
 	labelStyle := styles.LabelStyle.Width(14)
 
-	// Build content
 	var content string
 
 	// Title with active badge
@@ -130,9 +140,5 @@ func runInboxInfo(cmd *cobra.Command, args []string) error {
 	// Security info
 	content += fmt.Sprintf("%s %s", labelStyle.Render("Encryption:"), "ML-KEM-768")
 
-	fmt.Println()
-	fmt.Println(styles.BoxStyle.Render(content))
-	fmt.Println()
-
-	return nil
+	return content
 }

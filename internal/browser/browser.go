@@ -73,10 +73,10 @@ func ViewHTML(html string) error {
 	return OpenURL("file://" + tmpFile.Name())
 }
 
-// ViewEmailHTML wraps email HTML with styled template and opens in browser.
-// Provides consistent styling with VaultSandbox branding across CLI and TUI.
-func ViewEmailHTML(subject, from string, receivedAt time.Time, emailHTML string) error {
-	wrappedHTML := fmt.Sprintf(`<!DOCTYPE html>
+// BuildEmailHTMLTemplate generates the complete HTML for email preview.
+// Exported for testing. Subject and from are escaped to prevent XSS.
+func BuildEmailHTMLTemplate(subject, from string, receivedAt time.Time, emailHTML string) string {
+	return fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -131,8 +131,12 @@ func ViewEmailHTML(subject, from string, receivedAt time.Time, emailHTML string)
 		receivedAt.Format("January 2, 2006 at 3:04 PM"),
 		emailHTML,
 	)
+}
 
-	return ViewHTML(wrappedHTML)
+// ViewEmailHTML wraps email HTML with styled template and opens in browser.
+// Provides consistent styling with VaultSandbox branding across CLI and TUI.
+func ViewEmailHTML(subject, from string, receivedAt time.Time, emailHTML string) error {
+	return ViewHTML(BuildEmailHTMLTemplate(subject, from, receivedAt, emailHTML))
 }
 
 // CleanupPreviews removes old preview temp files older than the given duration.
