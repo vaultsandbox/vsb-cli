@@ -322,3 +322,120 @@ func TestUpdateFilteredList(t *testing.T) {
 		assert.NotEmpty(t, m.list.Title)
 	})
 }
+
+func TestSaveAttachment(t *testing.T) {
+	t.Run("returns nil when viewedEmail is nil", func(t *testing.T) {
+		m := testModel([]EmailItem{})
+		m.viewedEmail = nil
+
+		cmd := m.saveAttachment(0)
+		msg := cmd()
+		assert.Nil(t, msg)
+	})
+
+	t.Run("returns nil for negative index", func(t *testing.T) {
+		email := testEmailItem("1", "Test", "from@x.com", "inbox")
+		m := testModelDetailView(email)
+
+		cmd := m.saveAttachment(-1)
+		msg := cmd()
+		assert.Nil(t, msg)
+	})
+
+	t.Run("returns nil for out of bounds index", func(t *testing.T) {
+		email := testEmailItem("1", "Test", "from@x.com", "inbox")
+		m := testModelDetailView(email)
+
+		cmd := m.saveAttachment(999)
+		msg := cmd()
+		assert.Nil(t, msg)
+	})
+}
+
+func TestOpenFirstURL(t *testing.T) {
+	t.Run("returns nil when no email selected", func(t *testing.T) {
+		m := testModel([]EmailItem{})
+
+		cmd := m.openFirstURL()
+		msg := cmd()
+		assert.Nil(t, msg)
+	})
+
+	t.Run("returns nil when email has no links", func(t *testing.T) {
+		email := testEmailItem("1", "Test", "from@x.com", "inbox")
+		m := testModel([]EmailItem{email})
+
+		cmd := m.openFirstURL()
+		msg := cmd()
+		assert.Nil(t, msg)
+	})
+}
+
+func TestOpenLinkByIndex(t *testing.T) {
+	t.Run("returns nil when viewedEmail is nil", func(t *testing.T) {
+		m := testModel([]EmailItem{})
+		m.viewedEmail = nil
+
+		cmd := m.openLinkByIndex(0)
+		msg := cmd()
+		assert.Nil(t, msg)
+	})
+
+	t.Run("returns nil for negative index", func(t *testing.T) {
+		email := testEmailItem("1", "Test", "from@x.com", "inbox")
+		m := testModelDetailView(email)
+
+		cmd := m.openLinkByIndex(-1)
+		msg := cmd()
+		assert.Nil(t, msg)
+	})
+
+	t.Run("returns nil for out of bounds index", func(t *testing.T) {
+		email := testEmailItem("1", "Test", "from@x.com", "inbox")
+		m := testModelDetailView(email)
+
+		cmd := m.openLinkByIndex(999)
+		msg := cmd()
+		assert.Nil(t, msg)
+	})
+}
+
+func TestViewHTML(t *testing.T) {
+	t.Run("returns nil when no email selected", func(t *testing.T) {
+		m := testModel([]EmailItem{})
+
+		cmd := m.viewHTML()
+		msg := cmd()
+		assert.Nil(t, msg)
+	})
+
+	t.Run("returns nil when email has no HTML", func(t *testing.T) {
+		email := testEmailItem("1", "Test", "from@x.com", "inbox")
+		email.Email.HTML = ""
+		m := testModel([]EmailItem{email})
+
+		cmd := m.viewHTML()
+		msg := cmd()
+		assert.Nil(t, msg)
+	})
+}
+
+func TestDeleteEmail(t *testing.T) {
+	t.Run("returns nil when list is empty", func(t *testing.T) {
+		m := testModel([]EmailItem{})
+
+		cmd := m.deleteEmail()
+		msg := cmd()
+		assert.Nil(t, msg)
+	})
+
+	t.Run("returns nil when no inboxes", func(t *testing.T) {
+		email := testEmailItem("1", "Test", "from@x.com", "inbox")
+		m := testModel([]EmailItem{email})
+		m.inboxes = nil
+
+		cmd := m.deleteEmail()
+		msg := cmd()
+		assert.Nil(t, msg)
+	})
+}

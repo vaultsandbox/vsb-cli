@@ -150,43 +150,82 @@ func TestViewEmailHTML_TemplateGeneration(t *testing.T) {
 // ============================================================================
 
 func TestCleanupPreviews(t *testing.T) {
-	t.Run("removes old preview files", func(t *testing.T) {
-		// Create temp directory to test with
-		tmpDir := t.TempDir()
+	t.Run("removes old preview files from real temp dir", func(t *testing.T) {
+		tmpDir := os.TempDir()
 
-		// Create old preview file (simulating the naming pattern)
-		oldFile := filepath.Join(tmpDir, previewFilePrefix+"old123.html")
+		// Create an old preview file in the real temp directory
+		oldFile := filepath.Join(tmpDir, previewFilePrefix+"test-old-cleanup.html")
 		require.NoError(t, os.WriteFile(oldFile, []byte("old content"), 0600))
 
 		// Set file modification time to 2 hours ago
 		oldTime := time.Now().Add(-2 * time.Hour)
 		require.NoError(t, os.Chtimes(oldFile, oldTime, oldTime))
 
-		// Create recent preview file
-		recentFile := filepath.Join(tmpDir, previewFilePrefix+"recent456.html")
+		// Create a recent preview file that should NOT be deleted
+		recentFile := filepath.Join(tmpDir, previewFilePrefix+"test-recent-cleanup.html")
 		require.NoError(t, os.WriteFile(recentFile, []byte("recent content"), 0600))
 
-		// Note: CleanupPreviews operates on os.TempDir() which we can't easily mock
-		// So we test the cleanup logic indirectly by verifying the function doesn't error
+		// Cleanup should remove old file but keep recent one
 		err := CleanupPreviews(1 * time.Hour)
 		assert.NoError(t, err)
+
+		// Old file should be removed
+		_, err = os.Stat(oldFile)
+		assert.True(t, os.IsNotExist(err), "old file should be removed")
+
+		// Recent file should still exist
+		_, err = os.Stat(recentFile)
+		assert.NoError(t, err, "recent file should still exist")
+
+		// Cleanup the recent file manually
+		os.Remove(recentFile)
 	})
 
-	t.Run("handles non-existent temp directory gracefully", func(t *testing.T) {
-		// This shouldn't error even if there are permission issues
-		// The function should handle errors gracefully
+	t.Run("ignores non-preview files", func(t *testing.T) {
+		tmpDir := os.TempDir()
+
+		// Create a file without the preview prefix
+		otherFile := filepath.Join(tmpDir, "not-a-preview-test.html")
+		require.NoError(t, os.WriteFile(otherFile, []byte("other"), 0600))
+
+		// Set it to be old
+		oldTime := time.Now().Add(-2 * time.Hour)
+		require.NoError(t, os.Chtimes(otherFile, oldTime, oldTime))
+
 		err := CleanupPreviews(1 * time.Hour)
 		assert.NoError(t, err)
+
+		// File should NOT be removed (no preview prefix)
+		_, err = os.Stat(otherFile)
+		assert.NoError(t, err, "non-preview file should not be removed")
+
+		os.Remove(otherFile)
 	})
 
-	t.Run("zero duration threshold", func(t *testing.T) {
-		// With zero duration, all files older than "now" would be cleaned
+	t.Run("ignores directories", func(t *testing.T) {
+		tmpDir := os.TempDir()
+
+		// Create a directory with the preview prefix
+		dirPath := filepath.Join(tmpDir, previewFilePrefix+"test-dir")
+		require.NoError(t, os.MkdirAll(dirPath, 0755))
+
+		err := CleanupPreviews(0) // 0 duration = delete everything old
+		assert.NoError(t, err)
+
+		// Directory should NOT be removed
+		info, err := os.Stat(dirPath)
+		assert.NoError(t, err)
+		assert.True(t, info.IsDir())
+
+		os.Remove(dirPath)
+	})
+
+	t.Run("handles zero duration threshold", func(t *testing.T) {
 		err := CleanupPreviews(0)
 		assert.NoError(t, err)
 	})
 
-	t.Run("negative duration threshold", func(t *testing.T) {
-		// Negative duration means files in the "future" - should not error
+	t.Run("handles negative duration threshold", func(t *testing.T) {
 		err := CleanupPreviews(-1 * time.Hour)
 		assert.NoError(t, err)
 	})

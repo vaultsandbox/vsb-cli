@@ -169,4 +169,26 @@ func TestDownloadAllAttachments(t *testing.T) {
 		assert.FileExists(t, filepath.Join(dir, "doc.txt"))
 		assert.FileExists(t, filepath.Join(dir, "doc_1.txt"))
 	})
+
+	t.Run("handles partial failures gracefully", func(t *testing.T) {
+		// Use an invalid directory to trigger failure for some files
+		dir := t.TempDir()
+		invalidDir := filepath.Join(dir, "file.txt") // a file, not a dir
+
+		// Create a file at the path so we can't create a subdir there
+		require.NoError(t, os.WriteFile(invalidDir, []byte("blocker"), 0644))
+
+		oldDir := attachmentDir
+		attachmentDir = filepath.Join(invalidDir, "subdir") // this will fail
+		defer func() { attachmentDir = oldDir }()
+
+		attachments := []vaultsandbox.Attachment{
+			{Filename: "file1.txt", Content: []byte("content1")},
+			{Filename: "file2.txt", Content: []byte("content2")},
+		}
+
+		// Should not error but will print failure messages
+		err := downloadAllAttachments(attachments)
+		assert.NoError(t, err) // function returns nil even on partial failure
+	})
 }
