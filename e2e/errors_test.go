@@ -763,8 +763,11 @@ func TestConcurrentInboxOperations(t *testing.T) {
 
 		for i := 0; i < numInboxes; i++ {
 			wg.Add(1)
-			go func() {
+			go func(idx int) {
 				defer wg.Done()
+				// Stagger requests to avoid rate limiting
+				time.Sleep(time.Duration(idx) * 500 * time.Millisecond)
+
 				stdout, stderr, code := runVSBWithConfig(t, configDir, "inbox", "create", "--output", "json")
 				if code != 0 {
 					results <- struct {
@@ -789,7 +792,7 @@ func TestConcurrentInboxOperations(t *testing.T) {
 					email string
 					err   error
 				}{email: result.Email}
-			}()
+			}(i)
 		}
 
 		wg.Wait()
@@ -828,6 +831,7 @@ func TestConcurrentInboxOperations(t *testing.T) {
 		t.Cleanup(func() {
 			for _, email := range emails {
 				runVSBWithConfig(t, configDir, "inbox", "delete", email)
+				time.Sleep(200 * time.Millisecond) // Delay between deletes too
 			}
 		})
 	})

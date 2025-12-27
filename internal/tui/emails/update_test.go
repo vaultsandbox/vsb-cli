@@ -394,3 +394,202 @@ func TestUpdateInboxSwitch(t *testing.T) {
 		assert.Equal(t, 0, updated.currentInboxIdx)
 	})
 }
+
+func TestUpdateInboxCreated(t *testing.T) {
+	t.Run("sets error on failure", func(t *testing.T) {
+		m := testModel([]EmailItem{})
+		createErr := errors.New("create failed")
+
+		newModel, _ := m.Update(inboxCreatedMsg{inbox: nil, err: createErr})
+
+		updated := newModel.(Model)
+		assert.Equal(t, createErr, updated.lastError)
+	})
+}
+
+func TestHandleListViewUpdate(t *testing.T) {
+	emails := []EmailItem{
+		testEmailItem("1", "First", "a@x.com", "inbox"),
+		testEmailItem("2", "Second", "b@x.com", "inbox"),
+	}
+
+	t.Run("o key returns command on non-empty list", func(t *testing.T) {
+		m := testModel(emails)
+
+		_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+
+		// Should return a command (the openFirstURL tea.Cmd)
+		assert.NotNil(t, cmd)
+	})
+
+	t.Run("o key falls through on empty list", func(t *testing.T) {
+		m := testModel([]EmailItem{})
+
+		newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+
+		updated := newModel.(Model)
+		assert.False(t, updated.viewing)
+	})
+
+	t.Run("v key returns command on non-empty list", func(t *testing.T) {
+		m := testModel(emails)
+
+		_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'v'}})
+
+		// Should return a command (the viewHTML tea.Cmd)
+		assert.NotNil(t, cmd)
+	})
+
+	t.Run("v key falls through on empty list", func(t *testing.T) {
+		m := testModel([]EmailItem{})
+
+		newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'v'}})
+
+		updated := newModel.(Model)
+		assert.False(t, updated.viewing)
+	})
+
+	t.Run("d key returns command on non-empty list", func(t *testing.T) {
+		m := testModel(emails)
+
+		_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+
+		assert.NotNil(t, cmd)
+	})
+
+	t.Run("d key falls through on empty list", func(t *testing.T) {
+		m := testModel([]EmailItem{})
+
+		newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+
+		updated := newModel.(Model)
+		assert.False(t, updated.viewing)
+	})
+
+	t.Run("n key triggers createNewInbox", func(t *testing.T) {
+		m := testModel(emails)
+
+		_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+
+		assert.NotNil(t, cmd)
+	})
+}
+
+func TestHandleDetailViewUpdate(t *testing.T) {
+	email := testEmailItem("1", "Test", "from@example.com", "inbox")
+
+	t.Run("v key returns command when email has HTML", func(t *testing.T) {
+		m := testModelDetailView(email)
+		m.viewedEmail.Email.HTML = "<html><body>test</body></html>"
+
+		newModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'v'}})
+
+		// Command is returned, model stays in detail view
+		updated := newModel.(Model)
+		assert.True(t, updated.viewing)
+		assert.NotNil(t, cmd)
+	})
+
+	t.Run("v key updates viewport when email has no HTML", func(t *testing.T) {
+		m := testModelDetailView(email)
+		m.viewedEmail.Email.HTML = ""
+
+		newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'v'}})
+
+		// Should still be in detail view
+		updated := newModel.(Model)
+		assert.True(t, updated.viewing)
+	})
+
+	t.Run("enter key opens link in links view", func(t *testing.T) {
+		emailWithLinks := EmailItem{
+			Email:      testEmailWithLinks("1", "Test", "from@x.com", []string{"http://example.com"}),
+			InboxLabel: "inbox",
+		}
+		m := testModelDetailView(emailWithLinks)
+		m.detailView = ViewLinks
+		m.selectedLink = 0
+
+		_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+		assert.NotNil(t, cmd)
+	})
+
+	t.Run("enter key saves attachment in attachments view", func(t *testing.T) {
+		emailWithAttachments := EmailItem{
+			Email: testEmailWithAttachments("1", "Test", "from@x.com", []vaultsandbox.Attachment{
+				{Filename: "test.pdf", ContentType: "application/pdf", Size: 1024},
+			}),
+			InboxLabel: "inbox",
+		}
+		m := testModelDetailView(emailWithAttachments)
+		m.detailView = ViewAttachments
+		m.selectedAttachment = 0
+
+		_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+		assert.NotNil(t, cmd)
+	})
+
+	t.Run("invalid tab number does nothing", func(t *testing.T) {
+		m := testModelDetailView(email)
+		originalView := m.detailView
+
+		newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'9'}})
+
+		updated := newModel.(Model)
+		assert.Equal(t, originalView, updated.detailView)
+	})
+
+	t.Run("up key in content view updates viewport", func(t *testing.T) {
+		m := testModelDetailView(email)
+		m.detailView = ViewContent
+
+		newModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyUp})
+
+		// Should still be in detail view, viewport might have updated
+		updated := newModel.(Model)
+		assert.True(t, updated.viewing)
+		assert.Nil(t, cmd) // viewport.Update returns nil for simple key presses
+	})
+
+	t.Run("down key in content view updates viewport", func(t *testing.T) {
+		m := testModelDetailView(email)
+		m.detailView = ViewContent
+
+		newModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyDown})
+
+		updated := newModel.(Model)
+		assert.True(t, updated.viewing)
+	})
+
+	t.Run("q key quits from detail view", func(t *testing.T) {
+		m := testModelDetailView(email)
+
+		_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+
+		assert.NotNil(t, cmd)
+	})
+}
+
+func TestHandleTabSwitch(t *testing.T) {
+	email := testEmailItem("1", "Test", "from@example.com", "inbox")
+
+	t.Run("invalid character returns nil", func(t *testing.T) {
+		m := testModelDetailView(email)
+		cmd := m.handleTabSwitch('z')
+		assert.Nil(t, cmd)
+	})
+
+	t.Run("0 returns nil", func(t *testing.T) {
+		m := testModelDetailView(email)
+		cmd := m.handleTabSwitch('0')
+		assert.Nil(t, cmd)
+	})
+
+	t.Run("6 returns nil", func(t *testing.T) {
+		m := testModelDetailView(email)
+		cmd := m.handleTabSwitch('6')
+		assert.Nil(t, cmd)
+	})
+}

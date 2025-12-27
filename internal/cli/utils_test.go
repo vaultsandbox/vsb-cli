@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -164,4 +165,58 @@ func TestMaskAPIKey(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestGetOutput(t *testing.T) {
+	t.Run("returns flag value when set", func(t *testing.T) {
+		cmd := &cobra.Command{}
+		cmd.Flags().String("output", "pretty", "output format")
+		cmd.Flags().Set("output", "json")
+
+		got := getOutput(cmd)
+		assert.Equal(t, "json", got)
+	})
+
+	t.Run("returns default when flag not set", func(t *testing.T) {
+		cmd := &cobra.Command{}
+		cmd.Flags().String("output", "pretty", "output format")
+		// Don't set the flag
+
+		got := getOutput(cmd)
+		// Should return the config default (pretty)
+		assert.NotEmpty(t, got)
+	})
+
+	t.Run("returns default when no output flag", func(t *testing.T) {
+		cmd := &cobra.Command{}
+		// No output flag defined
+
+		got := getOutput(cmd)
+		assert.NotEmpty(t, got)
+	})
+}
+
+func TestOutputJSON(t *testing.T) {
+	t.Run("outputs valid JSON", func(t *testing.T) {
+		data := map[string]string{"key": "value"}
+		err := outputJSON(data)
+		assert.NoError(t, err)
+	})
+
+	t.Run("handles nested structures", func(t *testing.T) {
+		data := map[string]interface{}{
+			"name": "test",
+			"nested": map[string]int{
+				"count": 42,
+			},
+		}
+		err := outputJSON(data)
+		assert.NoError(t, err)
+	})
+
+	t.Run("handles arrays", func(t *testing.T) {
+		data := []string{"a", "b", "c"}
+		err := outputJSON(data)
+		assert.NoError(t, err)
+	})
 }

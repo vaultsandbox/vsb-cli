@@ -78,6 +78,51 @@ func TestLoadKeystore(t *testing.T) {
 		assert.Empty(t, ks.ListInboxes()) // Expired inbox pruned
 	})
 
+	t.Run("prunes expired active inbox and switches to remaining", func(t *testing.T) {
+		dir := t.TempDir()
+		t.Setenv("VSB_CONFIG_DIR", dir)
+
+		// Write keystore with expired active inbox and one valid inbox
+		expired := time.Now().Add(-1 * time.Hour).Format(time.RFC3339)
+		valid := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
+		data := fmt.Sprintf(`{
+			"active_inbox": "expired@example.com",
+			"inboxes":[
+				{"email":"expired@example.com","expiresAt":"%s"},
+				{"email":"valid@example.com","expiresAt":"%s"}
+			]
+		}`, expired, valid)
+		err := os.WriteFile(filepath.Join(dir, "keystore.json"), []byte(data), 0644)
+		require.NoError(t, err)
+
+		ks, err := LoadKeystore()
+		require.NoError(t, err)
+		assert.Len(t, ks.ListInboxes(), 1)
+		assert.Equal(t, "valid@example.com", ks.ActiveInbox) // Should switch to valid inbox
+	})
+
+	t.Run("prunes all expired inboxes clears active", func(t *testing.T) {
+		dir := t.TempDir()
+		t.Setenv("VSB_CONFIG_DIR", dir)
+
+		// Write keystore with all expired inboxes
+		expired := time.Now().Add(-1 * time.Hour).Format(time.RFC3339)
+		data := fmt.Sprintf(`{
+			"active_inbox": "expired1@example.com",
+			"inboxes":[
+				{"email":"expired1@example.com","expiresAt":"%s"},
+				{"email":"expired2@example.com","expiresAt":"%s"}
+			]
+		}`, expired, expired)
+		err := os.WriteFile(filepath.Join(dir, "keystore.json"), []byte(data), 0644)
+		require.NoError(t, err)
+
+		ks, err := LoadKeystore()
+		require.NoError(t, err)
+		assert.Empty(t, ks.ListInboxes())
+		assert.Empty(t, ks.ActiveInbox) // Should be cleared
+	})
+
 	t.Run("invalid JSON returns error", func(t *testing.T) {
 		dir := t.TempDir()
 		t.Setenv("VSB_CONFIG_DIR", dir)

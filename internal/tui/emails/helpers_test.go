@@ -225,3 +225,100 @@ func TestDetailViewConstants(t *testing.T) {
 		assert.Equal(t, DetailView(4), ViewRaw)
 	})
 }
+
+func TestNewModel(t *testing.T) {
+	t.Run("creates model with nil client and empty inboxes", func(t *testing.T) {
+		m := NewModel(nil, nil, 0, nil)
+
+		assert.NotNil(t, m.list)
+		assert.Empty(t, m.emails)
+		assert.Equal(t, 0, m.currentInboxIdx)
+		assert.Nil(t, m.inboxes)
+		assert.NotNil(t, m.ctx)
+		assert.NotNil(t, m.cancel)
+	})
+
+	t.Run("clamps negative activeIdx to 0", func(t *testing.T) {
+		m := NewModel(nil, nil, -5, nil)
+		assert.Equal(t, 0, m.currentInboxIdx)
+	})
+
+	t.Run("clamps out-of-bounds activeIdx to 0", func(t *testing.T) {
+		m := NewModel(nil, nil, 100, nil)
+		assert.Equal(t, 0, m.currentInboxIdx)
+	})
+
+	t.Run("sets keystore when provided", func(t *testing.T) {
+		ks := &MockKeystore{}
+		m := NewModel(nil, nil, 0, ks)
+		assert.Equal(t, ks, m.keystore)
+	})
+
+	t.Run("initializes with 'Connecting...' title", func(t *testing.T) {
+		m := NewModel(nil, nil, 0, nil)
+		assert.Equal(t, "Connecting...", m.list.Title)
+	})
+
+	t.Run("enables filtering", func(t *testing.T) {
+		m := NewModel(nil, nil, 0, nil)
+		assert.True(t, m.list.FilteringEnabled())
+	})
+}
+
+func TestModelInit(t *testing.T) {
+	t.Run("returns batch command", func(t *testing.T) {
+		m := NewModel(nil, nil, 0, nil)
+		cmd := m.Init()
+		assert.NotNil(t, cmd)
+	})
+}
+
+func TestModelCancel(t *testing.T) {
+	t.Run("cancels context", func(t *testing.T) {
+		m := NewModel(nil, nil, 0, nil)
+
+		// Context should not be cancelled initially
+		select {
+		case <-m.ctx.Done():
+			t.Fatal("context should not be cancelled initially")
+		default:
+			// expected
+		}
+
+		m.Cancel()
+
+		// Context should now be cancelled
+		select {
+		case <-m.ctx.Done():
+			// expected
+		default:
+			t.Fatal("context should be cancelled after Cancel()")
+		}
+	})
+}
+
+
+func TestUpdateFilteredList(t *testing.T) {
+	emails := []EmailItem{
+		testEmailItem("1", "First", "a@x.com", "inbox1@test.com"),
+		testEmailItem("2", "Second", "b@x.com", "inbox2@test.com"),
+	}
+
+	t.Run("updates list items from emails", func(t *testing.T) {
+		m := testModel(emails)
+		m.updateFilteredList()
+
+		// List should have same number of items as filtered emails
+		assert.Equal(t, len(m.filteredEmails()), len(m.list.Items()))
+	})
+
+	t.Run("updates title after filtering", func(t *testing.T) {
+		m := testModel(emails)
+		m.connected = true
+		m.inboxes = nil
+		m.updateFilteredList()
+
+		// Title should be updated
+		assert.NotEmpty(t, m.list.Title)
+	})
+}

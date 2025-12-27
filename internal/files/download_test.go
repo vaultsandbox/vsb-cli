@@ -151,4 +151,30 @@ func TestSaveFile(t *testing.T) {
 		// File should be saved in the target directory, not escaped
 		assert.True(t, filepath.HasPrefix(path, dir))
 	})
+
+	t.Run("fails on invalid directory", func(t *testing.T) {
+		// Try to create a directory inside a file (should fail)
+		dir := t.TempDir()
+		filePath := filepath.Join(dir, "file.txt")
+		err := os.WriteFile(filePath, []byte("content"), 0644)
+		require.NoError(t, err)
+
+		// Try to save inside the file as if it were a directory
+		_, err = SaveFile(filepath.Join(filePath, "subdir"), "test.txt", []byte("data"))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create directory")
+	})
+
+	t.Run("fails when file cannot be written", func(t *testing.T) {
+		dir := t.TempDir()
+		// Create a read-only directory
+		readOnlyDir := filepath.Join(dir, "readonly")
+		err := os.Mkdir(readOnlyDir, 0555)
+		require.NoError(t, err)
+
+		// Try to write a file in it
+		_, err = SaveFile(readOnlyDir, "test.txt", []byte("data"))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to write file")
+	})
 }
