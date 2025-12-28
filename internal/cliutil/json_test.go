@@ -56,7 +56,7 @@ func TestEmailFullJSON(t *testing.T) {
 
 	assert.Equal(t, "msg-456", result["id"])
 	assert.Equal(t, "sender@example.com", result["from"])
-	assert.Equal(t, "recipient1@test.com, recipient2@test.com", result["to"])
+	assert.Equal(t, []string{"recipient1@test.com", "recipient2@test.com"}, result["to"])
 	assert.Equal(t, "Full Test", result["subject"])
 	assert.Equal(t, "Plain text content", result["text"])
 	assert.Equal(t, "<p>HTML content</p>", result["html"])
@@ -73,7 +73,7 @@ func TestEmailFullJSON_EmptyTo(t *testing.T) {
 
 	result := EmailFullJSON(email)
 
-	assert.Equal(t, "", result["to"])
+	assert.Equal(t, []string{}, result["to"])
 }
 
 func TestEmailFullJSON_SingleRecipient(t *testing.T) {
@@ -84,7 +84,7 @@ func TestEmailFullJSON_SingleRecipient(t *testing.T) {
 
 	result := EmailFullJSON(email)
 
-	assert.Equal(t, "single@test.com", result["to"])
+	assert.Equal(t, []string{"single@test.com"}, result["to"])
 }
 
 func TestInboxSummaryJSON(t *testing.T) {
@@ -195,7 +195,7 @@ func TestEmailJSON_Options(t *testing.T) {
 	t.Run("include to only", func(t *testing.T) {
 		result := EmailJSON(email, EmailJSONOptions{IncludeTo: true})
 
-		assert.Equal(t, "a@test.com, b@test.com", result["to"])
+		assert.Equal(t, []string{"a@test.com", "b@test.com"}, result["to"])
 		assert.Nil(t, result["text"])
 		assert.Nil(t, result["links"])
 	})
@@ -232,7 +232,7 @@ func TestEmailJSON_Options(t *testing.T) {
 			IncludeHeaders: true,
 		})
 
-		assert.Equal(t, "a@test.com, b@test.com", result["to"])
+		assert.Equal(t, []string{"a@test.com", "b@test.com"}, result["to"])
 		assert.Equal(t, "Plain text", result["text"])
 		assert.Equal(t, "<p>HTML</p>", result["html"])
 		assert.Equal(t, []string{"https://example.com"}, result["links"])

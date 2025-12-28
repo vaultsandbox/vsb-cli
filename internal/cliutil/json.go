@@ -1,7 +1,6 @@
 package cliutil
 
 import (
-	"strings"
 	"time"
 
 	"github.com/vaultsandbox/client-go"
@@ -29,11 +28,7 @@ func EmailJSON(email *vaultsandbox.Email, opts EmailJSONOptions) map[string]inte
 	}
 
 	if opts.IncludeTo {
-		if len(email.To) > 0 {
-			m["to"] = strings.Join(email.To, ", ")
-		} else {
-			m["to"] = ""
-		}
+		m["to"] = email.To
 	}
 	if opts.IncludeBody {
 		m["text"] = email.Text

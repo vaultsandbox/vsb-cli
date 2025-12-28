@@ -118,7 +118,7 @@ func TestEmailView(t *testing.T) {
 			ID         string   `json:"id"`
 			Subject    string   `json:"subject"`
 			From       string   `json:"from"`
-			To         string   `json:"to"`
+			To         []string `json:"to"`
 			ReceivedAt string   `json:"receivedAt"`
 			Text       string   `json:"text"`
 			HTML       string   `json:"html"`
