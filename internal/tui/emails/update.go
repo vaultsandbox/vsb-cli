@@ -278,30 +278,47 @@ func (m Model) handleListViewUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleTabSwitch handles number key presses to switch tabs in detail view
 func (m *Model) handleTabSwitch(r byte) tea.Cmd {
-	type tabConfig struct {
-		view       DetailView
-		render     func() string
-		resetIndex *int
-	}
+	var newView DetailView
+	var resetIdx *int
 
-	tabs := map[byte]tabConfig{
-		'1': {ViewContent, m.renderEmailDetail, nil},
-		'2': {ViewSecurity, m.renderSecurityView, nil},
-		'3': {ViewLinks, m.renderLinksView, &m.selectedLink},
-		'4': {ViewAttachments, m.renderAttachmentsView, &m.selectedAttachment},
-		'5': {ViewRaw, m.renderRawView, nil},
-	}
-
-	cfg, ok := tabs[r]
-	if !ok {
+	switch r {
+	case '1':
+		newView = ViewContent
+	case '2':
+		newView = ViewSecurity
+	case '3':
+		newView = ViewLinks
+		resetIdx = &m.selectedLink
+	case '4':
+		newView = ViewAttachments
+		resetIdx = &m.selectedAttachment
+	case '5':
+		newView = ViewRaw
+	default:
 		return nil
 	}
 
-	m.detailView = cfg.view
-	if cfg.resetIndex != nil {
-		*cfg.resetIndex = 0
+	m.detailView = newView
+	if resetIdx != nil {
+		*resetIdx = 0
 	}
-	m.viewport.SetContent(cfg.render())
+
+	// Render AFTER updating detailView so renderTabs() sees the new value
+	var content string
+	switch newView {
+	case ViewContent:
+		content = m.renderEmailDetail()
+	case ViewSecurity:
+		content = m.renderSecurityView()
+	case ViewLinks:
+		content = m.renderLinksView()
+	case ViewAttachments:
+		content = m.renderAttachmentsView()
+	case ViewRaw:
+		content = m.renderRawView()
+	}
+
+	m.viewport.SetContent(content)
 	m.viewport.GotoTop()
 	return nil
 }
