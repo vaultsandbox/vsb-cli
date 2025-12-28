@@ -163,3 +163,150 @@ func TestInboxFullJSON(t *testing.T) {
 		assert.Equal(t, true, result["isExpired"])
 	})
 }
+
+func TestEmailJSON_Options(t *testing.T) {
+	now := time.Now()
+	email := &vaultsandbox.Email{
+		ID:         "msg-opts",
+		From:       "sender@example.com",
+		To:         []string{"a@test.com", "b@test.com"},
+		Subject:    "Options Test",
+		Text:       "Plain text",
+		HTML:       "<p>HTML</p>",
+		ReceivedAt: now,
+		Links:      []string{"https://example.com"},
+		Headers:    map[string]string{"X-Test": "value"},
+	}
+
+	t.Run("no options returns base fields only", func(t *testing.T) {
+		result := EmailJSON(email, EmailJSONOptions{})
+
+		assert.Equal(t, "msg-opts", result["id"])
+		assert.Equal(t, "sender@example.com", result["from"])
+		assert.Equal(t, "Options Test", result["subject"])
+		assert.Equal(t, now.Format(time.RFC3339), result["receivedAt"])
+		assert.Nil(t, result["to"])
+		assert.Nil(t, result["text"])
+		assert.Nil(t, result["html"])
+		assert.Nil(t, result["links"])
+		assert.Nil(t, result["headers"])
+	})
+
+	t.Run("include to only", func(t *testing.T) {
+		result := EmailJSON(email, EmailJSONOptions{IncludeTo: true})
+
+		assert.Equal(t, "a@test.com, b@test.com", result["to"])
+		assert.Nil(t, result["text"])
+		assert.Nil(t, result["links"])
+	})
+
+	t.Run("include body only", func(t *testing.T) {
+		result := EmailJSON(email, EmailJSONOptions{IncludeBody: true})
+
+		assert.Equal(t, "Plain text", result["text"])
+		assert.Equal(t, "<p>HTML</p>", result["html"])
+		assert.Nil(t, result["to"])
+		assert.Nil(t, result["links"])
+	})
+
+	t.Run("include links only", func(t *testing.T) {
+		result := EmailJSON(email, EmailJSONOptions{IncludeLinks: true})
+
+		assert.Equal(t, []string{"https://example.com"}, result["links"])
+		assert.Nil(t, result["to"])
+		assert.Nil(t, result["headers"])
+	})
+
+	t.Run("include headers only", func(t *testing.T) {
+		result := EmailJSON(email, EmailJSONOptions{IncludeHeaders: true})
+
+		assert.Equal(t, map[string]string{"X-Test": "value"}, result["headers"])
+		assert.Nil(t, result["links"])
+	})
+
+	t.Run("all options enabled", func(t *testing.T) {
+		result := EmailJSON(email, EmailJSONOptions{
+			IncludeTo:      true,
+			IncludeBody:    true,
+			IncludeLinks:   true,
+			IncludeHeaders: true,
+		})
+
+		assert.Equal(t, "a@test.com, b@test.com", result["to"])
+		assert.Equal(t, "Plain text", result["text"])
+		assert.Equal(t, "<p>HTML</p>", result["html"])
+		assert.Equal(t, []string{"https://example.com"}, result["links"])
+		assert.Equal(t, map[string]string{"X-Test": "value"}, result["headers"])
+	})
+}
+
+func TestInboxJSON_Options(t *testing.T) {
+	now := time.Now()
+	inbox := &config.StoredInbox{
+		Email:     "opts@example.com",
+		ID:        "inbox-opts-123",
+		CreatedAt: now.Add(-24 * time.Hour),
+		ExpiresAt: now.Add(24 * time.Hour),
+	}
+
+	t.Run("no options returns base fields only", func(t *testing.T) {
+		result := InboxJSON(inbox, true, now, InboxJSONOptions{})
+
+		assert.Equal(t, "opts@example.com", result["email"])
+		assert.Equal(t, inbox.ExpiresAt.Format(time.RFC3339), result["expiresAt"])
+		assert.Equal(t, true, result["isActive"])
+		assert.Equal(t, false, result["isExpired"])
+		assert.Nil(t, result["id"])
+		assert.Nil(t, result["createdAt"])
+		assert.Nil(t, result["emailCount"])
+	})
+
+	t.Run("include id only", func(t *testing.T) {
+		result := InboxJSON(inbox, true, now, InboxJSONOptions{IncludeID: true})
+
+		assert.Equal(t, "inbox-opts-123", result["id"])
+		assert.Nil(t, result["createdAt"])
+		assert.Nil(t, result["emailCount"])
+	})
+
+	t.Run("include createdAt only", func(t *testing.T) {
+		result := InboxJSON(inbox, true, now, InboxJSONOptions{IncludeCreatedAt: true})
+
+		assert.Equal(t, inbox.CreatedAt.Format(time.RFC3339), result["createdAt"])
+		assert.Nil(t, result["id"])
+	})
+
+	t.Run("include emailCount only", func(t *testing.T) {
+		result := InboxJSON(inbox, true, now, InboxJSONOptions{
+			IncludeEmailCount: true,
+			EmailCount:        10,
+		})
+
+		assert.Equal(t, 10, result["emailCount"])
+		assert.Nil(t, result["id"])
+	})
+
+	t.Run("include syncErr", func(t *testing.T) {
+		syncErr := errors.New("sync failed")
+		result := InboxJSON(inbox, true, now, InboxJSONOptions{SyncErr: syncErr})
+
+		assert.Equal(t, "sync failed", result["syncError"])
+	})
+
+	t.Run("all options enabled", func(t *testing.T) {
+		syncErr := errors.New("timeout")
+		result := InboxJSON(inbox, false, now, InboxJSONOptions{
+			IncludeID:         true,
+			IncludeCreatedAt:  true,
+			IncludeEmailCount: true,
+			EmailCount:        5,
+			SyncErr:           syncErr,
+		})
+
+		assert.Equal(t, "inbox-opts-123", result["id"])
+		assert.Equal(t, inbox.CreatedAt.Format(time.RFC3339), result["createdAt"])
+		assert.Equal(t, 5, result["emailCount"])
+		assert.Equal(t, "timeout", result["syncError"])
+		assert.Equal(t, false, result["isActive"])
+	})
+}
