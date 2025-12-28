@@ -53,27 +53,7 @@ func runInfo(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get email count from server
-	var emailCount int
-	var syncErr error
-
-	client, err := config.NewClient()
-	if err == nil {
-		defer client.Close()
-
-		inbox, importErr := client.ImportInbox(ctx, stored.ToExportedInbox())
-		if importErr == nil {
-			status, statusErr := inbox.GetSyncStatus(ctx)
-			if statusErr == nil {
-				emailCount = status.EmailCount
-			} else {
-				syncErr = statusErr
-			}
-		} else {
-			syncErr = importErr
-		}
-	} else {
-		syncErr = err
-	}
+	emailCount, syncErr := getInboxEmailCount(ctx, stored)
 
 	// Calculate time values
 	now := time.Now()
@@ -142,4 +122,25 @@ func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool
 	content += fmt.Sprintf("%s %s", labelStyle.Render("Encryption:"), "ML-KEM-768")
 
 	return content
+}
+
+// getInboxEmailCount fetches the email count for an inbox from the server.
+func getInboxEmailCount(ctx context.Context, stored *config.StoredInbox) (int, error) {
+	client, err := config.NewClient()
+	if err != nil {
+		return 0, err
+	}
+	defer client.Close()
+
+	inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
+	if err != nil {
+		return 0, err
+	}
+
+	status, err := inbox.GetSyncStatus(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	return status.EmailCount, nil
 }
