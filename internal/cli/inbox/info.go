@@ -34,11 +34,7 @@ func init() {
 func runInfo(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	// Get email arg
-	emailArg := ""
-	if len(args) > 0 {
-		emailArg = args[0]
-	}
+	emailArg := cliutil.GetArg(args, 0, "")
 
 	// Load keystore
 	ks, err := cliutil.LoadKeystoreOrError()

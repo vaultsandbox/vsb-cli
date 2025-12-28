@@ -45,11 +45,7 @@ func init() {
 func runURL(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	// Get email ID (empty = latest)
-	emailID := ""
-	if len(args) > 0 {
-		emailID = args[0]
-	}
+	emailID := cliutil.GetArg(args, 0, "")
 
 	// Use shared helper
 	email, _, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, urlInbox)

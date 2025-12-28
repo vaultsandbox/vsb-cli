@@ -8,6 +8,31 @@ import (
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
+func TestGetArg(t *testing.T) {
+	t.Run("returns value at index", func(t *testing.T) {
+		args := []string{"first", "second", "third"}
+		assert.Equal(t, "first", GetArg(args, 0, "default"))
+		assert.Equal(t, "second", GetArg(args, 1, "default"))
+		assert.Equal(t, "third", GetArg(args, 2, "default"))
+	})
+
+	t.Run("returns default when index out of range", func(t *testing.T) {
+		args := []string{"first"}
+		assert.Equal(t, "default", GetArg(args, 1, "default"))
+		assert.Equal(t, "default", GetArg(args, 5, "default"))
+	})
+
+	t.Run("returns default for empty slice", func(t *testing.T) {
+		var args []string
+		assert.Equal(t, "default", GetArg(args, 0, "default"))
+	})
+
+	t.Run("returns empty default when specified", func(t *testing.T) {
+		var args []string
+		assert.Equal(t, "", GetArg(args, 0, ""))
+	})
+}
+
 func TestGetInbox(t *testing.T) {
 	inbox1 := config.StoredInbox{Email: "test1@example.com"}
 	inbox2 := config.StoredInbox{Email: "test2@example.com"}

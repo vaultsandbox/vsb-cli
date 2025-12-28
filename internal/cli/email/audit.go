@@ -43,11 +43,7 @@ func init() {
 func runAudit(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	// Get email ID (empty string = latest)
-	emailID := ""
-	if len(args) > 0 {
-		emailID = args[0]
-	}
+	emailID := cliutil.GetArg(args, 0, "")
 
 	// Use shared helper to get email
 	email, _, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, auditInbox)

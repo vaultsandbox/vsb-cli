@@ -75,6 +75,14 @@ func LoadAndImportInbox(ctx context.Context, emailFlag string) (*vaultsandbox.In
 	return inbox, cleanup, nil
 }
 
+// GetArg returns args[index] if it exists, otherwise returns defaultValue.
+func GetArg(args []string, index int, defaultValue string) string {
+	if index < len(args) {
+		return args[index]
+	}
+	return defaultValue
+}
+
 // GetEmailByIDOrLatest fetches an email by ID if provided, otherwise returns the latest email.
 // Returns the email, the imported inbox, a cleanup function (closes client), and any error.
 // The caller must call the cleanup function when done.

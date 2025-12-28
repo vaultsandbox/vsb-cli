@@ -28,9 +28,8 @@ SMTP_PORT=25
 Run tests:
 
 ```bash
-./scripts/test.sh              # Run e2e tests
-./scripts/test.sh --coverage   # Run with coverage
-./scripts/test.sh --coverage -v # Verbose output
+./scripts/test.sh
+./scripts/test.sh -v
 ```
 
 To view coverage in browser:

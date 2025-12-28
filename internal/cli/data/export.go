@@ -50,11 +50,7 @@ func runExport(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Get inbox (by arg or active)
-	emailArg := ""
-	if len(args) > 0 {
-		emailArg = args[0]
-	}
+	emailArg := cliutil.GetArg(args, 0, "")
 	stored, err := cliutil.GetInbox(ks, emailArg)
 	if err != nil {
 		return err
