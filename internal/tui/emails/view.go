@@ -78,11 +78,7 @@ func (m Model) renderEmailDetail() string {
 
 		// Subject
 		b.WriteString(styles.DetailLabelStyle.Render("Subject: "))
-		subject := email.Subject
-		if subject == "" {
-			subject = noSubject
-		}
-		b.WriteString(styles.DetailValueStyle.Render(subject))
+		b.WriteString(styles.DetailValueStyle.Render(cliutil.SubjectOrDefault(email.Subject)))
 		b.WriteString("\n")
 
 		// Links (if any)

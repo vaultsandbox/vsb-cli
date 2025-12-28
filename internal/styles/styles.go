@@ -272,12 +272,8 @@ func RenderAuthResults(auth *authresults.AuthResults, labelStyle lipgloss.Style,
 		} else {
 			// Compact: show first detail in parentheses
 			if len(f.details) > 0 {
-				// For DMARC, show "policy: value"; for others, just show value
-				if f.label == "DMARC:" && f.details[0].label == "Policy:" {
-					line += fmt.Sprintf(" (policy: %s)", f.details[0].value)
-				} else {
-					line += fmt.Sprintf(" (%s)", f.details[0].value)
-				}
+				d := f.details[0]
+				line += fmt.Sprintf(" (%s %s)", strings.TrimSuffix(strings.ToLower(d.label), ":"), d.value)
 			}
 			lines = append(lines, line)
 		}

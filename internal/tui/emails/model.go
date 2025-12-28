@@ -8,10 +8,9 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
-
-const noSubject = "(no subject)"
 
 // EmailItem represents an email in the list
 type EmailItem struct {
@@ -20,10 +19,7 @@ type EmailItem struct {
 }
 
 func (e EmailItem) Title() string {
-	if e.Email.Subject == "" {
-		return noSubject
-	}
-	return e.Email.Subject
+	return cliutil.SubjectOrDefault(e.Email.Subject)
 }
 
 func (e EmailItem) Description() string {
@@ -31,7 +27,7 @@ func (e EmailItem) Description() string {
 	if e.InboxLabel != "" {
 		desc = fmt.Sprintf("[%s] %s", e.InboxLabel, desc)
 	}
-	desc += fmt.Sprintf(" • %s", e.Email.ReceivedAt.Format("15:04:05"))
+	desc += fmt.Sprintf(" • %s", e.Email.ReceivedAt.Format(cliutil.TimeFormatTimeOnly))
 	return desc
 }
 

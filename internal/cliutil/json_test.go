@@ -130,7 +130,7 @@ func TestInboxFullJSON(t *testing.T) {
 	}
 
 	t.Run("full inbox info without error", func(t *testing.T) {
-		result := InboxFullJSON(inbox, true, 5, nil)
+		result := InboxFullJSON(inbox, true, 5, nil, now)
 
 		assert.Equal(t, "full@example.com", result["email"])
 		assert.Equal(t, "inbox-hash-123", result["id"])
@@ -144,7 +144,7 @@ func TestInboxFullJSON(t *testing.T) {
 
 	t.Run("full inbox info with sync error", func(t *testing.T) {
 		syncErr := errors.New("connection timeout")
-		result := InboxFullJSON(inbox, false, 0, syncErr)
+		result := InboxFullJSON(inbox, false, 0, syncErr, now)
 
 		assert.Equal(t, false, result["isActive"])
 		assert.Equal(t, 0, result["emailCount"])
@@ -158,7 +158,7 @@ func TestInboxFullJSON(t *testing.T) {
 			CreatedAt: now.Add(-72 * time.Hour),
 			ExpiresAt: now.Add(-24 * time.Hour),
 		}
-		result := InboxFullJSON(expiredInbox, false, 0, nil)
+		result := InboxFullJSON(expiredInbox, false, 0, nil, now)
 
 		assert.Equal(t, true, result["isExpired"])
 	})

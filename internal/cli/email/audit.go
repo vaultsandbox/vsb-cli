@@ -3,20 +3,12 @@ package email
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
-)
-
-// Regexes to extract TLS info from Received header
-// e.g., "with ESMTPS (version=TLSv1.3 cipher=TLS_AES_128_GCM_SHA256)"
-var (
-	tlsVersionRegex = regexp.MustCompile(`version=(TLSv[\d.]+)`)
-	tlsCipherRegex  = regexp.MustCompile(`cipher=(\S+)\)`)
 )
 
 var auditCmd = &cobra.Command{
@@ -88,13 +80,13 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 
 	// Extract TLS info from Received header
 	received := email.Headers["received"]
-	if match := tlsVersionRegex.FindStringSubmatch(received); len(match) > 1 {
-		fmt.Printf("%s %s\n", labelStyle.Render("TLS Version:"), styles.PassStyle.Render(match[1]))
+	if tlsVersion := cliutil.ExtractTLSVersion(received); tlsVersion != "" {
+		fmt.Printf("%s %s\n", labelStyle.Render("TLS Version:"), styles.PassStyle.Render(tlsVersion))
 	} else {
 		fmt.Printf("%s %s\n", labelStyle.Render("TLS Version:"), styles.WarnStyle.Render("unknown"))
 	}
-	if match := tlsCipherRegex.FindStringSubmatch(received); len(match) > 1 {
-		fmt.Printf("%s %s\n", labelStyle.Render("Cipher Suite:"), match[1])
+	if cipher := cliutil.ExtractTLSCipher(received); cipher != "" {
+		fmt.Printf("%s %s\n", labelStyle.Render("Cipher Suite:"), cipher)
 	}
 
 	// MIME Structure

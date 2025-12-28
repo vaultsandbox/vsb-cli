@@ -148,8 +148,8 @@ func InboxSummaryJSON(inbox *config.StoredInbox, isActive bool, now time.Time) m
 
 // InboxFullJSON returns a map for JSON output of full inbox details.
 // Used by inbox info command.
-func InboxFullJSON(inbox *config.StoredInbox, isActive bool, emailCount int, syncErr error) map[string]interface{} {
-	return InboxJSON(inbox, isActive, time.Now(), InboxJSONOptions{
+func InboxFullJSON(inbox *config.StoredInbox, isActive bool, emailCount int, syncErr error, now time.Time) map[string]interface{} {
+	return InboxJSON(inbox, isActive, now, InboxJSONOptions{
 		IncludeID:        true,
 		IncludeCreatedAt: true,
 		EmailCount:       &emailCount,

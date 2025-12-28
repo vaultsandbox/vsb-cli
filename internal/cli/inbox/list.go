@@ -30,11 +30,10 @@ func init() {
 }
 
 // filterInboxes returns inboxes, optionally filtering out expired ones.
-func filterInboxes(inboxes []config.StoredInbox, showExpired bool, now time.Time) []config.StoredInbox {
+func filterInboxes(inboxes []config.StoredInbox, showExpired bool) []config.StoredInbox {
 	var filtered []config.StoredInbox
 	for _, inbox := range inboxes {
-		isExpired := inbox.ExpiresAt.Before(now)
-		if isExpired && !showExpired {
+		if cliutil.IsExpired(inbox.ExpiresAt) && !showExpired {
 			continue
 		}
 		filtered = append(filtered, inbox)
@@ -49,12 +48,11 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	inboxes := keystore.ListInboxes()
-	now := time.Now()
-
-	filtered := filterInboxes(inboxes, listShowExpired, now)
+	filtered := filterInboxes(inboxes, listShowExpired)
 
 	// JSON output
 	if cliutil.GetOutput(cmd) == "json" {
+		now := time.Now()
 		var result []map[string]interface{}
 		for _, inbox := range filtered {
 			isActive := inbox.Email == keystore.ActiveInbox
@@ -78,7 +76,7 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	for _, inbox := range filtered {
 		isActive := inbox.Email == keystore.ActiveInbox
-		isExpired := inbox.ExpiresAt.Before(now)
+		isExpired := cliutil.IsExpired(inbox.ExpiresAt)
 
 		// Active marker
 		marker := "  "
@@ -95,12 +93,9 @@ func runList(cmd *cobra.Command, args []string) error {
 		}
 
 		// Expiry
-		var expiry string
+		expiry := cliutil.FormatExpiry(inbox.ExpiresAt)
 		if isExpired {
-			expiry = styles.ExpiredStyle.Render("expired")
-		} else {
-			remaining := inbox.ExpiresAt.Sub(now).Round(time.Minute)
-			expiry = cliutil.FormatDuration(remaining)
+			expiry = styles.ExpiredStyle.Render(expiry)
 		}
 
 		fmt.Printf("%s%s  %s\n", marker, emailPadded, expiry)

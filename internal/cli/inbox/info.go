@@ -50,23 +50,16 @@ func runInfo(cmd *cobra.Command, args []string) error {
 	// Get email count from server
 	emailCount, syncErr := getInboxEmailCount(ctx, stored)
 
-	// Calculate time values
-	now := time.Now()
-	isExpired := stored.ExpiresAt.Before(now)
-	var remaining time.Duration
-	if !isExpired {
-		remaining = stored.ExpiresAt.Sub(now).Round(time.Minute)
-	}
-
+	isExpired := cliutil.IsExpired(stored.ExpiresAt)
 	isActive := stored.Email == ks.ActiveInbox
 
 	// JSON output
 	if cliutil.GetOutput(cmd) == "json" {
-		return cliutil.OutputJSON(cliutil.InboxFullJSON(stored, isActive, emailCount, syncErr))
+		return cliutil.OutputJSON(cliutil.InboxFullJSON(stored, isActive, emailCount, syncErr, time.Now()))
 	}
 
 	// Pretty output
-	content := formatInboxInfoContent(stored, isActive, isExpired, remaining, emailCount, syncErr)
+	content := formatInboxInfoContent(stored, isActive, isExpired, emailCount, syncErr)
 
 	fmt.Println()
 	fmt.Println(styles.BoxStyle.Render(content))
@@ -76,7 +69,7 @@ func runInfo(cmd *cobra.Command, args []string) error {
 }
 
 // formatInboxInfoContent builds the formatted content string for inbox info display.
-func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool, remaining time.Duration, emailCount int, syncErr error) string {
+func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool, emailCount int, syncErr error) string {
 	labelStyle := styles.LabelStyle.Width(14)
 
 	var content string
@@ -97,7 +90,7 @@ func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool
 	if isExpired {
 		expiryStr = styles.FailStyle.Render("EXPIRED")
 	} else {
-		expiryStr = fmt.Sprintf("%s (%s)", stored.ExpiresAt.Format(cliutil.TimeFormatShort), cliutil.FormatDuration(remaining))
+		expiryStr = fmt.Sprintf("%s (%s)", stored.ExpiresAt.Format(cliutil.TimeFormatShort), cliutil.FormatExpiry(stored.ExpiresAt))
 	}
 	content += fmt.Sprintf("%s %s\n", labelStyle.Render("Expires:"), expiryStr)
 

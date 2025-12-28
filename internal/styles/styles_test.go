@@ -177,7 +177,7 @@ func TestRenderAuthResults(t *testing.T) {
 		got := RenderAuthResults(auth, labelStyle, false)
 		assert.Contains(t, got, "SPF:")
 		assert.Contains(t, got, "PASS")
-		assert.Contains(t, got, "(example.com)")
+		assert.Contains(t, got, "(domain example.com)")
 	})
 
 	t.Run("verbose mode with SPF", func(t *testing.T) {
@@ -204,7 +204,7 @@ func TestRenderAuthResults(t *testing.T) {
 		assert.Contains(t, got, "DKIM:")
 		assert.Contains(t, got, "PASS")
 		// Compact mode shows selector (first detail)
-		assert.Contains(t, got, "(s1)")
+		assert.Contains(t, got, "(selector s1)")
 	})
 
 	t.Run("verbose mode with DKIM", func(t *testing.T) {
@@ -231,7 +231,7 @@ func TestRenderAuthResults(t *testing.T) {
 		got := RenderAuthResults(auth, labelStyle, false)
 		assert.Contains(t, got, "DMARC:")
 		assert.Contains(t, got, "PASS")
-		assert.Contains(t, got, "(policy: reject)")
+		assert.Contains(t, got, "(policy reject)")
 	})
 
 	t.Run("verbose mode with DMARC", func(t *testing.T) {
@@ -258,7 +258,7 @@ func TestRenderAuthResults(t *testing.T) {
 		got := RenderAuthResults(auth, labelStyle, false)
 		assert.Contains(t, got, "Reverse DNS:")
 		assert.Contains(t, got, "PASS")
-		assert.Contains(t, got, "(mail.example.com)")
+		assert.Contains(t, got, "(hostname mail.example.com)")
 	})
 
 	t.Run("verbose mode with ReverseDNS", func(t *testing.T) {

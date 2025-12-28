@@ -3,6 +3,7 @@ package cliutil
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -10,12 +11,30 @@ import (
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
+// TLS extraction regexes for parsing Received headers
+var (
+	tlsVersionRegex = regexp.MustCompile(`version=(TLSv[\d.]+)`)
+	tlsCipherRegex  = regexp.MustCompile(`cipher=(\S+)\)`)
+)
+
 // Time format constants for consistent display
 const (
 	TimeFormatShort    = "2006-01-02 15:04"
 	TimeFormatFull     = "2006-01-02 15:04:05"
 	TimeFormatWithZone = "2006-01-02 15:04:05 MST"
+	TimeFormatTimeOnly = "15:04:05"
 )
+
+// NoSubject is the fallback text for emails without a subject.
+const NoSubject = "(no subject)"
+
+// SubjectOrDefault returns the subject, or NoSubject if empty.
+func SubjectOrDefault(subject string) string {
+	if subject == "" {
+		return NoSubject
+	}
+	return subject
+}
 
 // GetOutput returns the output format with priority: flag > env > config > default.
 func GetOutput(cmd *cobra.Command) string {
@@ -77,4 +96,36 @@ func FormatRelativeTime(t time.Time) string {
 	default:
 		return t.Format("Jan 2")
 	}
+}
+
+// ExtractTLSVersion parses TLS version from a Received header.
+// Returns empty string if not found.
+func ExtractTLSVersion(received string) string {
+	if match := tlsVersionRegex.FindStringSubmatch(received); len(match) > 1 {
+		return match[1]
+	}
+	return ""
+}
+
+// ExtractTLSCipher parses TLS cipher suite from a Received header.
+// Returns empty string if not found.
+func ExtractTLSCipher(received string) string {
+	if match := tlsCipherRegex.FindStringSubmatch(received); len(match) > 1 {
+		return match[1]
+	}
+	return ""
+}
+
+// IsExpired checks if a time is in the past.
+func IsExpired(expiresAt time.Time) bool {
+	return expiresAt.Before(time.Now())
+}
+
+// FormatExpiry returns remaining time as a formatted string, or "expired" if past.
+func FormatExpiry(expiresAt time.Time) string {
+	if IsExpired(expiresAt) {
+		return "expired"
+	}
+	remaining := time.Until(expiresAt).Round(time.Minute)
+	return FormatDuration(remaining)
 }

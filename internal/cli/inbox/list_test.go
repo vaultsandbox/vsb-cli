@@ -19,7 +19,7 @@ func TestFilterInboxes(t *testing.T) {
 
 	t.Run("hides expired by default", func(t *testing.T) {
 		inboxes := []config.StoredInbox{activeInbox, expiredInbox, anotherActive}
-		result := filterInboxes(inboxes, false, now)
+		result := filterInboxes(inboxes, false)
 
 		assert.Len(t, result, 2)
 		for _, inbox := range result {
@@ -29,7 +29,7 @@ func TestFilterInboxes(t *testing.T) {
 
 	t.Run("shows expired with showExpired flag", func(t *testing.T) {
 		inboxes := []config.StoredInbox{activeInbox, expiredInbox, anotherActive}
-		result := filterInboxes(inboxes, true, now)
+		result := filterInboxes(inboxes, true)
 
 		assert.Len(t, result, 3)
 		emails := make([]string, len(result))
@@ -40,10 +40,10 @@ func TestFilterInboxes(t *testing.T) {
 	})
 
 	t.Run("returns empty for no inboxes", func(t *testing.T) {
-		result := filterInboxes(nil, false, now)
+		result := filterInboxes(nil, false)
 		assert.Empty(t, result)
 
-		result = filterInboxes([]config.StoredInbox{}, true, now)
+		result = filterInboxes([]config.StoredInbox{}, true)
 		assert.Empty(t, result)
 	})
 
@@ -52,19 +52,19 @@ func TestFilterInboxes(t *testing.T) {
 			{Email: "old1@example.com", ExpiresAt: past},
 			{Email: "old2@example.com", ExpiresAt: past},
 		}
-		result := filterInboxes(inboxes, false, now)
+		result := filterInboxes(inboxes, false)
 		assert.Empty(t, result)
 	})
 
 	t.Run("returns all when all active", func(t *testing.T) {
 		inboxes := []config.StoredInbox{activeInbox, anotherActive}
-		result := filterInboxes(inboxes, false, now)
+		result := filterInboxes(inboxes, false)
 		assert.Len(t, result, 2)
 	})
 
 	t.Run("preserves order", func(t *testing.T) {
 		inboxes := []config.StoredInbox{anotherActive, activeInbox}
-		result := filterInboxes(inboxes, false, now)
+		result := filterInboxes(inboxes, false)
 
 		assert.Equal(t, "another@example.com", result[0].Email)
 		assert.Equal(t, "active@example.com", result[1].Email)
