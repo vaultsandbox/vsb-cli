@@ -85,36 +85,30 @@ func LoadFromFile(path string) error {
 	return yaml.Unmarshal(data, &current)
 }
 
-// getEnv returns env var with VSB_ prefix, or fallback
-func getEnv(key, fallback string) string {
-	if v := os.Getenv("VSB_" + key); v != "" {
-		return v
+// getConfigValue returns config with priority: env (VSB_<key>) > config file > default
+func getConfigValue(envKey, fileValue, defaultValue string) string {
+	if env := os.Getenv("VSB_" + envKey); env != "" {
+		return env
 	}
-	return fallback
+	if fileValue != "" {
+		return fileValue
+	}
+	return defaultValue
 }
 
 // GetAPIKey returns API key with priority: env > config file
 func GetAPIKey() string {
-	return getEnv("API_KEY", current.APIKey)
+	return getConfigValue("API_KEY", current.APIKey, "")
 }
 
 // GetBaseURL returns base URL with priority: env > config file > default
 func GetBaseURL() string {
-	if url := getEnv("BASE_URL", current.BaseURL); url != "" {
-		return url
-	}
-	return DefaultBaseURL
+	return getConfigValue("BASE_URL", current.BaseURL, DefaultBaseURL)
 }
 
-// GetDefaultOutput returns the output format with priority: env (VSB_OUTPUT) > config file > default.
+// GetDefaultOutput returns the output format with priority: env > config file > default
 func GetDefaultOutput() string {
-	if env := os.Getenv("VSB_OUTPUT"); env != "" {
-		return env
-	}
-	if current.DefaultOutput != "" {
-		return current.DefaultOutput
-	}
-	return "pretty"
+	return getConfigValue("OUTPUT", current.DefaultOutput, "pretty")
 }
 
 // Save writes the config to disk as YAML

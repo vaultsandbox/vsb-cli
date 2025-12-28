@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -72,7 +73,7 @@ func (m Model) renderEmailDetail() string {
 
 		// Date
 		b.WriteString(styles.DetailLabelStyle.Render("Date:    "))
-		b.WriteString(styles.DetailValueStyle.Render(email.ReceivedAt.Format("2006-01-02 15:04:05")))
+		b.WriteString(styles.DetailValueStyle.Render(email.ReceivedAt.Format(cliutil.TimeFormatFull)))
 		b.WriteString("\n")
 
 		// Subject

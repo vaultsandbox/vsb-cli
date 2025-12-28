@@ -157,6 +157,11 @@ var (
 	ListLabelStyle    = lipgloss.NewStyle().Bold(true).Foreground(Primary)
 	ListSelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(Primary)
 	ListSizeStyle     = lipgloss.NewStyle().Foreground(Gray)
+
+	// Badge style for status indicators
+	BadgeStyle = lipgloss.NewStyle().
+			Foreground(White).
+			Padding(0, 1)
 )
 
 // ScoreStyle returns the appropriate style for a security score (0-100).

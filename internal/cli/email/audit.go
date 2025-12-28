@@ -67,7 +67,7 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	fmt.Printf("%s %s\n", labelStyle.Render("Subject:"), email.Subject)
 	fmt.Printf("%s %s\n", labelStyle.Render("From:"), email.From)
 	fmt.Printf("%s %s\n", labelStyle.Render("To:"), strings.Join(email.To, ", "))
-	fmt.Printf("%s %s\n", labelStyle.Render("Received:"), email.ReceivedAt.Format("2006-01-02 15:04:05 MST"))
+	fmt.Printf("%s %s\n", labelStyle.Render("Received:"), email.ReceivedAt.Format(cliutil.TimeFormatWithZone))
 
 	// Authentication Results
 	fmt.Println()

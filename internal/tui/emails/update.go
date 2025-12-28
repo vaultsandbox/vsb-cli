@@ -228,31 +228,31 @@ func (m Model) handleDetailViewUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleListViewUpdate handles key events when viewing the email list
 func (m Model) handleListViewUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	filtered := m.filteredEmails()
+	hasEmails := len(filtered) > 0
+
 	switch {
 	case key.Matches(msg, DefaultKeyMap.Quit):
 		m.cancel()
 		return m, tea.Quit
 	case key.Matches(msg, DefaultKeyMap.Enter):
-		if len(m.filteredEmails()) > 0 {
-			if i := m.list.Index(); i >= 0 && i < len(m.filteredEmails()) {
-				filtered := m.filteredEmails()
-				m.viewing = true
-				m.viewedEmail = &filtered[i]
-				m.viewport.SetContent(m.renderEmailDetail())
-				m.viewport.GotoTop()
-			}
+		if i := m.list.Index(); i >= 0 && i < len(filtered) {
+			m.viewing = true
+			m.viewedEmail = &filtered[i]
+			m.viewport.SetContent(m.renderEmailDetail())
+			m.viewport.GotoTop()
 		}
 		return m, nil
 	case key.Matches(msg, DefaultKeyMap.OpenURL):
-		if len(m.filteredEmails()) > 0 {
+		if hasEmails {
 			return m, m.openFirstURL()
 		}
 	case key.Matches(msg, DefaultKeyMap.ViewHTML):
-		if len(m.filteredEmails()) > 0 {
+		if hasEmails {
 			return m, m.viewHTML()
 		}
 	case key.Matches(msg, DefaultKeyMap.Delete):
-		if len(m.filteredEmails()) > 0 {
+		if hasEmails {
 			return m, m.deleteEmail()
 		}
 	case key.Matches(msg, DefaultKeyMap.PrevInbox):

@@ -10,6 +10,13 @@ import (
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
+// Time format constants for consistent display
+const (
+	TimeFormatShort    = "2006-01-02 15:04"
+	TimeFormatFull     = "2006-01-02 15:04:05"
+	TimeFormatWithZone = "2006-01-02 15:04:05 MST"
+)
+
 // GetOutput returns the output format with priority: flag > env > config > default.
 func GetOutput(cmd *cobra.Command) string {
 	if flag := cmd.Flag("output"); flag != nil && flag.Changed {

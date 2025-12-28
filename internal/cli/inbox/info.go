@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
@@ -85,31 +84,26 @@ func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool
 	// Title with active badge
 	title := styles.TitleStyle.Render(stored.Email)
 	if isActive {
-		badge := lipgloss.NewStyle().
-			Background(styles.Green).
-			Foreground(styles.White).
-			Padding(0, 1).
-			Render("ACTIVE")
-		title = title + "  " + badge
+		title = title + "  " + styles.BadgeStyle.Background(styles.Green).Render("ACTIVE")
 	}
 	content += title + "\n\n"
 
 	// Details
 	content += fmt.Sprintf("%s %s\n", labelStyle.Render("ID:"), stored.ID)
-	content += fmt.Sprintf("%s %s\n", labelStyle.Render("Created:"), stored.CreatedAt.Format("2006-01-02 15:04"))
+	content += fmt.Sprintf("%s %s\n", labelStyle.Render("Created:"), stored.CreatedAt.Format(cliutil.TimeFormatShort))
 
 	// Expiry with color
 	var expiryStr string
 	if isExpired {
-		expiryStr = lipgloss.NewStyle().Foreground(styles.Red).Render("EXPIRED")
+		expiryStr = styles.FailStyle.Render("EXPIRED")
 	} else {
-		expiryStr = fmt.Sprintf("%s (%s)", stored.ExpiresAt.Format("2006-01-02 15:04"), cliutil.FormatDuration(remaining))
+		expiryStr = fmt.Sprintf("%s (%s)", stored.ExpiresAt.Format(cliutil.TimeFormatShort), cliutil.FormatDuration(remaining))
 	}
 	content += fmt.Sprintf("%s %s\n", labelStyle.Render("Expires:"), expiryStr)
 
 	// Email count
 	if syncErr != nil {
-		content += fmt.Sprintf("%s %s\n", labelStyle.Render("Emails:"), lipgloss.NewStyle().Foreground(styles.Yellow).Render("(sync error)"))
+		content += fmt.Sprintf("%s %s\n", labelStyle.Render("Emails:"), styles.WarnStyle.Render("(sync error)"))
 	} else {
 		content += fmt.Sprintf("%s %d\n", labelStyle.Render("Emails:"), emailCount)
 	}

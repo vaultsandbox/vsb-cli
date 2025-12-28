@@ -74,7 +74,7 @@ func runView(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Printf("Subject: %s\n", email.Subject)
 		fmt.Printf("From: %s\n", email.From)
-		fmt.Printf("Date: %s\n\n", email.ReceivedAt.Format("2006-01-02 15:04:05"))
+		fmt.Printf("Date: %s\n\n", email.ReceivedAt.Format(cliutil.TimeFormatFull))
 		fmt.Println(email.Text)
 		return nil
 	}
