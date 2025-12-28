@@ -140,22 +140,17 @@ var (
 			Background(Primary).
 			Padding(0, 2)
 
+	// Base style for bold primary text (used by detail labels, list headers, selection markers)
+	PrimaryBoldStyle = lipgloss.NewStyle().Bold(true).Foreground(Primary)
+
 	// TUI detail view styles
-	DetailLabelStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(Primary)
-
-	DetailValueStyle = lipgloss.NewStyle().
-				Foreground(White)
-
-	DetailSectionStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(White).
-				MarginTop(1)
+	DetailLabelStyle   = PrimaryBoldStyle // Labels like "From:", "To:", "Subject:"
+	DetailValueStyle   = lipgloss.NewStyle().Foreground(White)
+	DetailSectionStyle = lipgloss.NewStyle().Bold(true).Foreground(White).MarginTop(1)
 
 	// TUI list item styles (links, attachments)
-	ListLabelStyle    = lipgloss.NewStyle().Bold(true).Foreground(Primary)
-	ListSelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(Primary)
+	ListLabelStyle    = PrimaryBoldStyle // Section headers like "Found X items:"
+	ListSelectedStyle = PrimaryBoldStyle // Selection marker ">"
 	ListSizeStyle     = lipgloss.NewStyle().Foreground(Gray)
 
 	// Badge style for status indicators
@@ -189,8 +184,11 @@ func FormatAuthResult(result string) string {
 	}
 }
 
-// Encryption label constant for consistent display across CLI and TUI
-const EncryptionLabel = "ML-KEM-768 + AES-256-GCM"
+// Encryption label constants for consistent display across CLI and TUI
+const (
+	EncryptionLabel    = "ML-KEM-768 + AES-256-GCM" // Full label with cipher
+	EncryptionLabelKEM = "ML-KEM-768"               // Short label (KEM only)
+)
 
 // Table column widths for consistent formatting across list commands
 const (

@@ -60,10 +60,10 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	// Header
 	table := cliutil.NewTable(
-		cliutil.Column{Header: "ID", Width: styles.ColWidthID, Style: styles.IDStyle},
-		cliutil.Column{Header: "SUBJECT", Width: styles.ColWidthSubject, Style: styles.SubjectStyle},
-		cliutil.Column{Header: "FROM", Width: styles.ColWidthFrom, Style: styles.FromStyle},
-		cliutil.Column{Header: "RECEIVED", Style: styles.TimeStyle},
+		cliutil.Column{Header: "ID", Width: styles.ColWidthID}.WithStyle(styles.IDStyle),
+		cliutil.Column{Header: "SUBJECT", Width: styles.ColWidthSubject}.WithStyle(styles.SubjectStyle),
+		cliutil.Column{Header: "FROM", Width: styles.ColWidthFrom}.WithStyle(styles.FromStyle),
+		cliutil.Column{Header: "RECEIVED"}.WithStyle(styles.TimeStyle),
 	)
 	table.PrintHeader()
 

@@ -3,12 +3,20 @@ package email
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
+)
+
+// Regexes to extract TLS info from Received header
+// e.g., "with ESMTPS (version=TLSv1.3 cipher=TLS_AES_128_GCM_SHA256)"
+var (
+	tlsVersionRegex = regexp.MustCompile(`version=(TLSv[\d.]+)`)
+	tlsCipherRegex  = regexp.MustCompile(`cipher=(\S+)\)`)
 )
 
 var auditCmd = &cobra.Command{
@@ -78,12 +86,15 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	fmt.Println()
 	fmt.Println(styles.SectionStyle.Render("TRANSPORT SECURITY"))
 
-	// Only show TLS details if headers are present
-	if tlsVersion := email.Headers["X-TLS-Version"]; tlsVersion != "" {
-		fmt.Printf("%s %s\n", labelStyle.Render("TLS Version:"), styles.PassStyle.Render(tlsVersion))
+	// Extract TLS info from Received header
+	received := email.Headers["received"]
+	if match := tlsVersionRegex.FindStringSubmatch(received); len(match) > 1 {
+		fmt.Printf("%s %s\n", labelStyle.Render("TLS Version:"), styles.PassStyle.Render(match[1]))
+	} else {
+		fmt.Printf("%s %s\n", labelStyle.Render("TLS Version:"), styles.WarnStyle.Render("unknown"))
 	}
-	if cipherSuite := email.Headers["X-TLS-Cipher"]; cipherSuite != "" {
-		fmt.Printf("%s %s\n", labelStyle.Render("Cipher Suite:"), cipherSuite)
+	if match := tlsCipherRegex.FindStringSubmatch(received); len(match) > 1 {
+		fmt.Printf("%s %s\n", labelStyle.Render("Cipher Suite:"), match[1])
 	}
 	fmt.Printf("%s %s\n", labelStyle.Render("E2E Encryption:"), styles.PassStyle.Render(styles.EncryptionLabel))
 
@@ -154,44 +165,6 @@ func buildMIMETree(email *vaultsandbox.Email) string {
 }
 
 func renderAuditJSON(email *vaultsandbox.Email) error {
-	data := map[string]interface{}{
-		"id":            email.ID,
-		"subject":       email.Subject,
-		"from":          email.From,
-		"to":            email.To,
-		"receivedAt":    email.ReceivedAt,
-		"securityScore": styles.CalculateScore(email),
-	}
-
-	if email.AuthResults != nil {
-		authData := map[string]interface{}{}
-
-		if email.AuthResults.SPF != nil {
-			authData["spf"] = map[string]string{
-				"status": email.AuthResults.SPF.Status,
-				"domain": email.AuthResults.SPF.Domain,
-			}
-		}
-
-		if len(email.AuthResults.DKIM) > 0 {
-			dkim := email.AuthResults.DKIM[0]
-			authData["dkim"] = map[string]string{
-				"status":   dkim.Status,
-				"selector": dkim.Selector,
-				"domain":   dkim.Domain,
-			}
-		}
-
-		if email.AuthResults.DMARC != nil {
-			authData["dmarc"] = map[string]string{
-				"status": email.AuthResults.DMARC.Status,
-				"policy": email.AuthResults.DMARC.Policy,
-			}
-		}
-
-		data["authResults"] = authData
-	}
-
-	return cliutil.OutputJSON(data)
+	return cliutil.OutputJSON(cliutil.EmailAuditJSON(email))
 }
 

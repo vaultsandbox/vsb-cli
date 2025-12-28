@@ -109,7 +109,7 @@ func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool
 	}
 
 	// Security info
-	content += fmt.Sprintf("%s %s", labelStyle.Render("Encryption:"), "ML-KEM-768")
+	content += fmt.Sprintf("%s %s", labelStyle.Render("Encryption:"), styles.EncryptionLabelKEM)
 
 	return content
 }

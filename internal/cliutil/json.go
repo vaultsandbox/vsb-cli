@@ -6,14 +6,17 @@ import (
 
 	"github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
+	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 // EmailJSONOptions controls which fields to include in email JSON output.
 type EmailJSONOptions struct {
-	IncludeTo      bool
-	IncludeBody    bool // text and html
-	IncludeLinks   bool
-	IncludeHeaders bool
+	IncludeTo          bool
+	IncludeBody        bool // text and html
+	IncludeLinks       bool
+	IncludeHeaders     bool
+	IncludeAuthResults bool
+	IncludeScore       bool
 }
 
 // EmailJSON returns a map for JSON output with configurable fields.
@@ -42,8 +45,43 @@ func EmailJSON(email *vaultsandbox.Email, opts EmailJSONOptions) map[string]inte
 	if opts.IncludeHeaders {
 		m["headers"] = email.Headers
 	}
+	if opts.IncludeAuthResults && email.AuthResults != nil {
+		m["authResults"] = buildAuthResultsJSON(email)
+	}
+	if opts.IncludeScore {
+		m["securityScore"] = styles.CalculateScore(email)
+	}
 
 	return m
+}
+
+// buildAuthResultsJSON builds auth results map for JSON output.
+func buildAuthResultsJSON(email *vaultsandbox.Email) map[string]interface{} {
+	auth := email.AuthResults
+	authData := map[string]interface{}{}
+
+	if auth.SPF != nil {
+		authData["spf"] = map[string]string{
+			"status": auth.SPF.Status,
+			"domain": auth.SPF.Domain,
+		}
+	}
+	if len(auth.DKIM) > 0 {
+		dkim := auth.DKIM[0]
+		authData["dkim"] = map[string]string{
+			"status":   dkim.Status,
+			"selector": dkim.Selector,
+			"domain":   dkim.Domain,
+		}
+	}
+	if auth.DMARC != nil {
+		authData["dmarc"] = map[string]string{
+			"status": auth.DMARC.Status,
+			"policy": auth.DMARC.Policy,
+		}
+	}
+
+	return authData
 }
 
 // EmailSummaryJSON returns a map for JSON output of email list items.
@@ -60,6 +98,16 @@ func EmailFullJSON(email *vaultsandbox.Email) map[string]interface{} {
 		IncludeBody:    true,
 		IncludeLinks:   true,
 		IncludeHeaders: true,
+	})
+}
+
+// EmailAuditJSON returns a map for JSON output of email audit.
+// Used by audit command.
+func EmailAuditJSON(email *vaultsandbox.Email) map[string]interface{} {
+	return EmailJSON(email, EmailJSONOptions{
+		IncludeTo:          true,
+		IncludeAuthResults: true,
+		IncludeScore:       true,
 	})
 }
 

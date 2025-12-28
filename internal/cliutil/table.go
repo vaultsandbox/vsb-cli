@@ -11,8 +11,16 @@ import (
 // Column defines a table column with a header and optional width.
 type Column struct {
 	Header string
-	Width  int           // 0 means no padding
+	Width  int            // 0 means no padding
 	Style  lipgloss.Style // optional style for cell values
+	styled bool           // internal: true if Style was explicitly set
+}
+
+// WithStyle returns a copy of the column with the given style applied.
+func (c Column) WithStyle(s lipgloss.Style) Column {
+	c.Style = s
+	c.styled = true
+	return c
 }
 
 // Table renders formatted table output.
@@ -64,7 +72,7 @@ func (t *Table) PrintRow(values ...string) {
 			if col.Width > 0 {
 				cell = fmt.Sprintf("%-*s", col.Width, Truncate(val, col.Width))
 			}
-			if col.Style.Value() != "" {
+			if col.styled {
 				cell = col.Style.Render(cell)
 			}
 		}
