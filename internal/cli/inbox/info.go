@@ -108,9 +108,6 @@ func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool
 		content += fmt.Sprintf("%s %d\n", labelStyle.Render("Emails:"), emailCount)
 	}
 
-	// Security info
-	content += fmt.Sprintf("%s %s", labelStyle.Render("Encryption:"), styles.EncryptionLabelKEM)
-
 	return content
 }
 

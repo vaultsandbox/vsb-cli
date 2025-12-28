@@ -184,12 +184,6 @@ func FormatAuthResult(result string) string {
 	}
 }
 
-// Encryption label constants for consistent display across CLI and TUI
-const (
-	EncryptionLabel    = "ML-KEM-768 + AES-256-GCM" // Full label with cipher
-	EncryptionLabelKEM = "ML-KEM-768"               // Short label (KEM only)
-)
-
 // Table column widths for consistent formatting across list commands
 const (
 	ColWidthID      = 8

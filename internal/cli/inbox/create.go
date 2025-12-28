@@ -115,11 +115,10 @@ func printInboxCreated(inbox config.StoredInbox) {
 	details := fmt.Sprintf(`
 
   Address:  %s
-  Security: %s
   Expires:  %s
 
 Run 'vsb' to see emails arrive live.`,
-		emailBox, styles.EncryptionLabelKEM, expiryStr)
+		emailBox, expiryStr)
 
 	// Box it all
 	box := styles.SuccessBoxStyle.Render(title + details)

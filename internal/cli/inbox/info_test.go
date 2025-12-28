@@ -67,12 +67,6 @@ func TestFormatInboxInfoContent(t *testing.T) {
 		assert.NotContains(t, content, "(sync error)")
 	})
 
-	t.Run("shows encryption info", func(t *testing.T) {
-		content := formatInboxInfoContent(baseInbox, false, false, 24*time.Hour, 0, nil)
-
-		assert.Contains(t, content, "ML-KEM-768")
-	})
-
 	t.Run("shows created date formatted", func(t *testing.T) {
 		content := formatInboxInfoContent(baseInbox, false, false, 24*time.Hour, 0, nil)
 

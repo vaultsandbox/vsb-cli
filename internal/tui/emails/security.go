@@ -33,7 +33,6 @@ func (m Model) renderSecurityView() string {
 		} else {
 			b.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("TLS:"), styles.WarnStyle.Render("unknown")))
 		}
-		b.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("E2E:"), styles.PassStyle.Render(styles.EncryptionLabel)))
 
 		// Security Score
 		b.WriteString("\n")

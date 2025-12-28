@@ -96,7 +96,6 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	if match := tlsCipherRegex.FindStringSubmatch(received); len(match) > 1 {
 		fmt.Printf("%s %s\n", labelStyle.Render("Cipher Suite:"), match[1])
 	}
-	fmt.Printf("%s %s\n", labelStyle.Render("E2E Encryption:"), styles.PassStyle.Render(styles.EncryptionLabel))
 
 	// MIME Structure
 	fmt.Println()

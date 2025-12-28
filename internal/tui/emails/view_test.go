@@ -213,7 +213,6 @@ func TestRenderSecurityView(t *testing.T) {
 		output := m.renderSecurityView()
 		assert.Contains(t, output, "TRANSPORT SECURITY")
 		assert.Contains(t, output, "TLS")
-		assert.Contains(t, output, "E2E")
 	})
 
 	t.Run("shows security score section", func(t *testing.T) {
@@ -223,14 +222,6 @@ func TestRenderSecurityView(t *testing.T) {
 		output := m.renderSecurityView()
 		assert.Contains(t, output, "SECURITY SCORE")
 		assert.Contains(t, output, "/100")
-	})
-
-	t.Run("includes encryption label", func(t *testing.T) {
-		email := testEmailItem("1", "Subject", "from@x.com", "inbox")
-		m := testModelDetailView(email)
-
-		output := m.renderSecurityView()
-		assert.Contains(t, output, "ML-KEM-768")
 	})
 }
 
