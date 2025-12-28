@@ -10,7 +10,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.11.1
-	github.com/vaultsandbox/client-go v0.0.0
+	github.com/vaultsandbox/client-go v0.5.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -44,6 +44,3 @@ require (
 	golang.org/x/text v0.32.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )
-
-// Local SDK (not yet published)
-replace github.com/vaultsandbox/client-go => /home/vs/Desktop/dev/client-go
