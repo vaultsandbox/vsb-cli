@@ -57,10 +57,9 @@ func runURL(cmd *cobra.Command, args []string) error {
 	// Check for URLs
 	if len(email.Links) == 0 {
 		if cliutil.GetOutput(cmd) == "json" {
-			fmt.Println("[]")
-		} else {
-			fmt.Println("No URLs found in email")
+			return cliutil.OutputJSON([]struct{}{})
 		}
+		fmt.Println("No URLs found in email")
 		return nil
 	}
 

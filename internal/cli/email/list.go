@@ -67,25 +67,15 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	// Header
 	table := cliutil.NewTable(
-		cliutil.Column{Header: "ID", Width: styles.ColWidthID},
-		cliutil.Column{Header: "SUBJECT", Width: styles.ColWidthSubject},
-		cliutil.Column{Header: "FROM", Width: styles.ColWidthFrom},
-		cliutil.Column{Header: "RECEIVED"},
+		cliutil.Column{Header: "ID", Width: styles.ColWidthID, Style: styles.IDStyle},
+		cliutil.Column{Header: "SUBJECT", Width: styles.ColWidthSubject, Style: styles.SubjectStyle},
+		cliutil.Column{Header: "FROM", Width: styles.ColWidthFrom, Style: styles.FromStyle},
+		cliutil.Column{Header: "RECEIVED", Style: styles.TimeStyle},
 	)
 	table.PrintHeader()
 
 	for _, email := range emails {
-		// Truncate and pad fields for display
-		id := fmt.Sprintf("%-*s", styles.ColWidthID, cliutil.Truncate(email.ID, styles.ColWidthID))
-		subject := fmt.Sprintf("%-*s", styles.ColWidthSubject, cliutil.Truncate(email.Subject, styles.ColWidthSubject))
-		from := fmt.Sprintf("%-*s", styles.ColWidthFrom, cliutil.Truncate(email.From, styles.ColWidthFrom))
-		received := cliutil.FormatRelativeTime(email.ReceivedAt)
-
-		fmt.Printf("  %s  %s  %s  %s\n",
-			styles.IDStyle.Render(id),
-			styles.SubjectStyle.Render(subject),
-			styles.FromStyle.Render(from),
-			styles.TimeStyle.Render(received))
+		table.PrintRow(email.ID, email.Subject, email.From, cliutil.FormatRelativeTime(email.ReceivedAt))
 	}
 
 	fmt.Println()

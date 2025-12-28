@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
 // Column defines a table column with a header and optional width.
 type Column struct {
 	Header string
-	Width  int // 0 means no padding
+	Width  int           // 0 means no padding
+	Style  lipgloss.Style // optional style for cell values
 }
 
 // Table renders formatted table output.
@@ -52,14 +54,21 @@ func (t *Table) PrintHeader() {
 }
 
 // PrintRow prints a data row with values aligned to column widths.
+// If a column has a Style set, it will be applied to the cell value.
 func (t *Table) PrintRow(values ...string) {
 	cells := make([]string, len(values))
 	for i, val := range values {
-		if i < len(t.Columns) && t.Columns[i].Width > 0 {
-			cells[i] = fmt.Sprintf("%-*s", t.Columns[i].Width, Truncate(val, t.Columns[i].Width))
-		} else {
-			cells[i] = val
+		cell := val
+		if i < len(t.Columns) {
+			col := t.Columns[i]
+			if col.Width > 0 {
+				cell = fmt.Sprintf("%-*s", col.Width, Truncate(val, col.Width))
+			}
+			if col.Style.Value() != "" {
+				cell = col.Style.Render(cell)
+			}
 		}
+		cells[i] = cell
 	}
 	fmt.Printf("%s%s\n", t.Indent, strings.Join(cells, "  "))
 }

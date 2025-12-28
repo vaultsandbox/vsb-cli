@@ -8,6 +8,9 @@ import (
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 )
 
+// noopCleanup is a no-op cleanup function returned on errors.
+var noopCleanup = func() {}
+
 // LoadKeystoreOrError loads keystore with a consistent error message.
 func LoadKeystoreOrError() (*config.Keystore, error) {
 	ks, err := config.LoadKeystore()
@@ -46,19 +49,19 @@ func LoadAndImportInbox(ctx context.Context, emailFlag string) (*vaultsandbox.In
 	// Load keystore
 	ks, err := LoadKeystoreOrError()
 	if err != nil {
-		return nil, func() {}, err
+		return nil, noopCleanup, err
 	}
 
 	// Get stored inbox
 	stored, err := GetInbox(ks, emailFlag)
 	if err != nil {
-		return nil, func() {}, err
+		return nil, noopCleanup, err
 	}
 
 	// Create client
 	client, err := config.NewClient()
 	if err != nil {
-		return nil, func() {}, err
+		return nil, noopCleanup, err
 	}
 
 	cleanup := func() {
@@ -69,7 +72,7 @@ func LoadAndImportInbox(ctx context.Context, emailFlag string) (*vaultsandbox.In
 	inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
 	if err != nil {
 		cleanup()
-		return nil, func() {}, fmt.Errorf("failed to import inbox: %w", err)
+		return nil, noopCleanup, fmt.Errorf("failed to import inbox: %w", err)
 	}
 
 	return inbox, cleanup, nil
@@ -89,7 +92,7 @@ func GetArg(args []string, index int, defaultValue string) string {
 func GetEmailByIDOrLatest(ctx context.Context, emailID, emailFlag string) (*vaultsandbox.Email, *vaultsandbox.Inbox, func(), error) {
 	inbox, cleanup, err := LoadAndImportInbox(ctx, emailFlag)
 	if err != nil {
-		return nil, nil, func() {}, err
+		return nil, nil, noopCleanup, err
 	}
 
 	// Fetch email
@@ -98,17 +101,17 @@ func GetEmailByIDOrLatest(ctx context.Context, emailID, emailFlag string) (*vaul
 		email, err = inbox.GetEmail(ctx, emailID)
 		if err != nil {
 			cleanup()
-			return nil, nil, func() {}, fmt.Errorf("failed to get email %s: %w", emailID, err)
+			return nil, nil, noopCleanup, fmt.Errorf("failed to get email %s: %w", emailID, err)
 		}
 	} else {
 		emails, err := inbox.GetEmails(ctx)
 		if err != nil {
 			cleanup()
-			return nil, nil, func() {}, fmt.Errorf("failed to get emails: %w", err)
+			return nil, nil, noopCleanup, fmt.Errorf("failed to get emails: %w", err)
 		}
 		if len(emails) == 0 {
 			cleanup()
-			return nil, nil, func() {}, fmt.Errorf("no emails found in inbox")
+			return nil, nil, noopCleanup, fmt.Errorf("no emails found in inbox")
 		}
 		email = emails[0]
 	}

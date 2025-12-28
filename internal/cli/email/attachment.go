@@ -67,10 +67,9 @@ func runAttachment(cmd *cobra.Command, args []string) error {
 	// Check for attachments
 	if len(email.Attachments) == 0 {
 		if cliutil.GetOutput(cmd) == "json" {
-			fmt.Println("[]")
-		} else {
-			fmt.Println("No attachments found in email")
+			return cliutil.OutputJSON([]struct{}{})
 		}
+		fmt.Println("No attachments found in email")
 		return nil
 	}
 
@@ -109,18 +108,18 @@ func runAttachment(cmd *cobra.Command, args []string) error {
 			}
 		}
 		return cliutil.OutputJSON(infos)
-	} else {
-		fmt.Printf("Attachments (%d):\n\n", len(email.Attachments))
-		for i, att := range email.Attachments {
-			fmt.Printf("  %d. %s\n", i+1, att.Filename)
-			fmt.Printf("     Type: %s\n", att.ContentType)
-			fmt.Printf("     Size: %s\n", humanize.Bytes(uint64(att.Size)))
-			if i < len(email.Attachments)-1 {
-				fmt.Println()
-			}
-		}
-		fmt.Printf("\nUse --save N to download an attachment, or --all to download all\n")
 	}
+
+	fmt.Printf("Attachments (%d):\n\n", len(email.Attachments))
+	for i, att := range email.Attachments {
+		fmt.Printf("  %d. %s\n", i+1, att.Filename)
+		fmt.Printf("     Type: %s\n", att.ContentType)
+		fmt.Printf("     Size: %s\n", humanize.Bytes(uint64(att.Size)))
+		if i < len(email.Attachments)-1 {
+			fmt.Println()
+		}
+	}
+	fmt.Printf("\nUse --save N to download an attachment, or --all to download all\n")
 	return nil
 }
 

@@ -85,18 +85,13 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 	fmt.Println()
 	fmt.Println(styles.SectionStyle.Render("TRANSPORT SECURITY"))
 
-	// Extract from headers if available
-	tlsVersion := "TLS 1.3"
-	if v := email.Headers["X-TLS-Version"]; v != "" {
-		tlsVersion = v
+	// Only show TLS details if headers are present
+	if tlsVersion := email.Headers["X-TLS-Version"]; tlsVersion != "" {
+		fmt.Printf("%s %s\n", labelStyle.Render("TLS Version:"), styles.PassStyle.Render(tlsVersion))
 	}
-	cipherSuite := "ECDHE-RSA-AES256-GCM-SHA384"
-	if v := email.Headers["X-TLS-Cipher"]; v != "" {
-		cipherSuite = v
+	if cipherSuite := email.Headers["X-TLS-Cipher"]; cipherSuite != "" {
+		fmt.Printf("%s %s\n", labelStyle.Render("Cipher Suite:"), cipherSuite)
 	}
-
-	fmt.Printf("%s %s\n", labelStyle.Render("TLS Version:"), styles.PassStyle.Render(tlsVersion))
-	fmt.Printf("%s %s\n", labelStyle.Render("Cipher Suite:"), cipherSuite)
 	fmt.Printf("%s %s\n", labelStyle.Render("E2E Encryption:"), styles.PassStyle.Render(styles.EncryptionLabel))
 
 	// MIME Structure
