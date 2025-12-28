@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
@@ -58,66 +59,55 @@ func (m Model) renderTabs() string {
 }
 
 func (m Model) renderEmailDetail() string {
-	if m.viewedEmail == nil {
-		return ""
-	}
+	return m.renderDetailView("No email selected", func(email *vaultsandbox.Email, b *strings.Builder) {
+		// From
+		b.WriteString(styles.DetailLabelStyle.Render("From:    "))
+		b.WriteString(styles.DetailValueStyle.Render(email.From))
+		b.WriteString("\n")
 
-	email := m.viewedEmail.Email
-	var sb strings.Builder
+		// To
+		b.WriteString(styles.DetailLabelStyle.Render("To:      "))
+		b.WriteString(styles.DetailValueStyle.Render(strings.Join(email.To, ", ")))
+		b.WriteString("\n")
 
-	// Tab bar
-	sb.WriteString(m.renderTabs())
-	sb.WriteString("\n\n")
+		// Date
+		b.WriteString(styles.DetailLabelStyle.Render("Date:    "))
+		b.WriteString(styles.DetailValueStyle.Render(email.ReceivedAt.Format("2006-01-02 15:04:05")))
+		b.WriteString("\n")
 
-	// From
-	sb.WriteString(styles.DetailLabelStyle.Render("From:    "))
-	sb.WriteString(styles.DetailValueStyle.Render(email.From))
-	sb.WriteString("\n")
+		// Subject
+		b.WriteString(styles.DetailLabelStyle.Render("Subject: "))
+		subject := email.Subject
+		if subject == "" {
+			subject = noSubject
+		}
+		b.WriteString(styles.DetailValueStyle.Render(subject))
+		b.WriteString("\n")
 
-	// To
-	sb.WriteString(styles.DetailLabelStyle.Render("To:      "))
-	sb.WriteString(styles.DetailValueStyle.Render(strings.Join(email.To, ", ")))
-	sb.WriteString("\n")
+		// Links (if any)
+		if len(email.Links) > 0 {
+			b.WriteString(styles.DetailLabelStyle.Render("Links:   "))
+			b.WriteString(styles.DetailValueStyle.Render(fmt.Sprintf("%d found", len(email.Links))))
+			b.WriteString("\n")
+		}
 
-	// Date
-	sb.WriteString(styles.DetailLabelStyle.Render("Date:    "))
-	sb.WriteString(styles.DetailValueStyle.Render(email.ReceivedAt.Format("2006-01-02 15:04:05")))
-	sb.WriteString("\n")
+		// Attachments (if any)
+		if len(email.Attachments) > 0 {
+			b.WriteString(styles.DetailLabelStyle.Render("Attach:  "))
+			b.WriteString(styles.DetailValueStyle.Render(fmt.Sprintf("%d files", len(email.Attachments))))
+			b.WriteString("\n")
+		}
 
-	// Subject
-	sb.WriteString(styles.DetailLabelStyle.Render("Subject: "))
-	subject := email.Subject
-	if subject == "" {
-		subject = noSubject
-	}
-	sb.WriteString(styles.DetailValueStyle.Render(subject))
-	sb.WriteString("\n")
+		// Separator
+		b.WriteString("\n")
+		b.WriteString(styles.HelpStyle.Render(strings.Repeat("─", 60)))
+		b.WriteString("\n\n")
 
-	// Links (if any)
-	if len(email.Links) > 0 {
-		sb.WriteString(styles.DetailLabelStyle.Render("Links:   "))
-		sb.WriteString(styles.DetailValueStyle.Render(fmt.Sprintf("%d found", len(email.Links))))
-		sb.WriteString("\n")
-	}
-
-	// Attachments (if any)
-	if len(email.Attachments) > 0 {
-		sb.WriteString(styles.DetailLabelStyle.Render("Attach:  "))
-		sb.WriteString(styles.DetailValueStyle.Render(fmt.Sprintf("%d files", len(email.Attachments))))
-		sb.WriteString("\n")
-	}
-
-	// Separator
-	sb.WriteString("\n")
-	sb.WriteString(styles.HelpStyle.Render(strings.Repeat("─", 60)))
-	sb.WriteString("\n\n")
-
-	// Body
-	body := email.Text
-	if body == "" {
-		body = "(no text content)"
-	}
-	sb.WriteString(body)
-
-	return sb.String()
+		// Body
+		body := email.Text
+		if body == "" {
+			body = "(no text content)"
+		}
+		b.WriteString(body)
+	})
 }

@@ -83,13 +83,14 @@ func TestRenderTabs(t *testing.T) {
 }
 
 func TestRenderEmailDetail(t *testing.T) {
-	t.Run("returns empty for nil email", func(t *testing.T) {
+	t.Run("shows message for nil email", func(t *testing.T) {
 		m := testModel([]EmailItem{})
 		m.viewing = true
 		m.viewedEmail = nil
 
 		output := m.renderEmailDetail()
-		assert.Empty(t, output)
+		assert.Contains(t, output, "No email selected")
+		assert.Contains(t, output, "Content") // tabs should still be visible
 	})
 
 	t.Run("includes from address", func(t *testing.T) {
@@ -183,13 +184,14 @@ func TestRenderEmailDetail(t *testing.T) {
 }
 
 func TestRenderSecurityView(t *testing.T) {
-	t.Run("returns empty for nil email", func(t *testing.T) {
+	t.Run("shows message for nil email", func(t *testing.T) {
 		m := testModel([]EmailItem{})
 		m.viewing = true
 		m.viewedEmail = nil
 
 		output := m.renderSecurityView()
-		assert.Empty(t, output)
+		assert.Contains(t, output, "No email selected")
+		assert.Contains(t, output, "Security") // tabs should still be visible
 	})
 
 	t.Run("shows authentication section", func(t *testing.T) {
@@ -233,13 +235,14 @@ func TestRenderSecurityView(t *testing.T) {
 }
 
 func TestRenderLinksView(t *testing.T) {
-	t.Run("returns empty for nil email", func(t *testing.T) {
+	t.Run("shows message for nil email", func(t *testing.T) {
 		m := testModel([]EmailItem{})
 		m.viewing = true
 		m.viewedEmail = nil
 
 		output := m.renderLinksView()
-		assert.Empty(t, output)
+		assert.Contains(t, output, "No email selected")
+		assert.Contains(t, output, "Links") // tabs should still be visible
 	})
 
 	t.Run("shows message when no links", func(t *testing.T) {
@@ -301,13 +304,14 @@ func TestRenderLinksView(t *testing.T) {
 }
 
 func TestRenderAttachmentsView(t *testing.T) {
-	t.Run("returns empty for nil email", func(t *testing.T) {
+	t.Run("shows message for nil email", func(t *testing.T) {
 		m := testModel([]EmailItem{})
 		m.viewing = true
 		m.viewedEmail = nil
 
 		output := m.renderAttachmentsView()
-		assert.Empty(t, output)
+		assert.Contains(t, output, "No email selected")
+		assert.Contains(t, output, "Attach") // tabs should still be visible
 	})
 
 	t.Run("shows message when no attachments", func(t *testing.T) {
@@ -392,13 +396,14 @@ func TestRenderAttachmentsView(t *testing.T) {
 }
 
 func TestRenderRawView(t *testing.T) {
-	t.Run("returns empty for nil email", func(t *testing.T) {
+	t.Run("shows message for nil email", func(t *testing.T) {
 		m := testModel([]EmailItem{})
 		m.viewing = true
 		m.viewedEmail = nil
 
 		output := m.renderRawView()
-		assert.Empty(t, output)
+		assert.Contains(t, output, "No email selected")
+		assert.Contains(t, output, "Raw") // tabs should still be visible
 	})
 
 	t.Run("shows raw headers section", func(t *testing.T) {

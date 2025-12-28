@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
+	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/files"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
@@ -19,48 +20,37 @@ type attachmentSavedMsg struct {
 
 // renderAttachmentsView renders the attachments list view
 func (m Model) renderAttachmentsView() string {
-	if m.viewedEmail == nil {
-		return ""
-	}
+	return m.renderDetailView("No email selected", func(email *vaultsandbox.Email, b *strings.Builder) {
+		labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
+		selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
+		sizeStyle := lipgloss.NewStyle().Foreground(styles.Gray)
 
-	email := m.viewedEmail.Email
-	var sb strings.Builder
-
-	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
-	selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(styles.Primary)
-	sizeStyle := lipgloss.NewStyle().Foreground(styles.Gray)
-
-	// Tab bar
-	sb.WriteString(m.renderTabs())
-	sb.WriteString("\n\n")
-
-	if len(email.Attachments) == 0 {
-		sb.WriteString(styles.HelpStyle.Render("No attachments in this email"))
-		return sb.String()
-	}
-
-	sb.WriteString(labelStyle.Render(fmt.Sprintf("Found %d attachments:", len(email.Attachments))))
-	sb.WriteString("\n\n")
-
-	for i, att := range email.Attachments {
-		info := fmt.Sprintf(" (%s, %s)", att.ContentType, humanize.Bytes(uint64(att.Size)))
-		if i == m.selectedAttachment {
-			sb.WriteString(selectedStyle.Render(">"))
-			sb.WriteString(" " + att.Filename + sizeStyle.Render(info) + "\n")
-		} else {
-			sb.WriteString("  " + att.Filename + sizeStyle.Render(info) + "\n")
+		if len(email.Attachments) == 0 {
+			b.WriteString(styles.HelpStyle.Render("No attachments in this email"))
+			return
 		}
-	}
 
-	sb.WriteString("\n")
-	if m.lastSavedFile != "" {
-		savedStyle := lipgloss.NewStyle().Foreground(styles.Green)
-		sb.WriteString(savedStyle.Render("Saved: " + m.lastSavedFile))
-		sb.WriteString("\n\n")
-	}
-	sb.WriteString(styles.HelpStyle.Render("↑/↓: select • enter: save to current directory"))
+		b.WriteString(labelStyle.Render(fmt.Sprintf("Found %d attachments:", len(email.Attachments))))
+		b.WriteString("\n\n")
 
-	return sb.String()
+		for i, att := range email.Attachments {
+			info := fmt.Sprintf(" (%s, %s)", att.ContentType, humanize.Bytes(uint64(att.Size)))
+			if i == m.selectedAttachment {
+				b.WriteString(selectedStyle.Render(">"))
+				b.WriteString(" " + att.Filename + sizeStyle.Render(info) + "\n")
+			} else {
+				b.WriteString("  " + att.Filename + sizeStyle.Render(info) + "\n")
+			}
+		}
+
+		b.WriteString("\n")
+		if m.lastSavedFile != "" {
+			savedStyle := lipgloss.NewStyle().Foreground(styles.Green)
+			b.WriteString(savedStyle.Render("Saved: " + m.lastSavedFile))
+			b.WriteString("\n\n")
+		}
+		b.WriteString(styles.HelpStyle.Render("↑/↓: select • enter: save to current directory"))
+	})
 }
 
 // saveAttachment saves the attachment at the given index

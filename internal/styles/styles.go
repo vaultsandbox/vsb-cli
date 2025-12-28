@@ -182,6 +182,14 @@ func FormatAuthResult(result string) string {
 // Encryption label constant for consistent display across CLI and TUI
 const EncryptionLabel = "ML-KEM-768 + AES-256-GCM"
 
+// Table column widths for consistent formatting across list commands
+const (
+	ColWidthID      = 8
+	ColWidthEmail   = 38
+	ColWidthSubject = 30
+	ColWidthFrom    = 25
+)
+
 // RenderAuthResults renders authentication results.
 // When verbose is false (compact mode), details are shown in parentheses on the same line.
 // When verbose is true, details are shown on separate indented lines.

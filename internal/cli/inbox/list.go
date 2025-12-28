@@ -71,7 +71,7 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	// Header
 	table := cliutil.NewTable(
-		cliutil.Column{Header: "EMAIL", Width: 38},
+		cliutil.Column{Header: "EMAIL", Width: styles.ColWidthEmail},
 		cliutil.Column{Header: "EXPIRES"},
 	).WithIndent("   ")
 	table.PrintHeader()
@@ -87,7 +87,7 @@ func runList(cmd *cobra.Command, args []string) error {
 		}
 
 		// Email (pad before styling to preserve alignment)
-		emailPadded := fmt.Sprintf("%-38s", inbox.Email)
+		emailPadded := fmt.Sprintf("%-*s", styles.ColWidthEmail, inbox.Email)
 		if isExpired {
 			emailPadded = styles.ExpiredStyle.Render(emailPadded)
 		} else if isActive {

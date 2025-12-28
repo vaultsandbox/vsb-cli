@@ -2,6 +2,7 @@ package emails
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/browser"
 )
 
@@ -42,21 +43,27 @@ func (m Model) viewHTML() tea.Cmd {
 func (m Model) deleteEmail() tea.Cmd {
 	return func() tea.Msg {
 		filtered := m.filteredEmails()
-		if i := m.list.Index(); i >= 0 && i < len(filtered) {
-			emailItem := filtered[i]
-			// Find inbox for this email
-			for _, inbox := range m.inboxes {
-				if len(m.inboxes) > 1 {
-					if inbox.EmailAddress() == emailItem.InboxLabel {
-						err := inbox.DeleteEmail(m.ctx, emailItem.Email.ID)
-						return emailDeletedMsg{emailID: emailItem.Email.ID, err: err}
-					}
-				} else {
-					err := inbox.DeleteEmail(m.ctx, emailItem.Email.ID)
-					return emailDeletedMsg{emailID: emailItem.Email.ID, err: err}
-				}
-			}
+		i := m.list.Index()
+		if i < 0 || i >= len(filtered) {
+			return nil
 		}
-		return nil
+
+		emailItem := filtered[i]
+		inbox := m.findInboxForEmail(emailItem)
+		if inbox == nil {
+			return nil
+		}
+
+		err := inbox.DeleteEmail(m.ctx, emailItem.Email.ID)
+		return emailDeletedMsg{emailID: emailItem.Email.ID, err: err}
 	}
+}
+
+func (m Model) findInboxForEmail(item EmailItem) *vaultsandbox.Inbox {
+	for _, inbox := range m.inboxes {
+		if len(m.inboxes) == 1 || inbox.EmailAddress() == item.InboxLabel {
+			return inbox
+		}
+	}
+	return nil
 }
