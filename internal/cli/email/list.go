@@ -3,7 +3,6 @@ package email
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
@@ -66,28 +65,26 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	headerStyle := styles.HeaderStyle.MarginBottom(0)
-
 	// Header
-	fmt.Println()
-	fmt.Printf("  %s  %s  %s  %s\n",
-		headerStyle.Render(fmt.Sprintf("%-8s", "ID")),
-		headerStyle.Render(fmt.Sprintf("%-30s", "SUBJECT")),
-		headerStyle.Render(fmt.Sprintf("%-25s", "FROM")),
-		headerStyle.Render("RECEIVED"))
-	fmt.Println(strings.Repeat("-", 80))
+	table := cliutil.NewTable(
+		cliutil.Column{Header: "ID", Width: 8},
+		cliutil.Column{Header: "SUBJECT", Width: 30},
+		cliutil.Column{Header: "FROM", Width: 25},
+		cliutil.Column{Header: "RECEIVED"},
+	)
+	table.PrintHeader()
 
 	for _, email := range emails {
-		// Truncate fields for display
-		id := truncate(email.ID, 8)
-		subject := truncate(email.Subject, 30)
-		from := truncate(email.From, 25)
+		// Truncate and pad fields for display
+		id := fmt.Sprintf("%-8s", cliutil.Truncate(email.ID, 8))
+		subject := fmt.Sprintf("%-30s", cliutil.Truncate(email.Subject, 30))
+		from := fmt.Sprintf("%-25s", cliutil.Truncate(email.From, 25))
 		received := cliutil.FormatRelativeTime(email.ReceivedAt)
 
 		fmt.Printf("  %s  %s  %s  %s\n",
-			styles.IDStyle.Render(fmt.Sprintf("%-8s", id)),
-			styles.SubjectStyle.Render(fmt.Sprintf("%-30s", subject)),
-			styles.FromStyle.Render(fmt.Sprintf("%-25s", from)),
+			styles.IDStyle.Render(id),
+			styles.SubjectStyle.Render(subject),
+			styles.FromStyle.Render(from),
 			styles.TimeStyle.Render(received))
 	}
 
@@ -95,11 +92,4 @@ func runList(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  %d email(s)\n\n", len(emails))
 
 	return nil
-}
-
-func truncate(s string, max int) string {
-	if len(s) <= max {
-		return s
-	}
-	return s[:max-1] + "…"
 }

@@ -2,7 +2,6 @@ package inbox
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -71,12 +70,11 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Header
-	headerStyle := styles.HeaderStyle.MarginBottom(0)
-	fmt.Println()
-	fmt.Printf("   %s  %s\n",
-		headerStyle.Render(fmt.Sprintf("%-38s", "EMAIL")),
-		headerStyle.Render("EXPIRES"))
-	fmt.Println(strings.Repeat("-", 55))
+	table := cliutil.NewTable(
+		cliutil.Column{Header: "EMAIL", Width: 38},
+		cliutil.Column{Header: "EXPIRES"},
+	).WithIndent("   ")
+	table.PrintHeader()
 
 	for _, inbox := range filtered {
 		isActive := inbox.Email == keystore.ActiveInbox
