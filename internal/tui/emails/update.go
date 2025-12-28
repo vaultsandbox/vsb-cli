@@ -157,6 +157,29 @@ func (m Model) currentInboxLabel() string {
 	return "all"
 }
 
+// handleListNavigation handles up/down navigation in links and attachments views.
+// Returns true if navigation was handled, false otherwise.
+func (m *Model) handleListNavigation(delta int) bool {
+	if m.viewedEmail == nil {
+		return false
+	}
+	switch m.detailView {
+	case ViewLinks:
+		if len(m.viewedEmail.Email.Links) > 0 {
+			m.selectedLink = wrapIndex(m.selectedLink, delta, len(m.viewedEmail.Email.Links))
+			m.viewport.SetContent(m.renderLinksView())
+			return true
+		}
+	case ViewAttachments:
+		if len(m.viewedEmail.Email.Attachments) > 0 {
+			m.selectedAttachment = wrapIndex(m.selectedAttachment, delta, len(m.viewedEmail.Email.Attachments))
+			m.viewport.SetContent(m.renderAttachmentsView())
+			return true
+		}
+	}
+	return false
+}
+
 // handleDetailViewUpdate handles key events when viewing an email detail
 func (m Model) handleDetailViewUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
@@ -173,30 +196,12 @@ func (m Model) handleDetailViewUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.viewHTML()
 		}
 	case key.Matches(msg, DefaultKeyMap.Up):
-		if m.viewedEmail != nil {
-			if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
-				m.selectedLink = wrapIndex(m.selectedLink, -1, len(m.viewedEmail.Email.Links))
-				m.viewport.SetContent(m.renderLinksView())
-				return m, nil
-			}
-			if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
-				m.selectedAttachment = wrapIndex(m.selectedAttachment, -1, len(m.viewedEmail.Email.Attachments))
-				m.viewport.SetContent(m.renderAttachmentsView())
-				return m, nil
-			}
+		if m.handleListNavigation(-1) {
+			return m, nil
 		}
 	case key.Matches(msg, DefaultKeyMap.Down):
-		if m.viewedEmail != nil {
-			if m.detailView == ViewLinks && len(m.viewedEmail.Email.Links) > 0 {
-				m.selectedLink = wrapIndex(m.selectedLink, 1, len(m.viewedEmail.Email.Links))
-				m.viewport.SetContent(m.renderLinksView())
-				return m, nil
-			}
-			if m.detailView == ViewAttachments && len(m.viewedEmail.Email.Attachments) > 0 {
-				m.selectedAttachment = wrapIndex(m.selectedAttachment, 1, len(m.viewedEmail.Email.Attachments))
-				m.viewport.SetContent(m.renderAttachmentsView())
-				return m, nil
-			}
+		if m.handleListNavigation(1) {
+			return m, nil
 		}
 	case key.Matches(msg, DefaultKeyMap.Enter):
 		if m.viewedEmail != nil {
@@ -273,31 +278,30 @@ func (m Model) handleListViewUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleTabSwitch handles number key presses to switch tabs in detail view
 func (m *Model) handleTabSwitch(r byte) tea.Cmd {
-	switch r {
-	case '1':
-		m.detailView = ViewContent
-		m.viewport.SetContent(m.renderEmailDetail())
-		m.viewport.GotoTop()
-	case '2':
-		m.detailView = ViewSecurity
-		m.viewport.SetContent(m.renderSecurityView())
-		m.viewport.GotoTop()
-	case '3':
-		m.detailView = ViewLinks
-		m.selectedLink = 0
-		m.viewport.SetContent(m.renderLinksView())
-		m.viewport.GotoTop()
-	case '4':
-		m.detailView = ViewAttachments
-		m.selectedAttachment = 0
-		m.viewport.SetContent(m.renderAttachmentsView())
-		m.viewport.GotoTop()
-	case '5':
-		m.detailView = ViewRaw
-		m.viewport.SetContent(m.renderRawView())
-		m.viewport.GotoTop()
-	default:
+	type tabConfig struct {
+		view       DetailView
+		render     func() string
+		resetIndex *int
+	}
+
+	tabs := map[byte]tabConfig{
+		'1': {ViewContent, m.renderEmailDetail, nil},
+		'2': {ViewSecurity, m.renderSecurityView, nil},
+		'3': {ViewLinks, m.renderLinksView, &m.selectedLink},
+		'4': {ViewAttachments, m.renderAttachmentsView, &m.selectedAttachment},
+		'5': {ViewRaw, m.renderRawView, nil},
+	}
+
+	cfg, ok := tabs[r]
+	if !ok {
 		return nil
 	}
+
+	m.detailView = cfg.view
+	if cfg.resetIndex != nil {
+		*cfg.resetIndex = 0
+	}
+	m.viewport.SetContent(cfg.render())
+	m.viewport.GotoTop()
 	return nil
 }

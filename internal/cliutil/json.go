@@ -64,12 +64,12 @@ func EmailFullJSON(email *vaultsandbox.Email) map[string]interface{} {
 }
 
 // InboxJSONOptions controls which fields to include in inbox JSON output.
+// Pointer fields are included when non-nil.
 type InboxJSONOptions struct {
-	IncludeID         bool
-	IncludeCreatedAt  bool
-	IncludeEmailCount bool
-	EmailCount        int
-	SyncErr           error
+	IncludeID        bool
+	IncludeCreatedAt bool
+	EmailCount       *int  // nil = don't include
+	SyncErr          error // nil = don't include
 }
 
 // InboxJSON returns a map for JSON output with configurable fields.
@@ -87,8 +87,8 @@ func InboxJSON(inbox *config.StoredInbox, isActive bool, now time.Time, opts Inb
 	if opts.IncludeCreatedAt {
 		m["createdAt"] = inbox.CreatedAt.Format(time.RFC3339)
 	}
-	if opts.IncludeEmailCount {
-		m["emailCount"] = opts.EmailCount
+	if opts.EmailCount != nil {
+		m["emailCount"] = *opts.EmailCount
 	}
 	if opts.SyncErr != nil {
 		m["syncError"] = opts.SyncErr.Error()
@@ -107,10 +107,9 @@ func InboxSummaryJSON(inbox *config.StoredInbox, isActive bool, now time.Time) m
 // Used by inbox info command.
 func InboxFullJSON(inbox *config.StoredInbox, isActive bool, emailCount int, syncErr error) map[string]interface{} {
 	return InboxJSON(inbox, isActive, time.Now(), InboxJSONOptions{
-		IncludeID:         true,
-		IncludeCreatedAt:  true,
-		IncludeEmailCount: true,
-		EmailCount:        emailCount,
-		SyncErr:           syncErr,
+		IncludeID:        true,
+		IncludeCreatedAt: true,
+		EmailCount:       &emailCount,
+		SyncErr:          syncErr,
 	})
 }

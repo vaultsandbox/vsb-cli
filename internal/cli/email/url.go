@@ -28,18 +28,13 @@ Examples:
 	RunE: runURL,
 }
 
-var (
-	urlOpen  int
-	urlInbox string
-)
+var urlOpen int
 
 func init() {
 	Cmd.AddCommand(urlCmd)
 
 	urlCmd.Flags().IntVarP(&urlOpen, "open", "O", 0,
 		"Open the Nth URL in browser (1=first, 0=don't open)")
-	urlCmd.Flags().StringVar(&urlInbox, "inbox", "",
-		"Use specific inbox (default: active)")
 }
 
 func runURL(cmd *cobra.Command, args []string) error {
@@ -48,7 +43,7 @@ func runURL(cmd *cobra.Command, args []string) error {
 	emailID := cliutil.GetArg(args, 0, "")
 
 	// Use shared helper
-	email, _, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, urlInbox)
+	email, _, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, InboxFlag)
 	if err != nil {
 		return err
 	}

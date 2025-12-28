@@ -195,97 +195,94 @@ const (
 	ColWidthFrom    = 25
 )
 
+// authField represents a single authentication result with its details.
+type authField struct {
+	label   string
+	status  string
+	details []authDetail
+}
+
+type authDetail struct {
+	label string
+	value string
+}
+
+// buildAuthFields extracts authentication fields from AuthResults.
+func buildAuthFields(auth *authresults.AuthResults) []authField {
+	if auth == nil {
+		return nil
+	}
+
+	var fields []authField
+
+	if auth.SPF != nil {
+		f := authField{label: "SPF:", status: auth.SPF.Status}
+		if auth.SPF.Domain != "" {
+			f.details = append(f.details, authDetail{"Domain:", auth.SPF.Domain})
+		}
+		fields = append(fields, f)
+	}
+
+	if len(auth.DKIM) > 0 {
+		dkim := auth.DKIM[0]
+		f := authField{label: "DKIM:", status: dkim.Status}
+		if dkim.Selector != "" {
+			f.details = append(f.details, authDetail{"Selector:", dkim.Selector})
+		}
+		if dkim.Domain != "" {
+			f.details = append(f.details, authDetail{"Domain:", dkim.Domain})
+		}
+		fields = append(fields, f)
+	}
+
+	if auth.DMARC != nil {
+		f := authField{label: "DMARC:", status: auth.DMARC.Status}
+		if auth.DMARC.Policy != "" {
+			f.details = append(f.details, authDetail{"Policy:", auth.DMARC.Policy})
+		}
+		fields = append(fields, f)
+	}
+
+	if auth.ReverseDNS != nil {
+		f := authField{label: "Reverse DNS:", status: auth.ReverseDNS.Status()}
+		if auth.ReverseDNS.Hostname != "" {
+			f.details = append(f.details, authDetail{"Hostname:", auth.ReverseDNS.Hostname})
+		}
+		fields = append(fields, f)
+	}
+
+	return fields
+}
+
 // RenderAuthResults renders authentication results.
 // When verbose is false (compact mode), details are shown in parentheses on the same line.
 // When verbose is true, details are shown on separate indented lines.
 func RenderAuthResults(auth *authresults.AuthResults, labelStyle lipgloss.Style, verbose bool) string {
-	if verbose {
-		return renderAuthResultsVerbose(auth, labelStyle)
-	}
-	return renderAuthResultsCompact(auth, labelStyle)
-}
-
-// renderAuthResultsCompact renders auth results with details in parentheses.
-func renderAuthResultsCompact(auth *authresults.AuthResults, labelStyle lipgloss.Style) string {
-	if auth == nil {
+	fields := buildAuthFields(auth)
+	if fields == nil {
 		return WarnStyle.Render("No authentication results available")
 	}
 
 	var lines []string
+	for _, f := range fields {
+		line := fmt.Sprintf("%s %s", labelStyle.Render(f.label), FormatAuthResult(f.status))
 
-	if auth.SPF != nil {
-		line := fmt.Sprintf("%s %s", labelStyle.Render("SPF:"), FormatAuthResult(auth.SPF.Status))
-		if auth.SPF.Domain != "" {
-			line += fmt.Sprintf(" (%s)", auth.SPF.Domain)
-		}
-		lines = append(lines, line)
-	}
-
-	if len(auth.DKIM) > 0 {
-		dkim := auth.DKIM[0]
-		line := fmt.Sprintf("%s %s", labelStyle.Render("DKIM:"), FormatAuthResult(dkim.Status))
-		if dkim.Domain != "" {
-			line += fmt.Sprintf(" (%s)", dkim.Domain)
-		}
-		lines = append(lines, line)
-	}
-
-	if auth.DMARC != nil {
-		line := fmt.Sprintf("%s %s", labelStyle.Render("DMARC:"), FormatAuthResult(auth.DMARC.Status))
-		if auth.DMARC.Policy != "" {
-			line += fmt.Sprintf(" (policy: %s)", auth.DMARC.Policy)
-		}
-		lines = append(lines, line)
-	}
-
-	if auth.ReverseDNS != nil {
-		line := fmt.Sprintf("%s %s", labelStyle.Render("Reverse DNS:"), FormatAuthResult(auth.ReverseDNS.Status()))
-		if auth.ReverseDNS.Hostname != "" {
-			line += fmt.Sprintf(" (%s)", auth.ReverseDNS.Hostname)
-		}
-		lines = append(lines, line)
-	}
-
-	return strings.Join(lines, "\n")
-}
-
-// renderAuthResultsVerbose renders auth results with details on separate lines.
-func renderAuthResultsVerbose(auth *authresults.AuthResults, labelStyle lipgloss.Style) string {
-	if auth == nil {
-		return WarnStyle.Render("No authentication results available")
-	}
-
-	var lines []string
-
-	if auth.SPF != nil {
-		lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("SPF:"), FormatAuthResult(auth.SPF.Status)))
-		if auth.SPF.Domain != "" {
-			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Domain:"), auth.SPF.Domain))
-		}
-	}
-
-	if len(auth.DKIM) > 0 {
-		dkim := auth.DKIM[0]
-		lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("DKIM:"), FormatAuthResult(dkim.Status)))
-		if dkim.Selector != "" {
-			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Selector:"), dkim.Selector))
-		}
-		if dkim.Domain != "" {
-			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Domain:"), dkim.Domain))
-		}
-	}
-
-	if auth.DMARC != nil {
-		lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("DMARC:"), FormatAuthResult(auth.DMARC.Status)))
-		if auth.DMARC.Policy != "" {
-			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Policy:"), auth.DMARC.Policy))
-		}
-	}
-
-	if auth.ReverseDNS != nil {
-		lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Reverse DNS:"), FormatAuthResult(auth.ReverseDNS.Status())))
-		if auth.ReverseDNS.Hostname != "" {
-			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  Hostname:"), auth.ReverseDNS.Hostname))
+		if verbose {
+			lines = append(lines, line)
+			for _, d := range f.details {
+				lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("  "+d.label), d.value))
+			}
+		} else {
+			// Compact: show first detail in parentheses
+			if len(f.details) > 0 {
+				// For DMARC, show "policy: value"; for others, just show value
+				if f.label == "DMARC:" && f.details[0].label == "Policy:" {
+					line += fmt.Sprintf(" (policy: %s)", f.details[0].value)
+				} else {
+					line += fmt.Sprintf(" (%s)", f.details[0].value)
+				}
+			}
+			lines = append(lines, line)
 		}
 	}
 

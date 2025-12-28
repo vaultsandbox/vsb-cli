@@ -25,21 +25,14 @@ Examples:
 	RunE:    runList,
 }
 
-var (
-	listInbox string
-)
-
 func init() {
 	Cmd.AddCommand(listCmd)
-
-	listCmd.Flags().StringVar(&listInbox, "inbox", "",
-		"Use specific inbox (default: active)")
 }
 
 func runList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	inbox, cleanup, err := cliutil.LoadAndImportInbox(ctx, listInbox)
+	inbox, cleanup, err := cliutil.LoadAndImportInbox(ctx, InboxFlag)
 	if err != nil {
 		return err
 	}

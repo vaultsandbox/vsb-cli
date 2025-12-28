@@ -24,22 +24,15 @@ Examples:
 	RunE:    runDelete,
 }
 
-var (
-	deleteInbox string
-)
-
 func init() {
 	Cmd.AddCommand(deleteCmd)
-
-	deleteCmd.Flags().StringVar(&deleteInbox, "inbox", "",
-		"Use specific inbox (default: active)")
 }
 
 func runDelete(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	emailID := args[0]
 
-	inbox, cleanup, err := cliutil.LoadAndImportInbox(ctx, deleteInbox)
+	inbox, cleanup, err := cliutil.LoadAndImportInbox(ctx, InboxFlag)
 	if err != nil {
 		return err
 	}

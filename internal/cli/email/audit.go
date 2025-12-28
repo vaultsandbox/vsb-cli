@@ -29,15 +29,8 @@ Examples:
 	RunE: runAudit,
 }
 
-var (
-	auditInbox string
-)
-
 func init() {
 	Cmd.AddCommand(auditCmd)
-
-	auditCmd.Flags().StringVar(&auditInbox, "inbox", "",
-		"Use specific inbox (default: active)")
 }
 
 func runAudit(cmd *cobra.Command, args []string) error {
@@ -46,7 +39,7 @@ func runAudit(cmd *cobra.Command, args []string) error {
 	emailID := cliutil.GetArg(args, 0, "")
 
 	// Use shared helper to get email
-	email, _, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, auditInbox)
+	email, _, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, InboxFlag)
 	if err != nil {
 		return err
 	}

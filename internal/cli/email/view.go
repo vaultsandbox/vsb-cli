@@ -26,9 +26,8 @@ Examples:
 }
 
 var (
-	viewText  bool
-	viewRaw   bool
-	viewInbox string
+	viewText bool
+	viewRaw  bool
 )
 
 func init() {
@@ -38,8 +37,6 @@ func init() {
 		"Show plain text version in terminal")
 	viewCmd.Flags().BoolVarP(&viewRaw, "raw", "r", false,
 		"Show raw email source (RFC 5322)")
-	viewCmd.Flags().StringVar(&viewInbox, "inbox", "",
-		"Use specific inbox (default: active)")
 }
 
 func runView(cmd *cobra.Command, args []string) error {
@@ -48,7 +45,7 @@ func runView(cmd *cobra.Command, args []string) error {
 	emailID := cliutil.GetArg(args, 0, "")
 
 	// Use shared helper (returns email, inbox, cleanup, error)
-	email, inbox, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, viewInbox)
+	email, inbox, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, InboxFlag)
 	if err != nil {
 		return err
 	}

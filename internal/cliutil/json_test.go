@@ -277,9 +277,9 @@ func TestInboxJSON_Options(t *testing.T) {
 	})
 
 	t.Run("include emailCount only", func(t *testing.T) {
+		emailCount := 10
 		result := InboxJSON(inbox, true, now, InboxJSONOptions{
-			IncludeEmailCount: true,
-			EmailCount:        10,
+			EmailCount: &emailCount,
 		})
 
 		assert.Equal(t, 10, result["emailCount"])
@@ -295,12 +295,12 @@ func TestInboxJSON_Options(t *testing.T) {
 
 	t.Run("all options enabled", func(t *testing.T) {
 		syncErr := errors.New("timeout")
+		emailCount := 5
 		result := InboxJSON(inbox, false, now, InboxJSONOptions{
-			IncludeID:         true,
-			IncludeCreatedAt:  true,
-			IncludeEmailCount: true,
-			EmailCount:        5,
-			SyncErr:           syncErr,
+			IncludeID:        true,
+			IncludeCreatedAt: true,
+			EmailCount:       &emailCount,
+			SyncErr:          syncErr,
 		})
 
 		assert.Equal(t, "inbox-opts-123", result["id"])

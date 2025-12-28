@@ -203,7 +203,8 @@ func TestRenderAuthResults(t *testing.T) {
 		got := RenderAuthResults(auth, labelStyle, false)
 		assert.Contains(t, got, "DKIM:")
 		assert.Contains(t, got, "PASS")
-		assert.Contains(t, got, "(example.com)")
+		// Compact mode shows selector (first detail)
+		assert.Contains(t, got, "(s1)")
 	})
 
 	t.Run("verbose mode with DKIM", func(t *testing.T) {

@@ -33,10 +33,9 @@ Examples:
 }
 
 var (
-	attachmentSave   int
-	attachmentAll    bool
-	attachmentDir    string
-	attachmentInbox  string
+	attachmentSave int
+	attachmentAll  bool
+	attachmentDir  string
 )
 
 func init() {
@@ -48,8 +47,6 @@ func init() {
 		"Download all attachments")
 	attachmentCmd.Flags().StringVarP(&attachmentDir, "dir", "d", ".",
 		"Directory to save attachments (default: current directory)")
-	attachmentCmd.Flags().StringVar(&attachmentInbox, "inbox", "",
-		"Use specific inbox (default: active)")
 }
 
 func runAttachment(cmd *cobra.Command, args []string) error {
@@ -58,7 +55,7 @@ func runAttachment(cmd *cobra.Command, args []string) error {
 	emailID := cliutil.GetArg(args, 0, "")
 
 	// Use shared helper
-	email, _, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, attachmentInbox)
+	email, _, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, InboxFlag)
 	if err != nil {
 		return err
 	}
