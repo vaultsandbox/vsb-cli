@@ -1,0 +1,120 @@
+package cliutil
+
+import (
+	"context"
+	"fmt"
+
+	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/config"
+)
+
+// noopCleanup is a no-op cleanup function returned on errors.
+var noopCleanup = func() {}
+
+// LoadKeystoreOrError loads keystore with a consistent error message.
+func LoadKeystoreOrError() (*config.Keystore, error) {
+	ks, err := config.LoadKeystore()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load keystore: %w", err)
+	}
+	return ks, nil
+}
+
+// GetInbox returns an inbox by email flag (with partial matching), or the active inbox if emailFlag is empty.
+// Accepts KeystoreReader interface to allow testing with mock implementations.
+func GetInbox(ks KeystoreReader, emailFlag string) (*config.StoredInbox, error) {
+	if emailFlag != "" {
+		inbox, matches, err := ks.FindInbox(emailFlag)
+		if err == config.ErrMultipleMatches {
+			return nil, fmt.Errorf("multiple inboxes match '%s': %v", emailFlag, matches)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("inbox not found: %s", emailFlag)
+		}
+		return inbox, nil
+	}
+
+	inbox, err := ks.GetActiveInbox()
+	if err != nil {
+		return nil, fmt.Errorf("no active inbox. Create one with 'vsb inbox create' or set with 'vsb inbox use'")
+	}
+	return inbox, nil
+}
+
+// LoadAndImportInbox loads the keystore, gets an inbox (by emailFlag or active),
+// creates a client, and imports the inbox into the SDK.
+// Returns the imported inbox, a cleanup function (closes client), and any error.
+// The caller must call the cleanup function when done.
+func LoadAndImportInbox(ctx context.Context, emailFlag string) (*vaultsandbox.Inbox, func(), error) {
+	// Load keystore
+	ks, err := LoadKeystoreOrError()
+	if err != nil {
+		return nil, noopCleanup, err
+	}
+
+	// Get stored inbox
+	stored, err := GetInbox(ks, emailFlag)
+	if err != nil {
+		return nil, noopCleanup, err
+	}
+
+	// Create client
+	client, err := config.NewClient()
+	if err != nil {
+		return nil, noopCleanup, err
+	}
+
+	cleanup := func() {
+		client.Close()
+	}
+
+	// Import inbox
+	inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
+	if err != nil {
+		cleanup()
+		return nil, noopCleanup, fmt.Errorf("failed to import inbox: %w", err)
+	}
+
+	return inbox, cleanup, nil
+}
+
+// GetArg returns args[index] if it exists, otherwise returns defaultValue.
+func GetArg(args []string, index int, defaultValue string) string {
+	if index < len(args) {
+		return args[index]
+	}
+	return defaultValue
+}
+
+// GetEmailByIDOrLatest fetches an email by ID if provided, otherwise returns the latest email.
+// Returns the email, the imported inbox, a cleanup function (closes client), and any error.
+// The caller must call the cleanup function when done.
+func GetEmailByIDOrLatest(ctx context.Context, emailID, emailFlag string) (*vaultsandbox.Email, *vaultsandbox.Inbox, func(), error) {
+	inbox, cleanup, err := LoadAndImportInbox(ctx, emailFlag)
+	if err != nil {
+		return nil, nil, noopCleanup, err
+	}
+
+	// Fetch email
+	var email *vaultsandbox.Email
+	if emailID != "" {
+		email, err = inbox.GetEmail(ctx, emailID)
+		if err != nil {
+			cleanup()
+			return nil, nil, noopCleanup, fmt.Errorf("failed to get email %s: %w", emailID, err)
+		}
+	} else {
+		emails, err := inbox.GetEmails(ctx)
+		if err != nil {
+			cleanup()
+			return nil, nil, noopCleanup, fmt.Errorf("failed to get emails: %w", err)
+		}
+		if len(emails) == 0 {
+			cleanup()
+			return nil, nil, noopCleanup, fmt.Errorf("no emails found in inbox")
+		}
+		email = emails[0]
+	}
+
+	return email, inbox, cleanup, nil
+}

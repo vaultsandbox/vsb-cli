@@ -1,0 +1,134 @@
+package cli
+
+import (
+	"context"
+	"fmt"
+	"path/filepath"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
+	vaultsandbox "github.com/vaultsandbox/client-go"
+	"github.com/vaultsandbox/vsb-cli/internal/cli/data"
+	"github.com/vaultsandbox/vsb-cli/internal/cli/email"
+	"github.com/vaultsandbox/vsb-cli/internal/cli/inbox"
+	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
+	"github.com/vaultsandbox/vsb-cli/internal/config"
+	"github.com/vaultsandbox/vsb-cli/internal/tui/emails"
+)
+
+var cfgFile string
+
+// Version is set via ldflags at build time
+var Version = "dev"
+
+var rootCmd = &cobra.Command{
+	Use:   "vsb",
+	Short: "VaultSandbox CLI - https://vaultsandbox.com",
+	Long: `vsb is a developer companion for testing email flows.
+
+It provides temporary encrypted inboxes. Emails are encrypted on receipt and
+can only be decrypted locally with your private keys.
+
+Running 'vsb' opens the real-time email dashboard for all inboxes.`,
+	RunE: runRoot,
+}
+
+func Execute() error {
+	return rootCmd.Execute()
+}
+
+func init() {
+	cobra.OnInitialize(initConfig)
+
+	rootCmd.Version = Version
+
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
+		"config file (default is $HOME/.config/vsb/config.yaml)")
+
+	// Global output format flag
+	rootCmd.PersistentFlags().StringP("output", "o", "", "Output format: pretty, json")
+
+	// Register subpackage commands
+	rootCmd.AddCommand(inbox.Cmd)
+	rootCmd.AddCommand(email.Cmd)
+	rootCmd.AddCommand(data.ExportCmd)
+	rootCmd.AddCommand(data.ImportCmd)
+}
+
+func initConfig() {
+	var configPath string
+	if cfgFile != "" {
+		configPath = cfgFile
+	} else {
+		dir, err := config.Dir()
+		if err != nil {
+			return
+		}
+		configPath = filepath.Join(dir, "config.yaml")
+	}
+	config.LoadFromFile(configPath)
+}
+
+func runRoot(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
+
+	// Load keystore
+	keystore, err := cliutil.LoadKeystoreOrError()
+	if err != nil {
+		return err
+	}
+
+	// Load all inboxes
+	storedInboxes := keystore.ListInboxes()
+	if len(storedInboxes) == 0 {
+		return fmt.Errorf("no inboxes found. Create one with 'vsb inbox create'")
+	}
+
+	// Find active inbox index
+	activeIdx := 0
+	if activeInbox, err := keystore.GetActiveInbox(); err == nil {
+		for i, stored := range storedInboxes {
+			if stored.Email == activeInbox.Email {
+				activeIdx = i
+				break
+			}
+		}
+	}
+
+	// Create SDK client
+	client, err := config.NewClient()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	// Import inboxes into client
+	var inboxes []*vaultsandbox.Inbox
+	for _, stored := range storedInboxes {
+		exported := stored.ToExportedInbox()
+		inbox, err := client.ImportInbox(ctx, exported)
+		if err != nil {
+			return fmt.Errorf("failed to import inbox %s: %w", stored.Email, err)
+		}
+		inboxes = append(inboxes, inbox)
+	}
+
+	// Create TUI model starting on active inbox
+	model := emails.NewModel(client, inboxes, activeIdx, keystore)
+
+	// Create and run TUI program
+	p := tea.NewProgram(&model, tea.WithAltScreen())
+
+	// Store program reference for dynamic inbox watching
+	model.SetProgram(p)
+
+	// Load existing emails first (synchronous), then start watching for new ones
+	model.LoadExistingEmails(p)
+	model.WatchEmails(p)
+
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("TUI error: %w", err)
+	}
+
+	return nil
+}
