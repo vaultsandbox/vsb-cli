@@ -57,21 +57,21 @@ func buildAuthResultsJSON(email *vaultsandbox.Email) map[string]interface{} {
 
 	if auth.SPF != nil {
 		authData["spf"] = map[string]string{
-			"status": auth.SPF.Status,
+			"result": auth.SPF.Result,
 			"domain": auth.SPF.Domain,
 		}
 	}
 	if len(auth.DKIM) > 0 {
 		dkim := auth.DKIM[0]
 		authData["dkim"] = map[string]string{
-			"status":   dkim.Status,
+			"result":   dkim.Result,
 			"selector": dkim.Selector,
 			"domain":   dkim.Domain,
 		}
 	}
 	if auth.DMARC != nil {
 		authData["dmarc"] = map[string]string{
-			"status": auth.DMARC.Status,
+			"result": auth.DMARC.Result,
 			"policy": auth.DMARC.Policy,
 		}
 	}

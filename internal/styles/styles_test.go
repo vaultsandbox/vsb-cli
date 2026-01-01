@@ -74,9 +74,9 @@ func TestCalculateScore(t *testing.T) {
 			name: "all pass",
 			email: &vaultsandbox.Email{
 				AuthResults: &authresults.AuthResults{
-					SPF:        &authresults.SPFResult{Status: "pass"},
-					DKIM:       []authresults.DKIMResult{{Status: "pass"}},
-					DMARC:      &authresults.DMARCResult{Status: "pass"},
+					SPF:        &authresults.SPFResult{Result: "pass"},
+					DKIM:       []authresults.DKIMResult{{Result: "pass"}},
+					DMARC:      &authresults.DMARCResult{Result: "pass"},
 					ReverseDNS: &authresults.ReverseDNSResult{Verified: true},
 				},
 			},
@@ -86,7 +86,7 @@ func TestCalculateScore(t *testing.T) {
 			name: "SPF only pass",
 			email: &vaultsandbox.Email{
 				AuthResults: &authresults.AuthResults{
-					SPF: &authresults.SPFResult{Status: "pass"},
+					SPF: &authresults.SPFResult{Result: "pass"},
 				},
 			},
 			want: 65,
@@ -95,7 +95,7 @@ func TestCalculateScore(t *testing.T) {
 			name: "DKIM only pass",
 			email: &vaultsandbox.Email{
 				AuthResults: &authresults.AuthResults{
-					DKIM: []authresults.DKIMResult{{Status: "pass"}},
+					DKIM: []authresults.DKIMResult{{Result: "pass"}},
 				},
 			},
 			want: 70,
@@ -104,7 +104,7 @@ func TestCalculateScore(t *testing.T) {
 			name: "DMARC only pass",
 			email: &vaultsandbox.Email{
 				AuthResults: &authresults.AuthResults{
-					DMARC: &authresults.DMARCResult{Status: "pass"},
+					DMARC: &authresults.DMARCResult{Result: "pass"},
 				},
 			},
 			want: 60,
@@ -122,9 +122,9 @@ func TestCalculateScore(t *testing.T) {
 			name: "all fail",
 			email: &vaultsandbox.Email{
 				AuthResults: &authresults.AuthResults{
-					SPF:        &authresults.SPFResult{Status: "fail"},
-					DKIM:       []authresults.DKIMResult{{Status: "fail"}},
-					DMARC:      &authresults.DMARCResult{Status: "fail"},
+					SPF:        &authresults.SPFResult{Result: "fail"},
+					DKIM:       []authresults.DKIMResult{{Result: "fail"}},
+					DMARC:      &authresults.DMARCResult{Result: "fail"},
 					ReverseDNS: &authresults.ReverseDNSResult{Verified: false},
 				},
 			},
@@ -134,9 +134,9 @@ func TestCalculateScore(t *testing.T) {
 			name: "case insensitive pass",
 			email: &vaultsandbox.Email{
 				AuthResults: &authresults.AuthResults{
-					SPF:   &authresults.SPFResult{Status: "PASS"},
-					DKIM:  []authresults.DKIMResult{{Status: "Pass"}},
-					DMARC: &authresults.DMARCResult{Status: "pAsS"},
+					SPF:   &authresults.SPFResult{Result: "PASS"},
+					DKIM:  []authresults.DKIMResult{{Result: "Pass"}},
+					DMARC: &authresults.DMARCResult{Result: "pAsS"},
 				},
 			},
 			want: 95,
@@ -170,7 +170,7 @@ func TestRenderAuthResults(t *testing.T) {
 	t.Run("compact mode with SPF", func(t *testing.T) {
 		auth := &authresults.AuthResults{
 			SPF: &authresults.SPFResult{
-				Status: "pass",
+				Result: "pass",
 				Domain: "example.com",
 			},
 		}
@@ -183,7 +183,7 @@ func TestRenderAuthResults(t *testing.T) {
 	t.Run("verbose mode with SPF", func(t *testing.T) {
 		auth := &authresults.AuthResults{
 			SPF: &authresults.SPFResult{
-				Status: "pass",
+				Result: "pass",
 				Domain: "example.com",
 			},
 		}
@@ -197,7 +197,7 @@ func TestRenderAuthResults(t *testing.T) {
 	t.Run("compact mode with DKIM", func(t *testing.T) {
 		auth := &authresults.AuthResults{
 			DKIM: []authresults.DKIMResult{
-				{Status: "pass", Domain: "example.com", Selector: "s1"},
+				{Result: "pass", Domain: "example.com", Selector: "s1"},
 			},
 		}
 		got := RenderAuthResults(auth, labelStyle, false)
@@ -210,7 +210,7 @@ func TestRenderAuthResults(t *testing.T) {
 	t.Run("verbose mode with DKIM", func(t *testing.T) {
 		auth := &authresults.AuthResults{
 			DKIM: []authresults.DKIMResult{
-				{Status: "pass", Domain: "example.com", Selector: "s1"},
+				{Result: "pass", Domain: "example.com", Selector: "s1"},
 			},
 		}
 		got := RenderAuthResults(auth, labelStyle, true)
@@ -224,7 +224,7 @@ func TestRenderAuthResults(t *testing.T) {
 	t.Run("compact mode with DMARC", func(t *testing.T) {
 		auth := &authresults.AuthResults{
 			DMARC: &authresults.DMARCResult{
-				Status: "pass",
+				Result: "pass",
 				Policy: "reject",
 			},
 		}
@@ -237,7 +237,7 @@ func TestRenderAuthResults(t *testing.T) {
 	t.Run("verbose mode with DMARC", func(t *testing.T) {
 		auth := &authresults.AuthResults{
 			DMARC: &authresults.DMARCResult{
-				Status: "pass",
+				Result: "pass",
 				Policy: "reject",
 			},
 		}
@@ -277,9 +277,9 @@ func TestRenderAuthResults(t *testing.T) {
 
 	t.Run("all results compact", func(t *testing.T) {
 		auth := &authresults.AuthResults{
-			SPF:        &authresults.SPFResult{Status: "pass", Domain: "example.com"},
-			DKIM:       []authresults.DKIMResult{{Status: "pass", Domain: "example.com"}},
-			DMARC:      &authresults.DMARCResult{Status: "pass", Policy: "reject"},
+			SPF:        &authresults.SPFResult{Result: "pass", Domain: "example.com"},
+			DKIM:       []authresults.DKIMResult{{Result: "pass", Domain: "example.com"}},
+			DMARC:      &authresults.DMARCResult{Result: "pass", Policy: "reject"},
 			ReverseDNS: &authresults.ReverseDNSResult{Verified: true, Hostname: "mail.example.com"},
 		}
 		got := RenderAuthResults(auth, labelStyle, false)
@@ -290,7 +290,7 @@ func TestRenderAuthResults(t *testing.T) {
 
 	t.Run("missing optional fields", func(t *testing.T) {
 		auth := &authresults.AuthResults{
-			SPF: &authresults.SPFResult{Status: "pass"},
+			SPF: &authresults.SPFResult{Result: "pass"},
 		}
 		got := RenderAuthResults(auth, labelStyle, false)
 		assert.Contains(t, got, "SPF:")

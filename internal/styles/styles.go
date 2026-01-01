@@ -204,6 +204,14 @@ type authDetail struct {
 	value string
 }
 
+// reverseDNSStatus converts ReverseDNS.Verified bool to a status string.
+func reverseDNSStatus(r *authresults.ReverseDNSResult) string {
+	if r.Verified {
+		return "pass"
+	}
+	return "fail"
+}
+
 // buildAuthFields extracts authentication fields from AuthResults.
 func buildAuthFields(auth *authresults.AuthResults) []authField {
 	if auth == nil {
@@ -213,7 +221,7 @@ func buildAuthFields(auth *authresults.AuthResults) []authField {
 	var fields []authField
 
 	if auth.SPF != nil {
-		f := authField{label: "SPF:", status: auth.SPF.Status}
+		f := authField{label: "SPF:", status: auth.SPF.Result}
 		if auth.SPF.Domain != "" {
 			f.details = append(f.details, authDetail{"Domain:", auth.SPF.Domain})
 		}
@@ -222,7 +230,7 @@ func buildAuthFields(auth *authresults.AuthResults) []authField {
 
 	if len(auth.DKIM) > 0 {
 		dkim := auth.DKIM[0]
-		f := authField{label: "DKIM:", status: dkim.Status}
+		f := authField{label: "DKIM:", status: dkim.Result}
 		if dkim.Selector != "" {
 			f.details = append(f.details, authDetail{"Selector:", dkim.Selector})
 		}
@@ -233,7 +241,7 @@ func buildAuthFields(auth *authresults.AuthResults) []authField {
 	}
 
 	if auth.DMARC != nil {
-		f := authField{label: "DMARC:", status: auth.DMARC.Status}
+		f := authField{label: "DMARC:", status: auth.DMARC.Result}
 		if auth.DMARC.Policy != "" {
 			f.details = append(f.details, authDetail{"Policy:", auth.DMARC.Policy})
 		}
@@ -241,7 +249,7 @@ func buildAuthFields(auth *authresults.AuthResults) []authField {
 	}
 
 	if auth.ReverseDNS != nil {
-		f := authField{label: "Reverse DNS:", status: auth.ReverseDNS.Status()}
+		f := authField{label: "Reverse DNS:", status: reverseDNSStatus(auth.ReverseDNS)}
 		if auth.ReverseDNS.Hostname != "" {
 			f.details = append(f.details, authDetail{"Hostname:", auth.ReverseDNS.Hostname})
 		}
@@ -290,16 +298,16 @@ func CalculateScore(email *vaultsandbox.Email) int {
 		return score
 	}
 	auth := email.AuthResults
-	if auth.SPF != nil && strings.EqualFold(auth.SPF.Status, "pass") {
+	if auth.SPF != nil && strings.EqualFold(auth.SPF.Result, "pass") {
 		score += 15
 	}
-	if len(auth.DKIM) > 0 && strings.EqualFold(auth.DKIM[0].Status, "pass") {
+	if len(auth.DKIM) > 0 && strings.EqualFold(auth.DKIM[0].Result, "pass") {
 		score += 20
 	}
-	if auth.DMARC != nil && strings.EqualFold(auth.DMARC.Status, "pass") {
+	if auth.DMARC != nil && strings.EqualFold(auth.DMARC.Result, "pass") {
 		score += 10
 	}
-	if auth.ReverseDNS != nil && strings.EqualFold(auth.ReverseDNS.Status(), "pass") {
+	if auth.ReverseDNS != nil && auth.ReverseDNS.Verified {
 		score += 5
 	}
 	return score

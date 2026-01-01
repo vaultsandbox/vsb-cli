@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.1] - 2026-01-01
+
+### Changed
+
+- Updated `client-go` to v0.5.1 (email auth field renames: `Status` → `Result`)
+
 ## [0.5.0] - 2025-12-28
 
 ### Initial release

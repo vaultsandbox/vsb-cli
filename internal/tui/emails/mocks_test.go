@@ -51,24 +51,24 @@ func testEmailWithAttachments(id, subject, from string, attachments []vaultsandb
 }
 
 // testEmailWithAuth creates a test email with authentication results
-func testEmailWithAuth(id, subject, from string, spfStatus, dkimStatus, dmarcStatus string) *vaultsandbox.Email {
+func testEmailWithAuth(id, subject, from string, spfResult, dkimResult, dmarcResult string) *vaultsandbox.Email {
 	email := testEmail(id, subject, from)
 	email.AuthResults = &authresults.AuthResults{}
 
-	if spfStatus != "" {
+	if spfResult != "" {
 		email.AuthResults.SPF = &authresults.SPFResult{
-			Status: spfStatus,
+			Result: spfResult,
 			Domain: "example.com",
 		}
 	}
-	if dkimStatus != "" {
+	if dkimResult != "" {
 		email.AuthResults.DKIM = []authresults.DKIMResult{
-			{Status: dkimStatus, Domain: "example.com", Selector: "default"},
+			{Result: dkimResult, Domain: "example.com", Selector: "default"},
 		}
 	}
-	if dmarcStatus != "" {
+	if dmarcResult != "" {
 		email.AuthResults.DMARC = &authresults.DMARCResult{
-			Status: dmarcStatus,
+			Result: dmarcResult,
 			Policy: "reject",
 		}
 	}
