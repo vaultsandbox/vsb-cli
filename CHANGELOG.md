@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] - 2026-01-04
+
+### Changed
+
+- Updated `client-go` to v0.6.0 (export format: `SecretKeyB64` → `SecretKey`, public key now derived from secret key per spec Section 4.2)
+
 ## [0.5.1] - 2026-01-01
 
 ### Changed

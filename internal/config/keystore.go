@@ -303,8 +303,8 @@ func StoredInboxFromExport(exp *vaultsandbox.ExportedInbox) StoredInbox {
 		CreatedAt: exp.ExportedAt,
 		ExpiresAt: exp.ExpiresAt,
 		Keys: InboxKeys{
-			KEMPrivate:  exp.SecretKeyB64,
-			KEMPublic:   exp.PublicKeyB64,
+			KEMPrivate:  exp.SecretKey,
+			KEMPublic:   "", // Public key is derived from secret key per spec Section 4.2
 			ServerSigPK: exp.ServerSigPk,
 		},
 	}
@@ -313,12 +313,12 @@ func StoredInboxFromExport(exp *vaultsandbox.ExportedInbox) StoredInbox {
 // ToExportedInbox converts StoredInbox to SDK ExportedInbox for import
 func (s *StoredInbox) ToExportedInbox() *vaultsandbox.ExportedInbox {
 	return &vaultsandbox.ExportedInbox{
+		Version:      1,
 		EmailAddress: s.Email,
 		ExpiresAt:    s.ExpiresAt,
 		InboxHash:    s.ID,
 		ServerSigPk:  s.Keys.ServerSigPK,
-		PublicKeyB64: s.Keys.KEMPublic,
-		SecretKeyB64: s.Keys.KEMPrivate,
+		SecretKey:    s.Keys.KEMPrivate,
 		ExportedAt:   s.CreatedAt,
 	}
 }

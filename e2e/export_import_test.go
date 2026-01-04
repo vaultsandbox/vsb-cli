@@ -68,7 +68,8 @@ func TestExport(t *testing.T) {
 		assert.Equal(t, inboxEmail, exported.EmailAddress)
 		assert.NotEmpty(t, exported.InboxHash)
 		assert.NotEmpty(t, exported.Keys.KEMPrivate)
-		assert.NotEmpty(t, exported.Keys.KEMPublic)
+		// KEMPublic is intentionally empty - derived from secret key per spec Section 4.2
+		assert.Empty(t, exported.Keys.KEMPublic)
 		assert.NotEmpty(t, exported.Keys.ServerSigPK)
 		assert.True(t, exported.ExpiresAt.After(time.Now()))
 	})

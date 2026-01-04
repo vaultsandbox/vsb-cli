@@ -370,20 +370,20 @@ func TestListInboxes(t *testing.T) {
 func TestStoredInboxConversions(t *testing.T) {
 	t.Run("StoredInboxFromExport", func(t *testing.T) {
 		exported := &vaultsandbox.ExportedInbox{
+			Version:      1,
 			EmailAddress: "test@example.com",
 			InboxHash:    "hash123",
 			ExpiresAt:    time.Now().Add(24 * time.Hour),
 			ExportedAt:   time.Now(),
-			PublicKeyB64: "pub-key-b64",
-			SecretKeyB64: "sec-key-b64",
+			SecretKey:    "sec-key-b64",
 			ServerSigPk:  "server-sig",
 		}
 
 		stored := StoredInboxFromExport(exported)
 		assert.Equal(t, exported.EmailAddress, stored.Email)
 		assert.Equal(t, exported.InboxHash, stored.ID)
-		assert.Equal(t, exported.PublicKeyB64, stored.Keys.KEMPublic)
-		assert.Equal(t, exported.SecretKeyB64, stored.Keys.KEMPrivate)
+		assert.Empty(t, stored.Keys.KEMPublic) // Public key derived from secret key per spec
+		assert.Equal(t, exported.SecretKey, stored.Keys.KEMPrivate)
 		assert.Equal(t, exported.ServerSigPk, stored.Keys.ServerSigPK)
 	})
 
@@ -395,7 +395,8 @@ func TestStoredInboxConversions(t *testing.T) {
 
 		assert.Equal(t, original.Email, back.Email)
 		assert.Equal(t, original.ID, back.ID)
-		assert.Equal(t, original.Keys.KEMPublic, back.Keys.KEMPublic)
+		// Public key is not preserved in SDK format (derived from secret key per spec)
+		assert.Empty(t, back.Keys.KEMPublic)
 		assert.Equal(t, original.Keys.KEMPrivate, back.Keys.KEMPrivate)
 	})
 }
@@ -509,12 +510,12 @@ func TestSaveInbox(t *testing.T) {
 		ks, _ := setupKeystore(t)
 
 		exported := &vaultsandbox.ExportedInbox{
+			Version:      1,
 			EmailAddress: "sdk@example.com",
 			InboxHash:    "sdk-hash",
 			ExpiresAt:    time.Now().Add(24 * time.Hour),
 			ExportedAt:   time.Now(),
-			PublicKeyB64: "pub",
-			SecretKeyB64: "sec",
+			SecretKey:    "sec",
 			ServerSigPk:  "sig",
 		}
 
