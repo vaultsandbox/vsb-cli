@@ -164,7 +164,8 @@ func CleanupPreviews(olderThan time.Duration) error {
 		}
 
 		if info.ModTime().Before(cutoff) {
-			os.Remove(filepath.Join(tmpDir, entry.Name()))
+			// Use filepath.Base to prevent path traversal
+			os.Remove(filepath.Join(tmpDir, filepath.Base(entry.Name())))
 		}
 	}
 
