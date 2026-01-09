@@ -21,6 +21,7 @@ SKIP_UNIT=false
 SKIP_E2E=false
 SKIP_COVERAGE=false
 VERBOSE=false
+HTML_REPORT=false
 
 for arg in "$@"; do
     case $arg in
@@ -36,6 +37,9 @@ for arg in "$@"; do
         -v|--verbose)
             VERBOSE=true
             ;;
+        --html)
+            HTML_REPORT=true
+            ;;
         --help)
             echo "Usage: $0 [options]"
             echo ""
@@ -46,6 +50,7 @@ for arg in "$@"; do
             echo "  --skip-e2e       Skip e2e tests"
             echo "  --skip-coverage  Skip coverage collection"
             echo "  -v, --verbose    Verbose output"
+            echo "  --html           Open HTML coverage report in browser"
             echo "  --help           Show this help"
             exit 0
             ;;
@@ -148,6 +153,12 @@ if [ "$SKIP_COVERAGE" = false ]; then
 
     # Show summary
     go tool cover -func="$COVERAGE_FILE" | tail -1
-    echo ""
-    echo "To view HTML report: go tool cover -html=$COVERAGE_FILE"
+    if [ "$HTML_REPORT" = true ]; then
+        echo ""
+        echo "Opening HTML coverage report..."
+        go tool cover -html="$COVERAGE_FILE"
+    else
+        echo ""
+        echo "To view HTML report: go tool cover -html=$COVERAGE_FILE"
+    fi
 fi

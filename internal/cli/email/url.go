@@ -5,9 +5,19 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/browser"
 	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 )
+
+// getEmailByIDOrLatestFunc is a variable for cliutil.GetEmailByIDOrLatest that can be overridden in tests
+var getEmailByIDOrLatestFunc = cliutil.GetEmailByIDOrLatest
+
+// openURLInBrowserFunc is a variable for browser.OpenURL that can be overridden in tests
+var openURLInBrowserFunc = browser.OpenURL
+
+// EmailFetcher is the function signature for fetching emails
+type EmailFetcher func(ctx context.Context, emailID, emailFlag string) (*vaultsandbox.Email, *vaultsandbox.Inbox, func(), error)
 
 var urlCmd = &cobra.Command{
 	Use:   "url [email-id]",
@@ -43,7 +53,7 @@ func runURL(cmd *cobra.Command, args []string) error {
 	emailID := cliutil.GetArg(args, 0, "")
 
 	// Use shared helper
-	email, _, cleanup, err := cliutil.GetEmailByIDOrLatest(ctx, emailID, InboxFlag)
+	email, _, cleanup, err := getEmailByIDOrLatestFunc(ctx, emailID, InboxFlag)
 	if err != nil {
 		return err
 	}
@@ -65,7 +75,7 @@ func runURL(cmd *cobra.Command, args []string) error {
 		}
 		url := email.Links[urlOpen-1]
 		fmt.Printf("Opening: %s\n", url)
-		return browser.OpenURL(url)
+		return openURLInBrowserFunc(url)
 	}
 
 	// Default: list all URLs

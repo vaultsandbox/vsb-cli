@@ -137,3 +137,93 @@ func TestOutputJSON(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestSubjectOrDefault(t *testing.T) {
+	t.Run("empty string returns NoSubject", func(t *testing.T) {
+		got := SubjectOrDefault("")
+		assert.Equal(t, NoSubject, got)
+	})
+
+	t.Run("non-empty string returns as-is", func(t *testing.T) {
+		got := SubjectOrDefault("Hello World")
+		assert.Equal(t, "Hello World", got)
+	})
+
+	t.Run("whitespace-only returns as-is", func(t *testing.T) {
+		got := SubjectOrDefault("   ")
+		assert.Equal(t, "   ", got)
+	})
+}
+
+func TestExtractTLSVersion(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"TLSv1.3", "version=TLSv1.3", "TLSv1.3"},
+		{"TLSv1.2", "version=TLSv1.2", "TLSv1.2"},
+		{"TLSv1.1", "version=TLSv1.1", "TLSv1.1"},
+		{"full header", "from mail.example.com (EHLO) with ESMTPS (version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384)", "TLSv1.3"},
+		{"no match", "from mail.example.com with SMTP", ""},
+		{"empty string", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ExtractTLSVersion(tt.input)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestExtractTLSCipher(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"AES 256", "cipher=TLS_AES_256_GCM_SHA384)", "TLS_AES_256_GCM_SHA384"},
+		{"AES 128", "cipher=TLS_AES_128_GCM_SHA256)", "TLS_AES_128_GCM_SHA256"},
+		{"full header", "from mail.example.com (EHLO) with ESMTPS (version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384)", "TLS_AES_256_GCM_SHA384"},
+		{"no match", "from mail.example.com with SMTP", ""},
+		{"empty string", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ExtractTLSCipher(tt.input)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestFormatExpiry(t *testing.T) {
+	t.Run("expired returns expired", func(t *testing.T) {
+		past := time.Now().Add(-1 * time.Hour)
+		got := FormatExpiry(past)
+		assert.Equal(t, "expired", got)
+	})
+
+	t.Run("future returns duration", func(t *testing.T) {
+		future := time.Now().Add(30 * time.Minute)
+		got := FormatExpiry(future)
+		assert.Equal(t, "30m", got)
+	})
+
+	t.Run("far future returns days", func(t *testing.T) {
+		future := time.Now().Add(48 * time.Hour)
+		got := FormatExpiry(future)
+		assert.Equal(t, "2d", got)
+	})
+}
+
+func TestIsExpired(t *testing.T) {
+	t.Run("past time is expired", func(t *testing.T) {
+		past := time.Now().Add(-1 * time.Hour)
+		assert.True(t, IsExpired(past))
+	})
+
+	t.Run("future time is not expired", func(t *testing.T) {
+		future := time.Now().Add(1 * time.Hour)
+		assert.False(t, IsExpired(future))
+	})
+}

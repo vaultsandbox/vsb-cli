@@ -2,6 +2,7 @@
 /vsb
 
 # Go
+go.work*
 *.exe
 *.exe~
 *.dll
