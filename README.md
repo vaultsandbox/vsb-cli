@@ -224,6 +224,10 @@ vsb config show
 # Set configuration values
 vsb config set api-key "your-api-key"
 vsb config set base-url "https://your-gateway.vsx.email"
+vsb config set strategy sse        # or "polling"
+
+# Interactive strategy selection
+vsb config set strategy
 ```
 
 ## Configuration
@@ -239,6 +243,7 @@ Configuration is loaded in order of priority:
 # ~/.config/vsb/config.yaml
 api_key: your-api-key
 base_url: https://your-gateway.vsx.email
+strategy: sse  # "sse" (default) or "polling"
 ```
 
 ### Environment Variables
@@ -247,6 +252,7 @@ base_url: https://your-gateway.vsx.email
 |----------|-------------|
 | `VSB_API_KEY` | Your VaultSandbox API key |
 | `VSB_BASE_URL` | Gateway URL |
+| `VSB_STRATEGY` | Delivery strategy: `sse` (default) or `polling` |
 
 ## Data Storage
 

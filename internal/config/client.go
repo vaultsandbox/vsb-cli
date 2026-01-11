@@ -21,5 +21,13 @@ func NewClient() (*vaultsandbox.Client, error) {
 		opts = append(opts, vaultsandbox.WithBaseURL(baseURL))
 	}
 
+	// Apply delivery strategy
+	switch GetStrategy() {
+	case "polling":
+		opts = append(opts, vaultsandbox.WithDeliveryStrategy(vaultsandbox.StrategyPolling))
+	case "sse":
+		opts = append(opts, vaultsandbox.WithDeliveryStrategy(vaultsandbox.StrategySSE))
+	}
+
 	return vaultsandbox.New(apiKey, opts...)
 }

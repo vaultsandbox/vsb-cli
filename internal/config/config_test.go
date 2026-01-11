@@ -66,6 +66,22 @@ default_output: json`
 		assert.Equal(t, "json", cfg.DefaultOutput)
 	})
 
+	t.Run("valid YAML with strategy", func(t *testing.T) {
+		dir := t.TempDir()
+		t.Setenv("VSB_CONFIG_DIR", dir)
+
+		configContent := `api_key: test-key
+base_url: https://api.example.com
+strategy: polling`
+		err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(configContent), 0644)
+		require.NoError(t, err)
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		assert.Equal(t, "test-key", cfg.APIKey)
+		assert.Equal(t, "polling", cfg.Strategy)
+	})
+
 	t.Run("invalid YAML", func(t *testing.T) {
 		dir := t.TempDir()
 		t.Setenv("VSB_CONFIG_DIR", dir)
@@ -195,6 +211,37 @@ func TestGetDefaultOutput(t *testing.T) {
 	})
 }
 
+func TestGetStrategy(t *testing.T) {
+	// Save original state
+	originalCurrent := current
+	defer func() { current = originalCurrent }()
+
+	t.Run("defaults to sse", func(t *testing.T) {
+		t.Setenv("VSB_STRATEGY", "")
+		current = Config{}
+
+		strategy := GetStrategy()
+		assert.Equal(t, DefaultStrategy, strategy)
+		assert.Equal(t, "sse", strategy)
+	})
+
+	t.Run("env var override", func(t *testing.T) {
+		t.Setenv("VSB_STRATEGY", "polling")
+		current = Config{Strategy: "sse"}
+
+		strategy := GetStrategy()
+		assert.Equal(t, "polling", strategy)
+	})
+
+	t.Run("config file value", func(t *testing.T) {
+		t.Setenv("VSB_STRATEGY", "")
+		current = Config{Strategy: "polling"}
+
+		strategy := GetStrategy()
+		assert.Equal(t, "polling", strategy)
+	})
+}
+
 func TestSave(t *testing.T) {
 	t.Run("saves config to file", func(t *testing.T) {
 		dir := t.TempDir()
@@ -215,6 +262,24 @@ func TestSave(t *testing.T) {
 		assert.Equal(t, cfg.APIKey, loaded.APIKey)
 		assert.Equal(t, cfg.BaseURL, loaded.BaseURL)
 		assert.Equal(t, cfg.DefaultOutput, loaded.DefaultOutput)
+	})
+
+	t.Run("saves config with strategy", func(t *testing.T) {
+		dir := t.TempDir()
+		t.Setenv("VSB_CONFIG_DIR", dir)
+
+		cfg := &Config{
+			APIKey:   "test-key",
+			Strategy: "polling",
+		}
+
+		err := Save(cfg)
+		require.NoError(t, err)
+
+		// Read back and verify
+		loaded, err := Load()
+		require.NoError(t, err)
+		assert.Equal(t, "polling", loaded.Strategy)
 	})
 
 	t.Run("creates directory if not exists", func(t *testing.T) {

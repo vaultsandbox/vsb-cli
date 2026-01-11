@@ -21,6 +21,8 @@ SKIP_UNIT=false
 SKIP_E2E=false
 SKIP_COVERAGE=false
 VERBOSE=false
+HTML_REPORT=false
+RACE=false
 
 for arg in "$@"; do
     case $arg in
@@ -36,6 +38,12 @@ for arg in "$@"; do
         -v|--verbose)
             VERBOSE=true
             ;;
+        --html)
+            HTML_REPORT=true
+            ;;
+        -race|--race)
+            RACE=true
+            ;;
         --help)
             echo "Usage: $0 [options]"
             echo ""
@@ -46,6 +54,8 @@ for arg in "$@"; do
             echo "  --skip-e2e       Skip e2e tests"
             echo "  --skip-coverage  Skip coverage collection"
             echo "  -v, --verbose    Verbose output"
+            echo "  -race, --race    Enable race detector"
+            echo "  --html           Open HTML coverage report in browser"
             echo "  --help           Show this help"
             exit 0
             ;;
@@ -86,6 +96,9 @@ if [ "$SKIP_UNIT" = false ]; then
     if [ "$VERBOSE" = true ]; then
         UNIT_CMD="$UNIT_CMD -v"
     fi
+    if [ "$RACE" = true ]; then
+        UNIT_CMD="$UNIT_CMD -race"
+    fi
     UNIT_CMD="$UNIT_CMD ./internal/..."
 
     echo "Running: $UNIT_CMD"
@@ -98,18 +111,25 @@ if [ "$SKIP_E2E" = false ]; then
     echo "=== Running e2e tests ==="
 
     # Build binary with coverage instrumentation
+    BUILD_FLAGS=""
+    if [ "$RACE" = true ]; then
+        BUILD_FLAGS="$BUILD_FLAGS -race"
+    fi
     if [ "$SKIP_COVERAGE" = false ]; then
         echo "Building vsb binary with coverage instrumentation..."
-        go build -cover -o vsb ./cmd/vsb
+        go build $BUILD_FLAGS -cover -o vsb ./cmd/vsb
         export GOCOVERDIR=coverage/e2e
     else
         echo "Building vsb binary..."
-        go build -o vsb ./cmd/vsb
+        go build $BUILD_FLAGS -o vsb ./cmd/vsb
     fi
 
     E2E_CMD="go test -tags=e2e -timeout 10m"
     if [ "$VERBOSE" = true ]; then
         E2E_CMD="$E2E_CMD -v"
+    fi
+    if [ "$RACE" = true ]; then
+        E2E_CMD="$E2E_CMD -race"
     fi
     E2E_CMD="$E2E_CMD ./e2e/..."
 
@@ -148,6 +168,12 @@ if [ "$SKIP_COVERAGE" = false ]; then
 
     # Show summary
     go tool cover -func="$COVERAGE_FILE" | tail -1
-    echo ""
-    echo "To view HTML report: go tool cover -html=$COVERAGE_FILE"
+    if [ "$HTML_REPORT" = true ]; then
+        echo ""
+        echo "Opening HTML coverage report..."
+        go tool cover -html="$COVERAGE_FILE"
+    else
+        echo ""
+        echo "To view HTML report: go tool cover -html=$COVERAGE_FILE"
+    fi
 fi

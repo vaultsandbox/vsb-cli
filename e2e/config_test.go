@@ -298,10 +298,12 @@ func TestConfigValidKeys(t *testing.T) {
 	}{
 		{"api-key", "vsb_validkey12345678"},
 		{"base-url", "https://valid.example.com"},
+		{"strategy", "sse"},
+		{"strategy", "polling"},
 	}
 
 	for _, tc := range validKeys {
-		t.Run("valid key: "+tc.key, func(t *testing.T) {
+		t.Run("valid key: "+tc.key+"="+tc.value, func(t *testing.T) {
 			configDir := t.TempDir()
 
 			_, stderr, code := runVSBWithConfig(t, configDir, "config", "set", tc.key, tc.value)
@@ -329,4 +331,76 @@ func TestConfigValidKeys(t *testing.T) {
 			assert.NotEqual(t, 0, code, "setting %s should fail", key)
 		})
 	}
+}
+
+// TestConfigStrategy tests setting and showing delivery strategy.
+func TestConfigStrategy(t *testing.T) {
+	t.Run("set strategy sse", func(t *testing.T) {
+		configDir := t.TempDir()
+
+		_, stderr, code := runVSBWithConfig(t, configDir, "config", "set", "strategy", "sse")
+		require.Equal(t, 0, code, "config set strategy sse failed: stderr=%s", stderr)
+
+		// Verify by showing config
+		stdout, _, code := runVSBWithConfig(t, configDir, "config", "show", "--output", "json")
+		require.Equal(t, 0, code)
+
+		var result struct {
+			Strategy string `json:"strategy"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+		assert.Equal(t, "sse", result.Strategy)
+	})
+
+	t.Run("set strategy polling", func(t *testing.T) {
+		configDir := t.TempDir()
+
+		_, stderr, code := runVSBWithConfig(t, configDir, "config", "set", "strategy", "polling")
+		require.Equal(t, 0, code, "config set strategy polling failed: stderr=%s", stderr)
+
+		// Verify by showing config
+		stdout, _, code := runVSBWithConfig(t, configDir, "config", "show", "--output", "json")
+		require.Equal(t, 0, code)
+
+		var result struct {
+			Strategy string `json:"strategy"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+		assert.Equal(t, "polling", result.Strategy)
+	})
+
+	t.Run("invalid strategy value", func(t *testing.T) {
+		configDir := t.TempDir()
+
+		_, stderr, code := runVSBWithConfig(t, configDir, "config", "set", "strategy", "invalid")
+		assert.NotEqual(t, 0, code, "config set strategy invalid should fail")
+		assert.Contains(t, stderr, "invalid strategy")
+	})
+
+	t.Run("default strategy is sse", func(t *testing.T) {
+		configDir := t.TempDir()
+
+		// Don't set strategy - should default to sse
+		stdout, _, code := runVSBWithConfig(t, configDir, "config", "show", "--output", "json")
+		require.Equal(t, 0, code)
+
+		var result struct {
+			Strategy string `json:"strategy"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(stdout), &result))
+		assert.Equal(t, "sse", result.Strategy)
+	})
+
+	t.Run("strategy shown in pretty output", func(t *testing.T) {
+		configDir := t.TempDir()
+
+		_, _, code := runVSBWithConfig(t, configDir, "config", "set", "strategy", "polling")
+		require.Equal(t, 0, code)
+
+		stdout, _, code := runVSBWithConfig(t, configDir, "config", "show")
+		require.Equal(t, 0, code)
+
+		assert.Contains(t, stdout, "strategy:")
+		assert.Contains(t, stdout, "polling")
+	})
 }

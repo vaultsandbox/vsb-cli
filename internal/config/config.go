@@ -11,10 +11,14 @@ type Config struct {
 	APIKey        string `yaml:"api_key"`
 	BaseURL       string `yaml:"base_url"`
 	DefaultOutput string `yaml:"default_output"`
+	Strategy      string `yaml:"strategy"`
 }
 
 // DefaultBaseURL
 const DefaultBaseURL = "https://"
+
+// DefaultStrategy is the default delivery strategy
+const DefaultStrategy = "sse"
 
 // Package-level state
 var current Config
@@ -109,6 +113,11 @@ func GetBaseURL() string {
 // GetDefaultOutput returns the output format with priority: env > config file > default
 func GetDefaultOutput() string {
 	return getConfigValue("OUTPUT", current.DefaultOutput, "pretty")
+}
+
+// GetStrategy returns the delivery strategy with priority: env > config file > default
+func GetStrategy() string {
+	return getConfigValue("STRATEGY", current.Strategy, DefaultStrategy)
 }
 
 // Save writes the config to disk as YAML

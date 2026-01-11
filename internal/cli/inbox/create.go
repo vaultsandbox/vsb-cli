@@ -14,6 +14,49 @@ import (
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
 
+// ExportableInbox interface for inbox operations (allows mocking in tests)
+type ExportableInbox interface {
+	Export() *vaultsandbox.ExportedInbox
+}
+
+// InboxCreator interface for creating inboxes (allows mocking in tests)
+type InboxCreator interface {
+	CreateInbox(ctx context.Context, opts ...vaultsandbox.InboxOption) (ExportableInbox, error)
+	Close() error
+}
+
+// KeystoreWriter interface for saving inboxes (allows mocking in tests)
+type KeystoreWriter interface {
+	AddInbox(inbox config.StoredInbox) error
+}
+
+// clientWrapper wraps the real client to return ExportableInbox
+type clientWrapper struct {
+	client *vaultsandbox.Client
+}
+
+func (w *clientWrapper) CreateInbox(ctx context.Context, opts ...vaultsandbox.InboxOption) (ExportableInbox, error) {
+	return w.client.CreateInbox(ctx, opts...)
+}
+
+func (w *clientWrapper) Close() error {
+	return w.client.Close()
+}
+
+// newClientFunc is a variable for config.NewClient that can be overridden in tests
+var newClientFunc = func() (InboxCreator, error) {
+	client, err := config.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	return &clientWrapper{client: client}, nil
+}
+
+// loadKeystoreFunc is a variable for cliutil.LoadKeystoreOrError that can be overridden in tests
+var loadKeystoreFunc = func() (KeystoreWriter, error) {
+	return cliutil.LoadKeystoreOrError()
+}
+
 var createCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new temporary inbox",
@@ -56,7 +99,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create client
-	client, err := config.NewClient()
+	client, err := newClientFunc()
 	if err != nil {
 		return err
 	}
@@ -76,7 +119,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	exported := inbox.Export()
 
 	// Save to keystore
-	keystore, err := cliutil.LoadKeystoreOrError()
+	keystore, err := loadKeystoreFunc()
 	if err != nil {
 		return err
 	}

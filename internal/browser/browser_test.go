@@ -1,8 +1,11 @@
 package browser
 
 import (
+	"errors"
 	"html"
+	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -371,3 +374,475 @@ func TestOpenURL_URLParsingEdgeCases(t *testing.T) {
 		assert.Contains(t, err.Error(), "not allowed")
 	})
 }
+
+// ============================================================================
+// OpenURL Success Path Tests (with mocked exec.Command)
+// ============================================================================
+
+// mockExecCommand creates a mock command that doesn't actually run
+func mockExecCommand(name string, args ...string) *exec.Cmd {
+	// Use "true" command which always succeeds (cross-platform for testing)
+	return exec.Command("true")
+}
+
+func TestOpenURL_SuccessPaths(t *testing.T) {
+	// Save original and restore after test
+	originalExecCommand := execCommand
+	defer func() { execCommand = originalExecCommand }()
+
+	// Mock exec.Command to prevent actual browser opening
+	execCommand = mockExecCommand
+
+	tests := []struct {
+		name string
+		url  string
+	}{
+		{"http URL", "http://example.com"},
+		{"https URL", "https://example.com"},
+		{"https with path", "https://example.com/path/to/page"},
+		{"https with query", "https://example.com?query=value"},
+		{"https with fragment", "https://example.com#section"},
+		{"https with port", "https://example.com:8080"},
+		{"mailto URL", "mailto:test@example.com"},
+		{"mailto with subject", "mailto:test@example.com?subject=Hello"},
+		{"file URL", "file:///tmp/test.html"},
+		{"file URL windows style", "file:///C:/temp/test.html"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := openURLInternal(tt.url)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestOpenURL_CommandConstruction(t *testing.T) {
+	// This test verifies the command construction logic
+	// by checking that the correct command name is used per platform
+
+	// Save original and restore after test
+	originalExecCommand := execCommand
+	originalGoos := goos
+	defer func() {
+		execCommand = originalExecCommand
+		goos = originalGoos
+	}()
+
+	var capturedName string
+	var capturedArgs []string
+
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		capturedName = name
+		capturedArgs = args
+		return exec.Command("true")
+	}
+
+	testURL := "https://example.com"
+
+	t.Run("darwin platform", func(t *testing.T) {
+		goos = "darwin"
+		err := openURLInternal(testURL)
+		assert.NoError(t, err)
+		assert.Equal(t, "open", capturedName)
+		assert.Equal(t, []string{testURL}, capturedArgs)
+	})
+
+	t.Run("linux platform", func(t *testing.T) {
+		goos = "linux"
+		err := openURLInternal(testURL)
+		assert.NoError(t, err)
+		assert.Equal(t, "xdg-open", capturedName)
+		assert.Equal(t, []string{testURL}, capturedArgs)
+	})
+
+	t.Run("windows platform", func(t *testing.T) {
+		goos = "windows"
+		err := openURLInternal(testURL)
+		assert.NoError(t, err)
+		assert.Equal(t, "rundll32", capturedName)
+		assert.Equal(t, []string{"url.dll,FileProtocolHandler", testURL}, capturedArgs)
+	})
+
+	t.Run("unsupported platform", func(t *testing.T) {
+		goos = "freebsd"
+		err := openURLInternal(testURL)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unsupported platform")
+		assert.Contains(t, err.Error(), "freebsd")
+	})
+}
+
+func TestOpenURL_Wrapper(t *testing.T) {
+	// Save original and restore after test
+	originalOpenURLFunc := openURLFunc
+	defer func() { openURLFunc = originalOpenURLFunc }()
+
+	// Test that OpenURL correctly calls openURLFunc
+	called := false
+	capturedURL := ""
+	openURLFunc = func(rawURL string) error {
+		called = true
+		capturedURL = rawURL
+		return nil
+	}
+
+	testURL := "https://test.example.com"
+	err := OpenURL(testURL)
+	assert.NoError(t, err)
+	assert.True(t, called)
+	assert.Equal(t, testURL, capturedURL)
+}
+
+// ============================================================================
+// ViewHTML Tests (with mocked OpenURL)
+// ============================================================================
+
+func TestViewHTML_Success(t *testing.T) {
+	// Save original and restore after test
+	originalOpenURLFunc := openURLFunc
+	defer func() { openURLFunc = originalOpenURLFunc }()
+
+	var capturedURL string
+	openURLFunc = func(rawURL string) error {
+		capturedURL = rawURL
+		return nil
+	}
+
+	t.Run("creates temp file with correct content", func(t *testing.T) {
+		testHTML := "<html><body><h1>Test Content</h1></body></html>"
+		err := ViewHTML(testHTML)
+		assert.NoError(t, err)
+
+		// Verify URL was captured
+		assert.Contains(t, capturedURL, "file://")
+		assert.Contains(t, capturedURL, previewFilePrefix)
+		assert.Contains(t, capturedURL, ".html")
+
+		// Extract file path and verify content
+		filePath := capturedURL[len("file://"):]
+		content, err := os.ReadFile(filePath)
+		assert.NoError(t, err)
+		assert.Equal(t, testHTML, string(content))
+
+		// Verify permissions (should be 0600)
+		info, err := os.Stat(filePath)
+		assert.NoError(t, err)
+		assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
+
+		// Cleanup
+		os.Remove(filePath)
+	})
+
+	t.Run("handles empty HTML", func(t *testing.T) {
+		err := ViewHTML("")
+		assert.NoError(t, err)
+
+		// Cleanup
+		filePath := capturedURL[len("file://"):]
+		os.Remove(filePath)
+	})
+
+	t.Run("handles large HTML", func(t *testing.T) {
+		largeHTML := "<html><body>"
+		for i := 0; i < 1000; i++ {
+			largeHTML += "<p>Large content paragraph</p>"
+		}
+		largeHTML += "</body></html>"
+
+		err := ViewHTML(largeHTML)
+		assert.NoError(t, err)
+
+		// Cleanup
+		filePath := capturedURL[len("file://"):]
+		os.Remove(filePath)
+	})
+
+	t.Run("handles special characters in HTML", func(t *testing.T) {
+		specialHTML := "<html><body><p>Special chars: äöü αβγ 日本語 &amp; &lt;</p></body></html>"
+		err := ViewHTML(specialHTML)
+		assert.NoError(t, err)
+
+		filePath := capturedURL[len("file://"):]
+		content, err := os.ReadFile(filePath)
+		assert.NoError(t, err)
+		assert.Equal(t, specialHTML, string(content))
+
+		os.Remove(filePath)
+	})
+}
+
+// mockTempFile implements TempFile for testing
+type mockTempFile struct {
+	name         string
+	chmodErr     error
+	writeErr     error
+	closeErr     error
+	closed       bool
+	writtenData  string
+}
+
+func (m *mockTempFile) Close() error {
+	m.closed = true
+	return m.closeErr
+}
+
+func (m *mockTempFile) Chmod(mode os.FileMode) error {
+	return m.chmodErr
+}
+
+func (m *mockTempFile) WriteString(s string) (int, error) {
+	if m.writeErr != nil {
+		return 0, m.writeErr
+	}
+	m.writtenData = s
+	return len(s), nil
+}
+
+func (m *mockTempFile) Name() string {
+	return m.name
+}
+
+func TestCreateTempFileWrapper_ErrorPath(t *testing.T) {
+	t.Run("default wrapper returns error when createTempFile fails", func(t *testing.T) {
+		// Save original createTempFile and restore after test
+		originalCreateTempFile := createTempFile
+		defer func() { createTempFile = originalCreateTempFile }()
+
+		// Mock createTempFile to return an error
+		createTempFile = func(dir, pattern string) (*os.File, error) {
+			return nil, errors.New("mock createTempFile error")
+		}
+
+		// Call the default wrapper directly - this exercises the error path
+		// in the original createTempFileWrapper function
+		_, err := createTempFileWrapper("", "test-*.html")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "mock createTempFile error")
+	})
+}
+
+func TestViewHTML_ErrorPaths(t *testing.T) {
+	t.Run("returns error when CreateTemp fails", func(t *testing.T) {
+		// Save original and restore after test
+		originalWrapper := createTempFileWrapper
+		defer func() { createTempFileWrapper = originalWrapper }()
+
+		createTempFileWrapper = func(dir, pattern string) (TempFile, error) {
+			return nil, errors.New("mock CreateTemp error")
+		}
+
+		err := ViewHTML("<html></html>")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create temp file")
+	})
+
+	t.Run("returns error when Chmod fails", func(t *testing.T) {
+		// Save original and restore after test
+		originalWrapper := createTempFileWrapper
+		defer func() { createTempFileWrapper = originalWrapper }()
+
+		createTempFileWrapper = func(dir, pattern string) (TempFile, error) {
+			return &mockTempFile{
+				name:     "/tmp/mock-file.html",
+				chmodErr: errors.New("mock Chmod error"),
+			}, nil
+		}
+
+		err := ViewHTML("<html></html>")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to set file permissions")
+	})
+
+	t.Run("returns error when WriteString fails", func(t *testing.T) {
+		// Save original and restore after test
+		originalWrapper := createTempFileWrapper
+		defer func() { createTempFileWrapper = originalWrapper }()
+
+		createTempFileWrapper = func(dir, pattern string) (TempFile, error) {
+			return &mockTempFile{
+				name:     "/tmp/mock-file.html",
+				writeErr: errors.New("mock WriteString error"),
+			}, nil
+		}
+
+		err := ViewHTML("<html></html>")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to write HTML")
+	})
+}
+
+// ============================================================================
+// ViewEmailHTML Tests (with mocked OpenURL)
+// ============================================================================
+
+func TestViewEmailHTML_Success(t *testing.T) {
+	// Save original and restore after test
+	originalOpenURLFunc := openURLFunc
+	defer func() { openURLFunc = originalOpenURLFunc }()
+
+	var capturedURL string
+	openURLFunc = func(rawURL string) error {
+		capturedURL = rawURL
+		return nil
+	}
+
+	testTime := time.Date(2024, 6, 15, 14, 30, 0, 0, time.UTC)
+
+	t.Run("creates email preview with correct content", func(t *testing.T) {
+		err := ViewEmailHTML("Test Subject", "sender@example.com", testTime, "<p>Email body</p>")
+		assert.NoError(t, err)
+
+		// Verify file content
+		filePath := capturedURL[len("file://"):]
+		content, err := os.ReadFile(filePath)
+		assert.NoError(t, err)
+
+		// Verify expected content in the generated HTML
+		htmlContent := string(content)
+		assert.Contains(t, htmlContent, "Test Subject")
+		assert.Contains(t, htmlContent, "sender@example.com")
+		assert.Contains(t, htmlContent, "June 15, 2024")
+		assert.Contains(t, htmlContent, "<p>Email body</p>")
+		assert.Contains(t, htmlContent, "#1cc2e3") // VaultSandbox brand color
+
+		os.Remove(filePath)
+	})
+
+	t.Run("escapes XSS in subject and from", func(t *testing.T) {
+		maliciousSubject := "<script>alert('xss')</script>"
+		maliciousFrom := "<img onerror=alert(1)>"
+
+		err := ViewEmailHTML(maliciousSubject, maliciousFrom, testTime, "<p>body</p>")
+		assert.NoError(t, err)
+
+		filePath := capturedURL[len("file://"):]
+		content, err := os.ReadFile(filePath)
+		assert.NoError(t, err)
+
+		htmlContent := string(content)
+		assert.NotContains(t, htmlContent, "<script>alert")
+		assert.NotContains(t, htmlContent, "<img onerror")
+		assert.Contains(t, htmlContent, "&lt;script&gt;")
+
+		os.Remove(filePath)
+	})
+}
+
+// ============================================================================
+// Additional CleanupPreviews Coverage Tests
+// ============================================================================
+
+func TestCleanupPreviews_EdgeCases(t *testing.T) {
+	t.Run("handles files just at the threshold", func(t *testing.T) {
+		tmpDir := os.TempDir()
+
+		// Create a file exactly at the threshold
+		thresholdFile := filepath.Join(tmpDir, previewFilePrefix+"test-threshold.html")
+		require.NoError(t, os.WriteFile(thresholdFile, []byte("threshold"), 0600))
+
+		// Set file modification time to exactly 1 hour ago
+		exactTime := time.Now().Add(-1 * time.Hour)
+		require.NoError(t, os.Chtimes(thresholdFile, exactTime, exactTime))
+
+		// With 1 hour threshold, file at exactly 1 hour should NOT be deleted
+		// (cutoff is files BEFORE the threshold time)
+		err := CleanupPreviews(1 * time.Hour)
+		assert.NoError(t, err)
+
+		// Clean up manually
+		os.Remove(thresholdFile)
+	})
+
+	t.Run("handles multiple preview files", func(t *testing.T) {
+		tmpDir := os.TempDir()
+		oldTime := time.Now().Add(-2 * time.Hour)
+
+		// Create multiple old files
+		var files []string
+		for i := 0; i < 5; i++ {
+			f := filepath.Join(tmpDir, previewFilePrefix+"multi-"+string(rune('a'+i))+".html")
+			require.NoError(t, os.WriteFile(f, []byte("content"), 0600))
+			require.NoError(t, os.Chtimes(f, oldTime, oldTime))
+			files = append(files, f)
+		}
+
+		err := CleanupPreviews(1 * time.Hour)
+		assert.NoError(t, err)
+
+		// All should be removed
+		for _, f := range files {
+			_, err := os.Stat(f)
+			assert.True(t, os.IsNotExist(err), "file %s should be removed", f)
+		}
+	})
+
+	t.Run("preserves files with similar but different prefix", func(t *testing.T) {
+		tmpDir := os.TempDir()
+
+		// Create a file with a similar but different prefix
+		similarFile := filepath.Join(tmpDir, "vsb-previewNOT-test.html")
+		require.NoError(t, os.WriteFile(similarFile, []byte("similar"), 0600))
+
+		oldTime := time.Now().Add(-2 * time.Hour)
+		require.NoError(t, os.Chtimes(similarFile, oldTime, oldTime))
+
+		err := CleanupPreviews(1 * time.Hour)
+		assert.NoError(t, err)
+
+		// File should NOT be removed (different prefix)
+		_, err = os.Stat(similarFile)
+		assert.NoError(t, err, "file with different prefix should not be removed")
+
+		os.Remove(similarFile)
+	})
+}
+
+func TestCleanupPreviews_ErrorPaths(t *testing.T) {
+	t.Run("returns error when ReadDir fails", func(t *testing.T) {
+		// Save original and restore after test
+		originalReadDir := readDir
+		defer func() { readDir = originalReadDir }()
+
+		readDir = func(name string) ([]fs.DirEntry, error) {
+			return nil, errors.New("mock ReadDir error")
+		}
+
+		err := CleanupPreviews(1 * time.Hour)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to read temp directory")
+	})
+
+	t.Run("continues when entry.Info fails", func(t *testing.T) {
+		// Save original and restore after test
+		originalReadDir := readDir
+		defer func() { readDir = originalReadDir }()
+
+		// Create a mock DirEntry that returns error on Info()
+		mockEntry := &mockDirEntry{
+			name:    previewFilePrefix + "test.html",
+			isDir:   false,
+			infoErr: errors.New("mock Info error"),
+		}
+
+		readDir = func(name string) ([]fs.DirEntry, error) {
+			return []fs.DirEntry{mockEntry}, nil
+		}
+
+		// Should not error, just continue past the problematic entry
+		err := CleanupPreviews(1 * time.Hour)
+		assert.NoError(t, err)
+	})
+}
+
+// mockDirEntry implements fs.DirEntry for testing
+type mockDirEntry struct {
+	name    string
+	isDir   bool
+	infoErr error
+}
+
+func (m *mockDirEntry) Name() string               { return m.name }
+func (m *mockDirEntry) IsDir() bool                { return m.isDir }
+func (m *mockDirEntry) Type() fs.FileMode          { return 0 }
+func (m *mockDirEntry) Info() (fs.FileInfo, error) { return nil, m.infoErr }

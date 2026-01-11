@@ -20,12 +20,54 @@ var allowedSchemes = map[string]bool{
 	"file":   true,
 }
 
+// execCommand is a variable for exec.Command that can be overridden in tests
+var execCommand = exec.Command
+
+// openURLFunc is a variable for OpenURL that can be overridden in tests
+var openURLFunc = openURLInternal
+
+// goos is a variable for runtime.GOOS that can be overridden in tests
+var goos = runtime.GOOS
+
+// createTempFile is a variable for os.CreateTemp that can be overridden in tests
+var createTempFile = os.CreateTemp
+
+// readDir is a variable for os.ReadDir that can be overridden in tests
+var readDir = os.ReadDir
+
+// TempFile interface for testing file operations
+type TempFile interface {
+	Close() error
+	Chmod(mode os.FileMode) error
+	WriteString(s string) (int, error)
+	Name() string
+}
+
+// osFile wraps *os.File to implement TempFile
+type osFile struct {
+	*os.File
+}
+
+// createTempFileWrapper wraps the result of createTempFile in our interface
+var createTempFileWrapper = func(dir, pattern string) (TempFile, error) {
+	f, err := createTempFile(dir, pattern)
+	if err != nil {
+		return nil, err
+	}
+	return &osFile{f}, nil
+}
+
 // previewFilePrefix is used to identify temp files created by this package
 const previewFilePrefix = "vsb-preview-"
 
 // OpenURL opens a URL in the default browser.
 // Only http, https, mailto, and file schemes are allowed.
 func OpenURL(rawURL string) error {
+	return openURLFunc(rawURL)
+}
+
+// openURLInternal is the actual implementation of OpenURL.
+func openURLInternal(rawURL string) error {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
@@ -38,15 +80,15 @@ func OpenURL(rawURL string) error {
 
 	var cmd *exec.Cmd
 
-	switch runtime.GOOS {
+	switch goos {
 	case "darwin":
-		cmd = exec.Command("open", rawURL)
+		cmd = execCommand("open", rawURL)
 	case "linux":
-		cmd = exec.Command("xdg-open", rawURL)
+		cmd = execCommand("xdg-open", rawURL)
 	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", rawURL)
+		cmd = execCommand("rundll32", "url.dll,FileProtocolHandler", rawURL)
 	default:
-		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
+		return fmt.Errorf("unsupported platform: %s", goos)
 	}
 
 	return cmd.Start()
@@ -55,7 +97,7 @@ func OpenURL(rawURL string) error {
 // ViewHTML writes HTML to a temp file and opens it in the browser.
 // Uses secure temp file creation with restricted permissions.
 func ViewHTML(html string) error {
-	tmpFile, err := os.CreateTemp("", previewFilePrefix+"*.html")
+	tmpFile, err := createTempFileWrapper("", previewFilePrefix+"*.html")
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
@@ -144,7 +186,7 @@ func CleanupPreviews(olderThan time.Duration) error {
 	tmpDir := os.TempDir()
 	cutoff := time.Now().Add(-olderThan)
 
-	entries, err := os.ReadDir(tmpDir)
+	entries, err := readDir(tmpDir)
 	if err != nil {
 		return fmt.Errorf("failed to read temp directory: %w", err)
 	}
@@ -164,7 +206,8 @@ func CleanupPreviews(olderThan time.Duration) error {
 		}
 
 		if info.ModTime().Before(cutoff) {
-			os.Remove(filepath.Join(tmpDir, entry.Name()))
+			// Use filepath.Base to prevent path traversal
+			os.Remove(filepath.Join(tmpDir, filepath.Base(entry.Name())))
 		}
 	}
 
