@@ -75,6 +75,13 @@ func buildAuthResultsJSON(email *vaultsandbox.Email) map[string]interface{} {
 			"policy": auth.DMARC.Policy,
 		}
 	}
+	if auth.ReverseDNS != nil {
+		authData["reverseDns"] = map[string]string{
+			"result":   auth.ReverseDNS.Result,
+			"hostname": auth.ReverseDNS.Hostname,
+			"ip":       auth.ReverseDNS.IP,
+		}
+	}
 
 	return authData
 }

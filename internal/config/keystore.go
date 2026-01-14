@@ -25,6 +25,8 @@ type StoredInbox struct {
 	CreatedAt time.Time `json:"createdAt"`
 	ExpiresAt time.Time `json:"expiresAt"`
 	Keys      InboxKeys `json:"keys"`
+	Encrypted bool      `json:"encrypted"`  // whether inbox uses encryption
+	EmailAuth bool      `json:"emailAuth"`  // whether email auth is enabled
 }
 
 // InboxKeys contains the cryptographic keys for an inbox
@@ -42,6 +44,8 @@ type ExportedInboxFile struct {
 	ExpiresAt    time.Time    `json:"expiresAt"`
 	ExportedAt   time.Time    `json:"exportedAt"`
 	Keys         ExportedKeys `json:"keys"`
+	Encrypted    bool         `json:"encrypted"`
+	EmailAuth    bool         `json:"emailAuth"`
 }
 
 // ExportedKeys contains the cryptographic keys in an export file
@@ -307,6 +311,8 @@ func StoredInboxFromExport(exp *vaultsandbox.ExportedInbox) StoredInbox {
 			KEMPublic:   "", // Public key is derived from secret key per spec Section 4.2
 			ServerSigPK: exp.ServerSigPk,
 		},
+		Encrypted: exp.Encrypted,
+		EmailAuth: exp.EmailAuth,
 	}
 }
 
@@ -320,6 +326,8 @@ func (s *StoredInbox) ToExportedInbox() *vaultsandbox.ExportedInbox {
 		ServerSigPk:  s.Keys.ServerSigPK,
 		SecretKey:    s.Keys.KEMPrivate,
 		ExportedAt:   s.CreatedAt,
+		Encrypted:    s.Encrypted,
+		EmailAuth:    s.EmailAuth,
 	}
 }
 
@@ -336,6 +344,8 @@ func (s *StoredInbox) ToExportFile() ExportedInboxFile {
 			KEMPublic:   s.Keys.KEMPublic,
 			ServerSigPK: s.Keys.ServerSigPK,
 		},
+		Encrypted: s.Encrypted,
+		EmailAuth: s.EmailAuth,
 	}
 }
 
@@ -351,5 +361,7 @@ func (e *ExportedInboxFile) ToStoredInbox() StoredInbox {
 			KEMPublic:   e.Keys.KEMPublic,
 			ServerSigPK: e.Keys.ServerSigPK,
 		},
+		Encrypted: e.Encrypted,
+		EmailAuth: e.EmailAuth,
 	}
 }

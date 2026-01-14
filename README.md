@@ -7,7 +7,7 @@
 # VaultSandbox CLI
 
 [![CI](https://github.com/vaultsandbox/vsb-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/vaultsandbox/vsb-cli/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Version](https://img.shields.io/badge/go-%3E%3D1.24-brightgreen.svg)](https://golang.org/)
 
 **Real-time email testing from your terminal.**
@@ -115,6 +115,12 @@ vsb inbox create
 
 # Create inbox with custom TTL
 vsb inbox create --ttl 24h
+
+# Create inbox without email authentication (skips SPF/DKIM/DMARC checks)
+vsb inbox create --email-auth=false
+
+# Create unencrypted inbox (when server policy allows)
+vsb inbox create --encryption=plain
 
 # List all inboxes
 vsb inbox list
@@ -296,4 +302,4 @@ Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTIN
 
 ## License
 
-MIT — see [LICENSE](LICENSE) for details.
+Apache 2.0 — see [LICENSE](LICENSE) for details.

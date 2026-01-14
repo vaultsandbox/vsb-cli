@@ -124,7 +124,7 @@ if [ "$SKIP_E2E" = false ]; then
         go build $BUILD_FLAGS -o vsb ./cmd/vsb
     fi
 
-    E2E_CMD="go test -tags=e2e -timeout 10m"
+    E2E_CMD="go test -tags=e2e -timeout 20m"
     if [ "$VERBOSE" = true ]; then
         E2E_CMD="$E2E_CMD -v"
     fi

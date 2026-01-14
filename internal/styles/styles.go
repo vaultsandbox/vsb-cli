@@ -179,6 +179,8 @@ func FormatAuthResult(result string) string {
 		return FailStyle.Render("FAIL")
 	case "softfail", "none", "neutral":
 		return WarnStyle.Render(strings.ToUpper(result))
+	case "skipped":
+		return MutedStyle.Render("SKIPPED")
 	default:
 		return result
 	}
@@ -204,13 +206,6 @@ type authDetail struct {
 	value string
 }
 
-// reverseDNSStatus converts ReverseDNS.Verified bool to a status string.
-func reverseDNSStatus(r *authresults.ReverseDNSResult) string {
-	if r.Verified {
-		return "pass"
-	}
-	return "fail"
-}
 
 // buildAuthFields extracts authentication fields from AuthResults.
 func buildAuthFields(auth *authresults.AuthResults) []authField {
@@ -249,7 +244,7 @@ func buildAuthFields(auth *authresults.AuthResults) []authField {
 	}
 
 	if auth.ReverseDNS != nil {
-		f := authField{label: "Reverse DNS:", status: reverseDNSStatus(auth.ReverseDNS)}
+		f := authField{label: "Reverse DNS:", status: auth.ReverseDNS.Result}
 		if auth.ReverseDNS.Hostname != "" {
 			f.details = append(f.details, authDetail{"Hostname:", auth.ReverseDNS.Hostname})
 		}
@@ -307,7 +302,7 @@ func CalculateScore(email *vaultsandbox.Email) int {
 	if auth.DMARC != nil && strings.EqualFold(auth.DMARC.Result, "pass") {
 		score += 10
 	}
-	if auth.ReverseDNS != nil && auth.ReverseDNS.Verified {
+	if auth.ReverseDNS != nil && strings.EqualFold(auth.ReverseDNS.Result, "pass") {
 		score += 5
 	}
 	return score

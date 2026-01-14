@@ -73,7 +73,9 @@ Examples:
 }
 
 var (
-	createTTL string
+	createTTL        string
+	createEmailAuth  string
+	createEncryption string
 )
 
 func init() {
@@ -81,6 +83,10 @@ func init() {
 
 	createCmd.Flags().StringVar(&createTTL, "ttl", "24h",
 		"Inbox lifetime (e.g., 1h, 24h, 7d)")
+	createCmd.Flags().StringVar(&createEmailAuth, "email-auth", "",
+		"Enable/disable email authentication (true/false, omit for server default)")
+	createCmd.Flags().StringVar(&createEncryption, "encryption", "",
+		"Encryption mode (encrypted/plain, omit for server default)")
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
@@ -105,12 +111,39 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 	defer client.Close()
 
+	// Build inbox options
+	opts := []vaultsandbox.InboxOption{vaultsandbox.WithTTL(ttl)}
+
+	// Add email auth option if specified
+	if createEmailAuth != "" {
+		switch strings.ToLower(createEmailAuth) {
+		case "true":
+			opts = append(opts, vaultsandbox.WithEmailAuth(true))
+		case "false":
+			opts = append(opts, vaultsandbox.WithEmailAuth(false))
+		default:
+			return fmt.Errorf("invalid --email-auth value: %s (use true/false)", createEmailAuth)
+		}
+	}
+
+	// Add encryption option if specified
+	if createEncryption != "" {
+		switch strings.ToLower(createEncryption) {
+		case "encrypted":
+			opts = append(opts, vaultsandbox.WithEncryption(vaultsandbox.EncryptionModeEncrypted))
+		case "plain":
+			opts = append(opts, vaultsandbox.WithEncryption(vaultsandbox.EncryptionModePlain))
+		default:
+			return fmt.Errorf("invalid --encryption value: %s (use encrypted/plain)", createEncryption)
+		}
+	}
+
 	// Create inbox with SDK
 	if !jsonMode {
 		fmt.Println(styles.MutedStyle.Render("• Registering with VaultSandbox..."))
 	}
 
-	inbox, err := client.CreateInbox(ctx, vaultsandbox.WithTTL(ttl))
+	inbox, err := client.CreateInbox(ctx, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to create inbox: %w", err)
 	}

@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.0] - 2026-01-13
+
+### Added
+
+- `--email-auth` flag for `inbox create` to enable/disable SPF/DKIM/DMARC/PTR checks per inbox
+- `--encryption` flag for `inbox create` to request encrypted or plain inboxes (when server policy allows)
+- Support for `skipped` status in email authentication results display
+- Reverse DNS (`reverseDns`) field in JSON output for `email audit --json`
+
+### Changed
+
+- Updated `client-go` to v0.7.0
+- **Breaking:** ReverseDNS authentication result now uses `Result` field (`pass`/`fail`/`none`/`skipped`) instead of `Verified` boolean
+
 ## [0.6.1] - 2026-01-11
 
 ### Changed

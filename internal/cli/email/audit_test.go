@@ -200,7 +200,7 @@ func TestRenderAuditReport(t *testing.T) {
 					Policy: "reject",
 				},
 				ReverseDNS: &authresults.ReverseDNSResult{
-					Verified: true,
+					Result:   "pass",
 					Hostname: "mail.example.com",
 				},
 			},

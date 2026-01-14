@@ -48,6 +48,8 @@ func TestFormatAuthResult(t *testing.T) {
 		{"SOFTFAIL", "SOFTFAIL"},
 		{"none", "NONE"},
 		{"neutral", "NEUTRAL"},
+		{"skipped", "SKIPPED"},
+		{"SKIPPED", "SKIPPED"},
 		{"unknown", "unknown"}, // Unknown values returned as-is
 		{"garbage", "garbage"}, // Unknown values returned as-is
 	}
@@ -77,7 +79,7 @@ func TestCalculateScore(t *testing.T) {
 					SPF:        &authresults.SPFResult{Result: "pass"},
 					DKIM:       []authresults.DKIMResult{{Result: "pass"}},
 					DMARC:      &authresults.DMARCResult{Result: "pass"},
-					ReverseDNS: &authresults.ReverseDNSResult{Verified: true},
+					ReverseDNS: &authresults.ReverseDNSResult{Result: "pass"},
 				},
 			},
 			want: 100,
@@ -113,7 +115,7 @@ func TestCalculateScore(t *testing.T) {
 			name: "ReverseDNS only pass",
 			email: &vaultsandbox.Email{
 				AuthResults: &authresults.AuthResults{
-					ReverseDNS: &authresults.ReverseDNSResult{Verified: true},
+					ReverseDNS: &authresults.ReverseDNSResult{Result: "pass"},
 				},
 			},
 			want: 55,
@@ -125,7 +127,7 @@ func TestCalculateScore(t *testing.T) {
 					SPF:        &authresults.SPFResult{Result: "fail"},
 					DKIM:       []authresults.DKIMResult{{Result: "fail"}},
 					DMARC:      &authresults.DMARCResult{Result: "fail"},
-					ReverseDNS: &authresults.ReverseDNSResult{Verified: false},
+					ReverseDNS: &authresults.ReverseDNSResult{Result: "fail"},
 				},
 			},
 			want: 50,
@@ -251,7 +253,7 @@ func TestRenderAuthResults(t *testing.T) {
 	t.Run("compact mode with ReverseDNS", func(t *testing.T) {
 		auth := &authresults.AuthResults{
 			ReverseDNS: &authresults.ReverseDNSResult{
-				Verified: true,
+				Result: "pass",
 				Hostname: "mail.example.com",
 			},
 		}
@@ -264,7 +266,7 @@ func TestRenderAuthResults(t *testing.T) {
 	t.Run("verbose mode with ReverseDNS", func(t *testing.T) {
 		auth := &authresults.AuthResults{
 			ReverseDNS: &authresults.ReverseDNSResult{
-				Verified: true,
+				Result: "pass",
 				Hostname: "mail.example.com",
 			},
 		}
@@ -280,7 +282,7 @@ func TestRenderAuthResults(t *testing.T) {
 			SPF:        &authresults.SPFResult{Result: "pass", Domain: "example.com"},
 			DKIM:       []authresults.DKIMResult{{Result: "pass", Domain: "example.com"}},
 			DMARC:      &authresults.DMARCResult{Result: "pass", Policy: "reject"},
-			ReverseDNS: &authresults.ReverseDNSResult{Verified: true, Hostname: "mail.example.com"},
+			ReverseDNS: &authresults.ReverseDNSResult{Result: "pass", Hostname: "mail.example.com"},
 		}
 		got := RenderAuthResults(auth, labelStyle, false)
 		// Should have all four results
