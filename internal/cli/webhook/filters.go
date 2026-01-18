@@ -157,16 +157,3 @@ func loadCustomTemplate(path string) (string, error) {
 	}
 	return string(data), nil
 }
-
-// formatFilterRules formats filter rules for pretty output.
-func formatFilterRules(filter *vaultsandbox.FilterConfig) []string {
-	if filter == nil || len(filter.Rules) == 0 {
-		return nil
-	}
-
-	var rules []string
-	for _, r := range filter.Rules {
-		rules = append(rules, fmt.Sprintf("%s %s %q", r.Field, r.Operator, r.Value))
-	}
-	return rules
-}
