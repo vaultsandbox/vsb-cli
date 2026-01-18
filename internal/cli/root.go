@@ -11,6 +11,7 @@ import (
 	"github.com/vaultsandbox/vsb-cli/internal/cli/data"
 	"github.com/vaultsandbox/vsb-cli/internal/cli/email"
 	"github.com/vaultsandbox/vsb-cli/internal/cli/inbox"
+	"github.com/vaultsandbox/vsb-cli/internal/cli/webhook"
 	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/tui/emails"
@@ -51,6 +52,7 @@ func init() {
 	// Register subpackage commands
 	rootCmd.AddCommand(inbox.Cmd)
 	rootCmd.AddCommand(email.Cmd)
+	rootCmd.AddCommand(webhook.Cmd)
 	rootCmd.AddCommand(data.ExportCmd)
 	rootCmd.AddCommand(data.ImportCmd)
 }
