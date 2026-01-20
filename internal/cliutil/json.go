@@ -10,12 +10,13 @@ import (
 
 // EmailJSONOptions controls which fields to include in email JSON output.
 type EmailJSONOptions struct {
-	IncludeTo          bool
-	IncludeBody        bool // text and html
-	IncludeLinks       bool
-	IncludeHeaders     bool
-	IncludeAuthResults bool
-	IncludeScore       bool
+	IncludeTo           bool
+	IncludeBody         bool // text and html
+	IncludeLinks        bool
+	IncludeHeaders      bool
+	IncludeAuthResults  bool
+	IncludeSpamAnalysis bool
+	IncludeScore        bool
 }
 
 // EmailJSON returns a map for JSON output with configurable fields.
@@ -42,6 +43,9 @@ func EmailJSON(email *vaultsandbox.Email, opts EmailJSONOptions) map[string]inte
 	}
 	if opts.IncludeAuthResults && email.AuthResults != nil {
 		m["authResults"] = buildAuthResultsJSON(email)
+	}
+	if opts.IncludeSpamAnalysis && email.SpamAnalysis != nil {
+		m["spamAnalysis"] = buildSpamAnalysisJSON(email)
 	}
 	if opts.IncludeScore {
 		m["securityScore"] = styles.CalculateScore(email)
@@ -86,6 +90,52 @@ func buildAuthResultsJSON(email *vaultsandbox.Email) map[string]interface{} {
 	return authData
 }
 
+// buildSpamAnalysisJSON builds spam analysis map for JSON output.
+func buildSpamAnalysisJSON(email *vaultsandbox.Email) map[string]interface{} {
+	sa := email.SpamAnalysis
+	data := map[string]interface{}{
+		"status": string(sa.Status),
+	}
+
+	if sa.Score != nil {
+		data["score"] = *sa.Score
+	}
+	if sa.RequiredScore != nil {
+		data["requiredScore"] = *sa.RequiredScore
+	}
+	if sa.Action != "" {
+		data["action"] = string(sa.Action)
+	}
+	if sa.IsSpam != nil {
+		data["isSpam"] = *sa.IsSpam
+	}
+	if sa.ProcessingTimeMs != nil {
+		data["processingTimeMs"] = *sa.ProcessingTimeMs
+	}
+	if sa.Info != "" {
+		data["info"] = sa.Info
+	}
+	if len(sa.Symbols) > 0 {
+		symbols := make([]map[string]interface{}, len(sa.Symbols))
+		for i, sym := range sa.Symbols {
+			symData := map[string]interface{}{
+				"name":  sym.Name,
+				"score": sym.Score,
+			}
+			if sym.Description != "" {
+				symData["description"] = sym.Description
+			}
+			if len(sym.Options) > 0 {
+				symData["options"] = sym.Options
+			}
+			symbols[i] = symData
+		}
+		data["symbols"] = symbols
+	}
+
+	return data
+}
+
 // EmailSummaryJSON returns a map for JSON output of email list items.
 // Used by list command for compact email representation.
 func EmailSummaryJSON(email *vaultsandbox.Email) map[string]interface{} {
@@ -96,10 +146,11 @@ func EmailSummaryJSON(email *vaultsandbox.Email) map[string]interface{} {
 // Used by view and wait commands.
 func EmailFullJSON(email *vaultsandbox.Email) map[string]interface{} {
 	return EmailJSON(email, EmailJSONOptions{
-		IncludeTo:      true,
-		IncludeBody:    true,
-		IncludeLinks:   true,
-		IncludeHeaders: true,
+		IncludeTo:           true,
+		IncludeBody:         true,
+		IncludeLinks:        true,
+		IncludeHeaders:      true,
+		IncludeSpamAnalysis: true,
 	})
 }
 
@@ -107,9 +158,10 @@ func EmailFullJSON(email *vaultsandbox.Email) map[string]interface{} {
 // Used by audit command.
 func EmailAuditJSON(email *vaultsandbox.Email) map[string]interface{} {
 	return EmailJSON(email, EmailJSONOptions{
-		IncludeTo:          true,
-		IncludeAuthResults: true,
-		IncludeScore:       true,
+		IncludeTo:           true,
+		IncludeAuthResults:  true,
+		IncludeSpamAnalysis: true,
+		IncludeScore:        true,
 	})
 }
 

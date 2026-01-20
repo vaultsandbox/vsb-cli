@@ -30,6 +30,13 @@ func (m Model) renderSecurityView() string {
 			b.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("TLS:"), styles.WarnStyle.Render("unknown")))
 		}
 
+		// Spam Analysis
+		b.WriteString("\n")
+		b.WriteString(styles.DetailSectionStyle.Render("SPAM ANALYSIS"))
+		b.WriteString("\n")
+		b.WriteString(styles.RenderSpamAnalysis(email.SpamAnalysis, labelStyle, false))
+		b.WriteString("\n")
+
 		// Security Score
 		b.WriteString("\n")
 		b.WriteString(styles.DetailSectionStyle.Render("SECURITY SCORE"))

@@ -171,6 +171,12 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 		strategy = config.DefaultStrategy
 	}
 
+	// Try to fetch server capabilities if we have an API key
+	var serverInfo *serverCapabilities
+	if cfg.APIKey != "" {
+		serverInfo = fetchServerCapabilities()
+	}
+
 	// JSON output
 	if cliutil.GetOutput(cmd) == "json" {
 		data := map[string]interface{}{
@@ -178,6 +184,12 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 			"apiKey":     maskedKey,
 			"baseUrl":    baseURL,
 			"strategy":   strategy,
+		}
+		if serverInfo != nil {
+			data["server"] = map[string]interface{}{
+				"spamAnalysisEnabled": serverInfo.SpamAnalysisEnabled,
+				"allowedDomains":      serverInfo.AllowedDomains,
+			}
 		}
 		out, _ := json.MarshalIndent(data, "", "  ")
 		fmt.Println(string(out))
@@ -194,7 +206,46 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("base-url: %s\n", baseURL)
 	fmt.Printf("strategy: %s\n", strategy)
 
+	// Show server capabilities if available
+	if serverInfo != nil {
+		fmt.Printf("\nServer capabilities:\n")
+		spamStatus := "disabled"
+		if serverInfo.SpamAnalysisEnabled {
+			spamStatus = "enabled"
+		}
+		fmt.Printf("  spam-analysis: %s\n", spamStatus)
+		if len(serverInfo.AllowedDomains) > 0 {
+			fmt.Printf("  domains: %s\n", strings.Join(serverInfo.AllowedDomains, ", "))
+		}
+	}
+
 	return nil
+}
+
+// serverCapabilities holds server capability information.
+type serverCapabilities struct {
+	SpamAnalysisEnabled bool
+	AllowedDomains      []string
+}
+
+// fetchServerCapabilities attempts to fetch server capabilities.
+// Returns nil if unable to connect.
+func fetchServerCapabilities() *serverCapabilities {
+	client, err := config.NewClient()
+	if err != nil {
+		return nil
+	}
+	defer client.Close()
+
+	info := client.ServerInfo()
+	if info == nil {
+		return nil
+	}
+
+	return &serverCapabilities{
+		SpamAnalysisEnabled: info.SpamAnalysisEnabled,
+		AllowedDomains:      info.AllowedDomains,
+	}
 }
 
 func runConfigSet(cmd *cobra.Command, args []string) error {

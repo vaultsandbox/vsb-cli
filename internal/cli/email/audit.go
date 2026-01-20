@@ -89,6 +89,11 @@ func renderAuditReport(email *vaultsandbox.Email) error {
 		fmt.Printf("%s %s\n", labelStyle.Render("Cipher Suite:"), cipher)
 	}
 
+	// Spam Analysis
+	fmt.Println()
+	fmt.Println(styles.SectionStyle.Render("SPAM ANALYSIS"))
+	fmt.Println(styles.RenderSpamAnalysis(email.SpamAnalysis, labelStyle, true))
+
 	// MIME Structure
 	fmt.Println()
 	fmt.Println(styles.SectionStyle.Render("MIME STRUCTURE"))

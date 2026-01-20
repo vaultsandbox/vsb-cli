@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/client-go/authresults"
+	"github.com/vaultsandbox/client-go/spamanalysis"
 )
 
 var (
@@ -306,4 +307,134 @@ func CalculateScore(email *vaultsandbox.Email) int {
 		score += 5
 	}
 	return score
+}
+
+// FormatSpamAction formats a spam action with appropriate styling.
+func FormatSpamAction(action spamanalysis.SpamAction) string {
+	switch action {
+	case spamanalysis.ActionNoAction:
+		return PassStyle.Render("no action")
+	case spamanalysis.ActionGreylist:
+		return WarnStyle.Render("greylist")
+	case spamanalysis.ActionAddHeader:
+		return WarnStyle.Render("add header")
+	case spamanalysis.ActionRewriteSubject:
+		return WarnStyle.Render("rewrite subject")
+	case spamanalysis.ActionSoftReject:
+		return FailStyle.Render("soft reject")
+	case spamanalysis.ActionReject:
+		return FailStyle.Render("reject")
+	default:
+		return string(action)
+	}
+}
+
+// FormatSpamStatus formats a spam status with appropriate styling.
+func FormatSpamStatus(status spamanalysis.SpamStatus) string {
+	switch status {
+	case spamanalysis.StatusAnalyzed:
+		return PassStyle.Render("analyzed")
+	case spamanalysis.StatusSkipped:
+		return MutedStyle.Render("skipped")
+	case spamanalysis.StatusError:
+		return FailStyle.Render("error")
+	default:
+		return string(status)
+	}
+}
+
+// FormatSpamVerdict formats the is-spam verdict with appropriate styling.
+func FormatSpamVerdict(isSpam *bool) string {
+	if isSpam == nil {
+		return MutedStyle.Render("unknown")
+	}
+	if *isSpam {
+		return FailStyle.Render("YES")
+	}
+	return PassStyle.Render("NO")
+}
+
+// FormatSpamScore formats a spam score with color based on threshold.
+func FormatSpamScore(score, requiredScore *float64) string {
+	if score == nil {
+		return MutedStyle.Render("N/A")
+	}
+	scoreStr := fmt.Sprintf("%.1f", *score)
+	if requiredScore != nil {
+		scoreStr += fmt.Sprintf(" / %.1f", *requiredScore)
+	}
+	if requiredScore != nil && *score >= *requiredScore {
+		return FailStyle.Render(scoreStr)
+	}
+	return PassStyle.Render(scoreStr)
+}
+
+// RenderSpamAnalysis renders spam analysis results.
+// When verbose is false (compact mode), shows only key info.
+// When verbose is true, shows full details including symbols.
+func RenderSpamAnalysis(sa *spamanalysis.SpamAnalysis, labelStyle lipgloss.Style, verbose bool) string {
+	if sa == nil {
+		return WarnStyle.Render("No spam analysis results available")
+	}
+
+	var lines []string
+
+	// Status
+	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Status:"), FormatSpamStatus(sa.Status)))
+
+	// If not analyzed, show info and return
+	if sa.Status != spamanalysis.StatusAnalyzed {
+		if sa.Info != "" {
+			lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Info:"), sa.Info))
+		}
+		return strings.Join(lines, "\n")
+	}
+
+	// Score
+	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Score:"), FormatSpamScore(sa.Score, sa.RequiredScore)))
+
+	// Verdict
+	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Is Spam:"), FormatSpamVerdict(sa.IsSpam)))
+
+	// Action
+	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Action:"), FormatSpamAction(sa.Action)))
+
+	// Processing time
+	if sa.ProcessingTimeMs != nil {
+		lines = append(lines, fmt.Sprintf("%s %dms", labelStyle.Render("Processing:"), *sa.ProcessingTimeMs))
+	}
+
+	// Symbols (only in verbose mode)
+	if verbose && len(sa.Symbols) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, labelStyle.Render("Triggered Rules:"))
+
+		positive, negative, _ := spamanalysis.CategorizeSymbols(sa.Symbols)
+
+		// Show spam indicators (positive scores)
+		if len(positive) > 0 {
+			for _, sym := range positive {
+				scoreStr := fmt.Sprintf("+%.1f", sym.Score)
+				line := fmt.Sprintf("  %s %s", FailStyle.Render(scoreStr), sym.Name)
+				if sym.Description != "" {
+					line += fmt.Sprintf(" - %s", MutedStyle.Render(sym.Description))
+				}
+				lines = append(lines, line)
+			}
+		}
+
+		// Show ham indicators (negative scores)
+		if len(negative) > 0 {
+			for _, sym := range negative {
+				scoreStr := fmt.Sprintf("%.1f", sym.Score)
+				line := fmt.Sprintf("  %s %s", PassStyle.Render(scoreStr), sym.Name)
+				if sym.Description != "" {
+					line += fmt.Sprintf(" - %s", MutedStyle.Render(sym.Description))
+				}
+				lines = append(lines, line)
+			}
+		}
+	}
+
+	return strings.Join(lines, "\n")
 }

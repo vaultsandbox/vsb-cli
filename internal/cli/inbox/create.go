@@ -73,9 +73,10 @@ Examples:
 }
 
 var (
-	createTTL        string
-	createEmailAuth  string
-	createEncryption string
+	createTTL          string
+	createEmailAuth    string
+	createEncryption   string
+	createSpamAnalysis string
 )
 
 func init() {
@@ -87,6 +88,8 @@ func init() {
 		"Enable/disable email authentication (true/false, omit for server default)")
 	createCmd.Flags().StringVar(&createEncryption, "encryption", "",
 		"Encryption mode (encrypted/plain, omit for server default)")
+	createCmd.Flags().StringVar(&createSpamAnalysis, "spam-analysis", "",
+		"Enable/disable spam analysis (true/false, omit for server default)")
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
@@ -135,6 +138,18 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			opts = append(opts, vaultsandbox.WithEncryption(vaultsandbox.EncryptionModePlain))
 		default:
 			return fmt.Errorf("invalid --encryption value: %s (use encrypted/plain)", createEncryption)
+		}
+	}
+
+	// Add spam analysis option if specified
+	if createSpamAnalysis != "" {
+		switch strings.ToLower(createSpamAnalysis) {
+		case "true":
+			opts = append(opts, vaultsandbox.WithSpamAnalysis(true))
+		case "false":
+			opts = append(opts, vaultsandbox.WithSpamAnalysis(false))
+		default:
+			return fmt.Errorf("invalid --spam-analysis value: %s (use true/false)", createSpamAnalysis)
 		}
 	}
 
