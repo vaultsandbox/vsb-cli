@@ -3,7 +3,7 @@ package cliutil
 import (
 	"time"
 
-	"github.com/vaultsandbox/client-go"
+	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
 )
@@ -170,8 +170,9 @@ func EmailAuditJSON(email *vaultsandbox.Email) map[string]interface{} {
 type InboxJSONOptions struct {
 	IncludeID        bool
 	IncludeCreatedAt bool
-	EmailCount       *int  // nil = don't include
-	SyncErr          error // nil = don't include
+	EmailCount       *int                      // nil = don't include
+	SyncErr          error                     // nil = don't include
+	ChaosConfig      *vaultsandbox.ChaosConfig // nil = don't include
 }
 
 // InboxJSON returns a map for JSON output with configurable fields.
@@ -195,6 +196,9 @@ func InboxJSON(inbox *config.StoredInbox, isActive bool, now time.Time, opts Inb
 	if opts.SyncErr != nil {
 		m["syncError"] = opts.SyncErr.Error()
 	}
+	if opts.ChaosConfig != nil {
+		m["chaos"] = ChaosSummaryJSON(opts.ChaosConfig)
+	}
 
 	return m
 }
@@ -207,11 +211,12 @@ func InboxSummaryJSON(inbox *config.StoredInbox, isActive bool, now time.Time) m
 
 // InboxFullJSON returns a map for JSON output of full inbox details.
 // Used by inbox info command.
-func InboxFullJSON(inbox *config.StoredInbox, isActive bool, emailCount int, syncErr error, now time.Time) map[string]interface{} {
+func InboxFullJSON(inbox *config.StoredInbox, isActive bool, emailCount int, syncErr error, chaosConfig *vaultsandbox.ChaosConfig, now time.Time) map[string]interface{} {
 	return InboxJSON(inbox, isActive, now, InboxJSONOptions{
 		IncludeID:        true,
 		IncludeCreatedAt: true,
 		EmailCount:       &emailCount,
 		SyncErr:          syncErr,
+		ChaosConfig:      chaosConfig,
 	})
 }

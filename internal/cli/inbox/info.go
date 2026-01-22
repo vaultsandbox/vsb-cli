@@ -3,9 +3,11 @@ package inbox
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+	vaultsandbox "github.com/vaultsandbox/client-go"
 	"github.com/vaultsandbox/vsb-cli/internal/cliutil"
 	"github.com/vaultsandbox/vsb-cli/internal/config"
 	"github.com/vaultsandbox/vsb-cli/internal/styles"
@@ -50,16 +52,19 @@ func runInfo(cmd *cobra.Command, args []string) error {
 	// Get email count from server
 	emailCount, syncErr := getInboxEmailCount(ctx, stored)
 
+	// Get chaos config if server supports it
+	chaosConfig, _ := getInboxChaosConfig(ctx, stored)
+
 	isExpired := cliutil.IsExpired(stored.ExpiresAt)
 	isActive := stored.Email == ks.ActiveInbox
 
 	// JSON output
 	if cliutil.GetOutput(cmd) == "json" {
-		return cliutil.OutputJSON(cliutil.InboxFullJSON(stored, isActive, emailCount, syncErr, time.Now()))
+		return cliutil.OutputJSON(cliutil.InboxFullJSON(stored, isActive, emailCount, syncErr, chaosConfig, time.Now()))
 	}
 
 	// Pretty output
-	content := formatInboxInfoContent(stored, isActive, isExpired, emailCount, syncErr)
+	content := formatInboxInfoContent(stored, isActive, isExpired, emailCount, syncErr, chaosConfig)
 
 	fmt.Println()
 	fmt.Println(styles.BoxStyle.Render(content))
@@ -69,7 +74,7 @@ func runInfo(cmd *cobra.Command, args []string) error {
 }
 
 // formatInboxInfoContent builds the formatted content string for inbox info display.
-func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool, emailCount int, syncErr error) string {
+func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool, emailCount int, syncErr error, chaosConfig *vaultsandbox.ChaosConfig) string {
 	labelStyle := styles.LabelStyle.Width(14)
 
 	var content string
@@ -101,6 +106,22 @@ func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool
 		content += fmt.Sprintf("%s %d\n", labelStyle.Render("Emails:"), emailCount)
 	}
 
+	// Chaos status
+	if chaosConfig != nil {
+		var chaosStr string
+		if chaosConfig.Enabled {
+			types := cliutil.ChaosEnabledTypes(chaosConfig)
+			if len(types) > 0 {
+				chaosStr = styles.WarnStyle.Render(fmt.Sprintf("Enabled (%s)", strings.Join(types, ", ")))
+			} else {
+				chaosStr = styles.WarnStyle.Render("Enabled")
+			}
+		} else {
+			chaosStr = styles.MutedStyle.Render("Disabled")
+		}
+		content += fmt.Sprintf("%s %s\n", labelStyle.Render("Chaos:"), chaosStr)
+	}
+
 	return content
 }
 
@@ -123,4 +144,26 @@ func getInboxEmailCount(ctx context.Context, stored *config.StoredInbox) (int, e
 	}
 
 	return status.EmailCount, nil
+}
+
+// getInboxChaosConfig fetches the chaos config for an inbox from the server.
+// Returns nil if chaos is not enabled on the server or if there's an error.
+func getInboxChaosConfig(ctx context.Context, stored *config.StoredInbox) (*vaultsandbox.ChaosConfig, error) {
+	client, err := config.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	// Check if server supports chaos
+	if !client.ServerInfo().ChaosEnabled {
+		return nil, nil
+	}
+
+	inbox, err := client.ImportInbox(ctx, stored.ToExportedInbox())
+	if err != nil {
+		return nil, err
+	}
+
+	return inbox.GetChaosConfig(ctx)
 }

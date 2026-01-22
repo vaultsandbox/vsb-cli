@@ -16,6 +16,8 @@ A powerful CLI for [VaultSandbox Gateway](https://github.com/vaultsandbox/gatewa
 
 ![TUI Dashboard](./assets/demo-tui.gif)
 
+> **Full documentation available at [vaultsandbox.dev/cli](https://vaultsandbox.dev/cli/)** — This README covers the essentials; see the docs for complete command references and advanced usage.
+
 ## Features
 
 - **Interactive TUI Dashboard** — Real-time email monitoring with tabbed views for content, security, links, and attachments
@@ -25,6 +27,9 @@ A powerful CLI for [VaultSandbox Gateway](https://github.com/vaultsandbox/gatewa
 - **CI/CD Ready** — `wait` command for scripted email testing pipelines
 - **Quantum-Safe** — All emails encrypted with ML-KEM-768; decryption happens locally
 - **Portable Inboxes** — Export/import inboxes for backup or sharing between environments
+- **Spam Analysis** — SpamAssassin-powered scoring with detailed symbol breakdown
+- **Webhooks** — Real-time notifications via Slack, Discord, Teams, or custom endpoints (global or per-inbox)
+- **Chaos Engineering** — Inject failures per-inbox to test email delivery resilience
 
 ## Installation
 
@@ -100,7 +105,7 @@ Run `vsb` without arguments to launch the interactive dashboard. It watches all 
 | View | Description |
 |------|-------------|
 | **Content** | Email body (text/HTML), sender, subject, timestamps |
-| **Security** | SPF, DKIM, DMARC authentication results |
+| **Security** | SPF, DKIM, DMARC authentication results + spam analysis |
 | **Links** | All URLs extracted from the email |
 | **Attachments** | File attachments with size and type |
 | **Raw** | Raw email source |
@@ -147,7 +152,7 @@ vsb email list --inbox <email-address>
 # View email content (defaults to latest)
 vsb email view [email-id]
 
-# View email authentication results
+# View email authentication and spam analysis
 vsb email audit [email-id]
 
 # Extract URLs from email
@@ -220,6 +225,101 @@ vsb export <email-address> --out inbox-backup.json
 # Import inbox
 vsb import inbox-backup.json
 ```
+
+### Webhooks
+
+Webhooks enable real-time notifications when emails arrive. Two scopes are available:
+
+- **Global webhooks** — Receive notifications for all inboxes (`vsb webhook`)
+- **Inbox webhooks** — Receive notifications for a specific inbox (`vsb inbox webhook`)
+
+```bash
+# Create a global webhook
+vsb webhook create https://example.com/webhook --event email.received
+
+# Create with Slack template
+vsb webhook create https://hooks.slack.com/xxx \
+  --event email.received \
+  --template slack \
+  --description "Email alerts"
+
+# Create inbox-specific webhook
+vsb inbox webhook create https://example.com/notify \
+  --inbox test@inbox.example.com \
+  --event email.received
+
+# List inbox webhooks
+vsb inbox webhook list --inbox test@inbox.example.com
+
+# List global webhooks
+vsb webhook list
+
+# Test webhook endpoint
+vsb webhook test <webhook-id>
+
+# View delivery metrics
+vsb webhook metrics <webhook-id>
+
+# Rotate webhook secret
+vsb webhook rotate <webhook-id>
+
+# Delete webhook
+vsb webhook delete <webhook-id>
+```
+
+**Supported events:** `email.received`, `email.stored`, `email.deleted`
+
+**Built-in templates:** `slack`, `discord`, `teams`, `generic`
+
+**Filtering:** Use `--filter-subject-contains`, `--filter-from-contains`, etc. to receive only matching emails.
+
+### Chaos Engineering
+
+Inject failure scenarios to test how your application handles email delivery issues.
+
+> **Note:** Chaos must be enabled on the server for these commands to work.
+
+```bash
+# Enable latency injection (500-5000ms delay)
+vsb inbox chaos set --inbox test@inbox.example.com \
+  --latency --min-delay 500 --max-delay 5000 --probability 0.5
+
+# Enable random SMTP errors (20% temporary failures)
+vsb inbox chaos set --inbox test@inbox.example.com \
+  --random-error --error-rate 0.2 --error-types temporary
+
+# Enable greylisting simulation
+vsb inbox chaos set --inbox test@inbox.example.com \
+  --greylist --max-attempts 3 --retry-window 300000
+
+# Enable connection drops
+vsb inbox chaos set --inbox test@inbox.example.com \
+  --connection-drop --drop-probability 0.3
+
+# Enable blackhole (accept but don't store)
+vsb inbox chaos set --inbox test@inbox.example.com \
+  --blackhole --trigger-webhooks
+
+# Auto-expire chaos after 1 hour
+vsb inbox chaos set --inbox test@inbox.example.com \
+  --latency --min-delay 1000 --expires 1h
+
+# View current chaos configuration
+vsb inbox chaos get --inbox test@inbox.example.com
+
+# Disable all chaos
+vsb inbox chaos disable --inbox test@inbox.example.com
+```
+
+**Chaos types:**
+
+| Type | Description |
+|------|-------------|
+| `--latency` | Add artificial delay to SMTP transactions |
+| `--connection-drop` | Randomly drop connections (graceful or RST) |
+| `--random-error` | Return temporary (4xx) or permanent (5xx) errors |
+| `--greylist` | Simulate greylisting behavior |
+| `--blackhole` | Accept emails but don't store them |
 
 ### Configuration
 
