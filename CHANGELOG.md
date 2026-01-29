@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.2] - 2026-01-29
+
+### Added
+
+- `inbox prune` command to remove inboxes from local keystore that no longer exist on the server (with `--dry-run` flag)
+
 ## [0.9.1] - 2026-01-27
 
 ### Added

@@ -138,6 +138,9 @@ vsb inbox use <email-address>
 
 # Delete an inbox
 vsb inbox delete <email-address>
+
+# Remove inboxes that no longer exist on server
+vsb inbox prune
 ```
 
 ### Email Operations

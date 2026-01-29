@@ -14,6 +14,7 @@ import (
 
 // TestInboxCreate tests inbox creation with various TTL values.
 func TestInboxCreate(t *testing.T) {
+	t.Parallel()
 	t.Run("default TTL", func(t *testing.T) {
 		configDir := t.TempDir()
 
@@ -95,6 +96,7 @@ func TestInboxCreate(t *testing.T) {
 
 // TestInboxList tests listing inboxes.
 func TestInboxList(t *testing.T) {
+	t.Parallel()
 	t.Run("fresh config has no inboxes", func(t *testing.T) {
 		configDir := t.TempDir()
 
@@ -170,6 +172,7 @@ func TestInboxList(t *testing.T) {
 
 // TestInboxInfo tests getting inbox information.
 func TestInboxInfo(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox first
@@ -236,6 +239,7 @@ func TestInboxInfo(t *testing.T) {
 
 // TestInboxUse tests switching the active inbox.
 func TestInboxUse(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create two inboxes
@@ -303,6 +307,7 @@ func TestInboxUse(t *testing.T) {
 
 // TestInboxDelete tests deleting inboxes.
 func TestInboxDelete(t *testing.T) {
+	t.Parallel()
 	t.Run("delete from server and local", func(t *testing.T) {
 		configDir := t.TempDir()
 

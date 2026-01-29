@@ -322,3 +322,83 @@ type WaitResultJSON struct {
 	Email EmailJSON `json:"email,omitempty"`
 	Link  string    `json:"link,omitempty"`
 }
+
+// ============================================================================
+// Email Wait Helpers (SSE-based, no polling/sleeping)
+// ============================================================================
+
+// Default timeout for SSE-based email waiting.
+// With SSE, emails arrive in milliseconds, so 10s is generous.
+const defaultWaitTimeout = "10s"
+
+// waitForEmailWithSubject waits for an email with the given subject using SSE.
+// This is deterministic and event-driven - no sleeping required.
+func waitForEmailWithSubject(t *testing.T, configDir, subject string) EmailJSON {
+	t.Helper()
+	stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
+		"--subject", subject,
+		"--timeout", defaultWaitTimeout,
+		"--output", "json")
+	require.Equal(t, 0, code, "wait for email failed: stdout=%s, stderr=%s", stdout, stderr)
+
+	var result EmailJSON
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result), "failed to parse wait result: %s", stdout)
+	return result
+}
+
+// waitForEmailWithSubjectRegex waits for an email matching the subject regex using SSE.
+func waitForEmailWithSubjectRegex(t *testing.T, configDir, subjectRegex string) EmailJSON {
+	t.Helper()
+	stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
+		"--subject-regex", subjectRegex,
+		"--timeout", defaultWaitTimeout,
+		"--output", "json")
+	require.Equal(t, 0, code, "wait for email failed: stdout=%s, stderr=%s", stdout, stderr)
+
+	var result EmailJSON
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result), "failed to parse wait result: %s", stdout)
+	return result
+}
+
+// waitForAnyEmail waits for any email to arrive using SSE.
+func waitForAnyEmail(t *testing.T, configDir string) EmailJSON {
+	t.Helper()
+	stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
+		"--timeout", defaultWaitTimeout,
+		"--output", "json")
+	require.Equal(t, 0, code, "wait for email failed: stdout=%s, stderr=%s", stdout, stderr)
+
+	var result EmailJSON
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result), "failed to parse wait result: %s", stdout)
+	return result
+}
+
+// waitForEmailCount waits for a specific number of emails matching the subject.
+func waitForEmailCount(t *testing.T, configDir, subject string, count int) []EmailJSON {
+	t.Helper()
+	stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
+		"--subject", subject,
+		"--count", fmt.Sprintf("%d", count),
+		"--timeout", defaultWaitTimeout,
+		"--output", "json")
+	require.Equal(t, 0, code, "wait for emails failed: stdout=%s, stderr=%s", stdout, stderr)
+
+	var results []EmailJSON
+	require.NoError(t, json.Unmarshal([]byte(stdout), &results), "failed to parse wait results: %s", stdout)
+	return results
+}
+
+// waitForEmailWithInbox waits for an email on a specific inbox using SSE.
+func waitForEmailWithInbox(t *testing.T, configDir, inbox, subject string) EmailJSON {
+	t.Helper()
+	stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
+		"--inbox", inbox,
+		"--subject", subject,
+		"--timeout", defaultWaitTimeout,
+		"--output", "json")
+	require.Equal(t, 0, code, "wait for email failed: stdout=%s, stderr=%s", stdout, stderr)
+
+	var result EmailJSON
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result), "failed to parse wait result: %s", stdout)
+	return result
+}

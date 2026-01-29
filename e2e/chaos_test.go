@@ -74,6 +74,7 @@ type ChaosDisableJSON struct {
 
 // TestChaosSet tests the chaos set command with various configurations.
 func TestChaosSet(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create an inbox first
@@ -383,6 +384,7 @@ func TestChaosSet(t *testing.T) {
 
 // TestChaosGet tests the chaos get command.
 func TestChaosGet(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create an inbox first
@@ -477,6 +479,7 @@ func TestChaosGet(t *testing.T) {
 
 // TestChaosDisable tests the chaos disable command.
 func TestChaosDisable(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create an inbox first
@@ -552,6 +555,7 @@ func TestChaosDisable(t *testing.T) {
 
 // TestChaosSetErrors tests error scenarios for chaos set command.
 func TestChaosSetErrors(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create an inbox first
@@ -623,6 +627,7 @@ func TestChaosSetErrors(t *testing.T) {
 
 // TestChaosWithInboxFlag tests using the --inbox flag with chaos commands.
 func TestChaosWithInboxFlag(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create two inboxes
@@ -734,6 +739,7 @@ func TestChaosWithInboxFlag(t *testing.T) {
 
 // TestChaosWorkflow tests a complete chaos workflow: set -> get -> disable.
 func TestChaosWorkflow(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create an inbox

@@ -104,6 +104,7 @@ type WebhookMetricsJSON struct {
 
 // TestInboxWebhookCreate tests creating webhooks for a specific inbox.
 func TestInboxWebhookCreate(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create an inbox first
@@ -222,6 +223,7 @@ func TestInboxWebhookCreate(t *testing.T) {
 
 // TestInboxWebhookList tests listing webhooks for an inbox.
 func TestInboxWebhookList(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create an inbox first
@@ -302,6 +304,7 @@ func TestInboxWebhookList(t *testing.T) {
 
 // TestInboxWebhookGet tests getting details of a specific webhook.
 func TestInboxWebhookGet(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox and webhook
@@ -364,6 +367,7 @@ func TestInboxWebhookGet(t *testing.T) {
 
 // TestInboxWebhookUpdate tests updating webhook configuration.
 func TestInboxWebhookUpdate(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox and webhook
@@ -502,6 +506,7 @@ func TestInboxWebhookUpdate(t *testing.T) {
 
 // TestInboxWebhookRotate tests rotating webhook secrets.
 func TestInboxWebhookRotate(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox and webhook
@@ -557,6 +562,7 @@ func TestInboxWebhookRotate(t *testing.T) {
 
 // TestInboxWebhookDelete tests deleting webhooks.
 func TestInboxWebhookDelete(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox
@@ -611,6 +617,7 @@ func TestInboxWebhookDelete(t *testing.T) {
 
 // TestInboxWebhookTest tests the webhook test command.
 func TestInboxWebhookTest(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox and webhook
@@ -666,6 +673,7 @@ func TestInboxWebhookTest(t *testing.T) {
 
 // TestGlobalWebhookCreate tests creating global webhooks.
 func TestGlobalWebhookCreate(t *testing.T) {
+	t.Parallel()
 	t.Run("basic global webhook", func(t *testing.T) {
 		configDir := t.TempDir()
 
@@ -724,6 +732,7 @@ func TestGlobalWebhookCreate(t *testing.T) {
 
 // TestGlobalWebhookList tests listing global webhooks.
 func TestGlobalWebhookList(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	t.Run("list global webhooks", func(t *testing.T) {
@@ -768,6 +777,7 @@ func TestGlobalWebhookList(t *testing.T) {
 
 // TestGlobalWebhookGetUpdateDeleteRotate tests get, update, delete, and rotate for global webhooks.
 func TestGlobalWebhookGetUpdateDeleteRotate(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create a global webhook
@@ -849,6 +859,7 @@ func TestGlobalWebhookGetUpdateDeleteRotate(t *testing.T) {
 
 // TestGlobalWebhookDelete tests deleting global webhooks.
 func TestGlobalWebhookDelete(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create a global webhook
@@ -893,6 +904,7 @@ func TestGlobalWebhookDelete(t *testing.T) {
 
 // TestGlobalWebhookTemplates tests listing available webhook templates.
 func TestGlobalWebhookTemplates(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	stdout, stderr, code := runVSBWithConfig(t, configDir,
@@ -922,6 +934,7 @@ func TestGlobalWebhookTemplates(t *testing.T) {
 
 // TestGlobalWebhookMetrics tests viewing webhook metrics.
 func TestGlobalWebhookMetrics(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	stdout, stderr, code := runVSBWithConfig(t, configDir,
@@ -949,6 +962,7 @@ func TestGlobalWebhookMetrics(t *testing.T) {
 
 // TestInboxWebhookWithInboxFlag tests using --inbox flag to specify inbox.
 func TestInboxWebhookWithInboxFlag(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create two inboxes
@@ -1043,6 +1057,7 @@ func TestInboxWebhookWithInboxFlag(t *testing.T) {
 
 // TestInboxWebhookPrettyOutput tests pretty (non-JSON) output formatting.
 func TestInboxWebhookPrettyOutput(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create an inbox first
@@ -1294,6 +1309,7 @@ func TestInboxWebhookPrettyOutput(t *testing.T) {
 
 // TestGlobalWebhookPrettyOutput tests pretty output for global webhooks.
 func TestGlobalWebhookPrettyOutput(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	t.Run("create pretty output", func(t *testing.T) {
@@ -1411,6 +1427,7 @@ func TestGlobalWebhookPrettyOutput(t *testing.T) {
 // TestWebhookCustomTemplate tests custom template error handling.
 // Note: The API may not support custom templates, so we only test error cases.
 func TestWebhookCustomTemplate(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create an inbox for testing
@@ -1459,6 +1476,7 @@ func TestWebhookCustomTemplate(t *testing.T) {
 
 // TestWebhookFilterPatterns tests various filter patterns.
 func TestWebhookFilterPatterns(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create an inbox
@@ -1568,6 +1586,7 @@ func TestWebhookFilterPatterns(t *testing.T) {
 
 // TestWebhookEventCombinations tests various event type combinations.
 func TestWebhookEventCombinations(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	t.Run("all three events", func(t *testing.T) {

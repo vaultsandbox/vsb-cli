@@ -15,6 +15,7 @@ import (
 
 // TestConfigShow tests showing configuration.
 func TestConfigShow(t *testing.T) {
+	t.Parallel()
 	t.Run("show config with masked API key", func(t *testing.T) {
 		configDir := t.TempDir()
 
@@ -84,6 +85,7 @@ func TestConfigShow(t *testing.T) {
 
 // TestConfigSet tests setting configuration values.
 func TestConfigSet(t *testing.T) {
+	t.Parallel()
 	t.Run("set api-key", func(t *testing.T) {
 		configDir := t.TempDir()
 
@@ -166,6 +168,7 @@ func TestConfigSet(t *testing.T) {
 
 // TestConfigPersistence tests that config values persist across invocations.
 func TestConfigPersistence(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Set values in first invocation
@@ -191,6 +194,7 @@ func TestConfigPersistence(t *testing.T) {
 
 // TestConfigEnvironmentVariables tests that environment variables override config.
 func TestConfigEnvironmentVariables(t *testing.T) {
+	t.Parallel()
 	t.Run("env vars take precedence", func(t *testing.T) {
 		configDir := t.TempDir()
 
@@ -218,6 +222,7 @@ func TestConfigEnvironmentVariables(t *testing.T) {
 
 // TestConfigShortAPIKey tests handling of short API keys.
 func TestConfigShortAPIKey(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Set a short API key (less than 11 chars)
@@ -235,6 +240,7 @@ func TestConfigShortAPIKey(t *testing.T) {
 
 // TestConfigEmptyAPIKey tests that empty API key shows "(not set)".
 func TestConfigEmptyAPIKey(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Don't set any API key
@@ -249,6 +255,7 @@ func TestConfigEmptyAPIKey(t *testing.T) {
 
 // TestConfigDefaultBaseURL tests that default base URL is used when not set.
 func TestConfigDefaultBaseURL(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Don't set base URL - should use default
@@ -267,6 +274,7 @@ func TestConfigDefaultBaseURL(t *testing.T) {
 
 // TestConfigMultipleValues tests setting multiple config values.
 func TestConfigMultipleValues(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Set multiple values
@@ -292,6 +300,7 @@ func TestConfigMultipleValues(t *testing.T) {
 
 // TestConfigValidKeys tests the valid config key names.
 func TestConfigValidKeys(t *testing.T) {
+	t.Parallel()
 	validKeys := []struct {
 		key   string
 		value string
@@ -335,6 +344,7 @@ func TestConfigValidKeys(t *testing.T) {
 
 // TestConfigStrategy tests setting and showing delivery strategy.
 func TestConfigStrategy(t *testing.T) {
+	t.Parallel()
 	t.Run("set strategy sse", func(t *testing.T) {
 		configDir := t.TempDir()
 

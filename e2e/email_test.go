@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,6 +17,7 @@ import (
 // TestEmailList tests listing emails in an inbox.
 func TestEmailList(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox
@@ -50,8 +50,8 @@ func TestEmailList(t *testing.T) {
 		sendTestEmail(t, inboxEmail, "Test Subject 1", "Test body 1")
 		sendTestEmail(t, inboxEmail, "Test Subject 2", "Test body 2")
 
-		// Wait for emails to be received
-		time.Sleep(2 * time.Second)
+		// Wait for second email using SSE (deterministic, no polling)
+		waitForEmailWithSubject(t, configDir, "Test Subject 2")
 
 		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "list", "--output", "json")
 		require.Equal(t, 0, code, "list failed: stdout=%s, stderr=%s", stdout, stderr)
@@ -86,6 +86,7 @@ func TestEmailList(t *testing.T) {
 // TestEmailView tests viewing email content.
 func TestEmailView(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox
@@ -107,8 +108,8 @@ func TestEmailView(t *testing.T) {
 	testBody := "This is the test email body for viewing."
 	sendTestEmail(t, inboxEmail, testSubject, testBody)
 
-	// Wait for email
-	time.Sleep(2 * time.Second)
+	// Wait for email using SSE (deterministic, no polling)
+	waitForEmailWithSubject(t, configDir, testSubject)
 
 	t.Run("view latest email JSON", func(t *testing.T) {
 		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "view", "--output", "json")
@@ -189,6 +190,7 @@ func TestEmailView(t *testing.T) {
 // TestEmailAudit tests email security auditing.
 func TestEmailAudit(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox
@@ -205,9 +207,9 @@ func TestEmailAudit(t *testing.T) {
 		runVSBWithConfig(t, configDir, "inbox", "delete", inboxEmail)
 	})
 
-	// Send test email
+	// Send test email and wait for it using SSE
 	sendTestEmail(t, inboxEmail, "Audit Test", "Test body for audit")
-	time.Sleep(2 * time.Second)
+	waitForEmailWithSubject(t, configDir, "Audit Test")
 
 	t.Run("audit latest email", func(t *testing.T) {
 		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "audit", "--output", "json")
@@ -247,6 +249,7 @@ func TestEmailAudit(t *testing.T) {
 // TestEmailURL tests URL extraction from emails.
 func TestEmailURL(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox
@@ -272,7 +275,7 @@ func TestEmailURL(t *testing.T) {
 		textBody := "Click here to verify: https://example.com/verify?token=abc123"
 
 		sendTestHTMLEmail(t, inboxEmail, "Email with URLs", textBody, htmlBody)
-		time.Sleep(2 * time.Second)
+		waitForEmailWithSubject(t, configDir, "Email with URLs")
 
 		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "url", "--output", "json")
 		require.Equal(t, 0, code, "url failed: stdout=%s, stderr=%s", stdout, stderr)
@@ -296,7 +299,7 @@ func TestEmailURL(t *testing.T) {
 	t.Run("no URLs in email", func(t *testing.T) {
 		// Send plain email without links
 		sendTestEmail(t, inboxEmail, "No Links Email", "This email has no links at all.")
-		time.Sleep(2 * time.Second)
+		waitForEmailWithSubject(t, configDir, "No Links Email")
 
 		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "url", "--output", "json")
 		require.Equal(t, 0, code, "url failed: stdout=%s, stderr=%s", stdout, stderr)
@@ -309,6 +312,7 @@ func TestEmailURL(t *testing.T) {
 // TestEmailAttachment tests attachment listing and downloading.
 func TestEmailAttachment(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox
@@ -329,7 +333,7 @@ func TestEmailAttachment(t *testing.T) {
 		// Send email with attachment
 		attachmentContent := base64.StdEncoding.EncodeToString([]byte("Hello, this is a test file content!"))
 		sendTestEmailWithAttachment(t, inboxEmail, "Email with Attachment", "See attached file.", "test.txt", attachmentContent)
-		time.Sleep(2 * time.Second)
+		waitForEmailWithSubject(t, configDir, "Email with Attachment")
 
 		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "attachment", "--output", "json")
 		require.Equal(t, 0, code, "attachment failed: stdout=%s, stderr=%s", stdout, stderr)
@@ -384,7 +388,7 @@ func TestEmailAttachment(t *testing.T) {
 	t.Run("no attachments", func(t *testing.T) {
 		// Send email without attachments
 		sendTestEmail(t, inboxEmail, "No Attachments", "This email has no attachments.")
-		time.Sleep(2 * time.Second)
+		waitForEmailWithSubject(t, configDir, "No Attachments")
 
 		stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "attachment", "--output", "json")
 		require.Equal(t, 0, code, "attachment failed: stdout=%s, stderr=%s", stdout, stderr)
@@ -397,6 +401,7 @@ func TestEmailAttachment(t *testing.T) {
 // TestEmailDelete tests deleting emails.
 func TestEmailDelete(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox
@@ -414,9 +419,9 @@ func TestEmailDelete(t *testing.T) {
 	})
 
 	t.Run("delete email by ID", func(t *testing.T) {
-		// Send test email
+		// Send test email and wait for it using SSE
 		sendTestEmail(t, inboxEmail, "Delete Test", "This email will be deleted.")
-		time.Sleep(2 * time.Second)
+		waitForEmailWithSubject(t, configDir, "Delete Test")
 
 		// Get email ID
 		stdout, _, code := runVSBWithConfig(t, configDir, "email", "list", "--output", "json")
@@ -473,6 +478,7 @@ func TestEmailDelete(t *testing.T) {
 // TestEmailViewWithSpecificInbox tests viewing emails with --inbox flag.
 func TestEmailViewWithSpecificInbox(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create two inboxes
@@ -494,9 +500,9 @@ func TestEmailViewWithSpecificInbox(t *testing.T) {
 		}
 	})
 
-	// Send email to first inbox
+	// Send email to first inbox and wait for it using SSE
 	sendTestEmail(t, inboxEmails[0], "Inbox 1 Email", "This is in inbox 1")
-	time.Sleep(2 * time.Second)
+	waitForEmailWithInbox(t, configDir, inboxEmails[0], "Inbox 1 Email")
 
 	// Active inbox is the second one (last created)
 	// But we should be able to view emails in the first inbox with --inbox flag
@@ -548,6 +554,7 @@ func TestEmailViewWithSpecificInbox(t *testing.T) {
 // TestEmailWorkflow tests a complete email workflow.
 func TestEmailWorkflow(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox
@@ -578,7 +585,7 @@ func TestEmailWorkflow(t *testing.T) {
 	textBody := "Welcome! Verify your account: https://example.com/verify?token=abc123xyz"
 
 	sendTestHTMLEmail(t, inboxEmail, "Verify Your Account", textBody, htmlBody)
-	time.Sleep(2 * time.Second)
+	waitForEmailWithSubject(t, configDir, "Verify Your Account")
 
 	// Step 1: List emails and find our email
 	stdout, _, code = runVSBWithConfig(t, configDir, "email", "list", "--output", "json")

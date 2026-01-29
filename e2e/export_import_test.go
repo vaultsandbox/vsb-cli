@@ -30,6 +30,7 @@ type ExportedInboxFile struct {
 
 // TestExport tests exporting inboxes.
 func TestExport(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox
@@ -145,6 +146,7 @@ func TestExport(t *testing.T) {
 
 // TestImport tests importing inboxes.
 func TestImport(t *testing.T) {
+	t.Parallel()
 	t.Run("import valid export file", func(t *testing.T) {
 		configDir := t.TempDir()
 
@@ -374,6 +376,7 @@ func TestImport(t *testing.T) {
 
 // TestExportImportRoundTrip tests the complete backup/restore workflow.
 func TestExportImportRoundTrip(t *testing.T) {
+	t.Parallel()
 	skipIfNoSMTP(t)
 	configDir := t.TempDir()
 
@@ -387,10 +390,10 @@ func TestExportImportRoundTrip(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(stdout), &createResult))
 	originalEmail := createResult.Email
 
-	// Step 2: Send some test emails
+	// Step 2: Send some test emails and wait for the last one using SSE
 	sendTestEmail(t, originalEmail, "Round Trip Test 1", "First test email")
 	sendTestEmail(t, originalEmail, "Round Trip Test 2", "Second test email")
-	time.Sleep(2 * time.Second)
+	waitForEmailWithSubject(t, configDir, "Round Trip Test 2")
 
 	// Step 3: Verify emails are received
 	stdout, _, code = runVSBWithConfig(t, configDir, "email", "list", "--output", "json")
@@ -462,6 +465,7 @@ func TestExportImportRoundTrip(t *testing.T) {
 
 // TestExportFileOverwrite tests that export doesn't overwrite existing files.
 func TestExportFileOverwrite(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox
@@ -496,6 +500,7 @@ func TestExportFileOverwrite(t *testing.T) {
 
 // TestImportPartialMatch tests importing with partial email matching.
 func TestImportPartialMatch(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox

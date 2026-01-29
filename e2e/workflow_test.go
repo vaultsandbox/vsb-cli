@@ -30,6 +30,7 @@ import (
 // 6. Cleanup
 func TestCIWorkflow(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Step 1: Create inbox for this test run
@@ -65,14 +66,14 @@ func TestCIWorkflow(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 		<-sendTestHTMLEmailAsync(inboxEmail, subject, textBody, htmlBody)
 	}()
 
 	// Step 3: Wait for email with specific subject pattern
 	stdout, stderr, code = runVSBWithConfig(t, configDir, "email", "wait",
 		"--subject-regex", "Welcome.*CI Test",
-		"--timeout", "30s",
+		"--timeout", "10s",
 		"--output", "json")
 	require.Equal(t, 0, code, "wait failed: stdout=%s, stderr=%s", stdout, stderr)
 
@@ -113,6 +114,7 @@ func TestCIWorkflow(t *testing.T) {
 // 5. Cleanup
 func TestMultiInboxWorkflow(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Step 1: Create inboxes for different "services"
@@ -137,13 +139,13 @@ func TestMultiInboxWorkflow(t *testing.T) {
 		}
 	})
 
-	// Step 2: Send unique emails to each inbox
+	// Step 2: Send unique emails to each inbox and wait for each using SSE
 	for service, email := range inboxes {
 		subject := "Message from " + service + " service"
 		body := "This is a test email for " + service
 		sendTestEmail(t, email, subject, body)
+		waitForEmailWithInbox(t, configDir, email, subject)
 	}
-	time.Sleep(3 * time.Second)
 
 	// Step 3: Switch between inboxes and verify correct emails
 	for service, email := range inboxes {
@@ -206,6 +208,7 @@ func TestMultiInboxWorkflow(t *testing.T) {
 // 5. Verify all emails are accessible
 func TestBackupRestoreWorkflow(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Step 1: Create inbox
@@ -231,7 +234,8 @@ func TestBackupRestoreWorkflow(t *testing.T) {
 	for _, e := range testEmails {
 		sendTestEmail(t, inboxEmail, e.subject, e.body)
 	}
-	time.Sleep(3 * time.Second)
+	// Wait for the last email using SSE (ensures all emails arrived)
+	waitForEmailWithSubject(t, configDir, testEmails[len(testEmails)-1].subject)
 
 	// Verify all emails received
 	stdout, _, code = runVSBWithConfig(t, configDir, "email", "list", "--output", "json")
@@ -320,6 +324,7 @@ func TestBackupRestoreWorkflow(t *testing.T) {
 // 5. Verify link contains expected token format
 func TestPasswordResetWorkflow(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Step 1: Create inbox
@@ -354,14 +359,14 @@ func TestPasswordResetWorkflow(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 		<-sendTestHTMLEmailAsync(inboxEmail, "Password Reset Request", textBody, htmlBody)
 	}()
 
 	// Step 3: Wait for reset email
 	stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
 		"--subject-regex", "Password.*Reset",
-		"--timeout", "30s",
+		"--timeout", "10s",
 		"--output", "json")
 	require.Equal(t, 0, code, "wait failed: stdout=%s, stderr=%s", stdout, stderr)
 
@@ -403,6 +408,7 @@ func TestPasswordResetWorkflow(t *testing.T) {
 // 6. Extract any tracking links
 func TestOrderConfirmationWorkflow(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Step 1: Create inbox
@@ -438,12 +444,11 @@ func TestOrderConfirmationWorkflow(t *testing.T) {
 	textBody := "Order Confirmation\nOrder ID: " + orderID + "\nTotal: $99.99\nView: https://shop.example.com/orders/" + orderID
 
 	sendTestHTMLEmail(t, inboxEmail, "Order Confirmation - "+orderID, textBody, htmlBody)
-	time.Sleep(2 * time.Second)
 
-	// Step 3: Wait for confirmation
+	// Step 3: Wait for confirmation using SSE (no sleep needed)
 	stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
 		"--subject-regex", "Order Confirmation.*"+orderID[:15],
-		"--timeout", "30s",
+		"--timeout", "10s",
 		"--output", "json")
 	require.Equal(t, 0, code, "wait failed: stdout=%s, stderr=%s", stdout, stderr)
 
@@ -507,6 +512,7 @@ func TestOrderConfirmationWorkflow(t *testing.T) {
 // 6. Send more emails, verify visible on both
 func TestInboxSharingWorkflow(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 
 	// Machine A setup
 	machineA := t.TempDir()
@@ -523,9 +529,9 @@ func TestInboxSharingWorkflow(t *testing.T) {
 		runVSBWithConfig(t, machineA, "inbox", "delete", sharedEmail)
 	})
 
-	// Send initial emails from "machine A perspective"
+	// Send initial emails from "machine A perspective" and wait using SSE
 	sendTestEmail(t, sharedEmail, "From Machine A", "First email sent")
-	time.Sleep(2 * time.Second)
+	waitForEmailWithSubject(t, machineA, "From Machine A")
 
 	// Export inbox
 	exportPath := filepath.Join(t.TempDir(), "shared-inbox.json")
@@ -555,9 +561,9 @@ func TestInboxSharingWorkflow(t *testing.T) {
 	}
 	assert.True(t, foundInitial, "machine B should see email sent before import")
 
-	// Send new email (both machines should see it)
+	// Send new email (both machines should see it) and wait using SSE
 	sendTestEmail(t, sharedEmail, "After Sharing", "This email sent after sharing")
-	time.Sleep(2 * time.Second)
+	waitForEmailWithSubject(t, machineA, "After Sharing")
 
 	// Verify on machine A
 	stdout, _, code = runVSBWithConfig(t, machineA, "email", "list", "--output", "json")
@@ -603,6 +609,7 @@ func TestInboxSharingWorkflow(t *testing.T) {
 // 5. Process the returned email ID
 func TestWaitThenProcessWorkflow(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox
@@ -627,14 +634,14 @@ func TestWaitThenProcessWorkflow(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 		<-sendTestEmailAsync(inboxEmail, uniqueSubject, "Content to process")
 	}()
 
 	// Wait for the specific email
 	stdout, stderr, code := runVSBWithConfig(t, configDir, "email", "wait",
 		"--subject", uniqueSubject,
-		"--timeout", "30s",
+		"--timeout", "10s",
 		"--output", "json")
 	require.Equal(t, 0, code, "wait failed: stdout=%s, stderr=%s", stdout, stderr)
 
@@ -680,6 +687,7 @@ func TestWaitThenProcessWorkflow(t *testing.T) {
 // 5. Delete processed emails
 func TestBulkEmailProcessingWorkflow(t *testing.T) {
 	skipIfNoSMTP(t)
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create inbox
@@ -708,7 +716,8 @@ func TestBulkEmailProcessingWorkflow(t *testing.T) {
 		body := `Visit our site: https://example.com/page` + string(rune('1'+i))
 		sendTestEmail(t, inboxEmail, subject, body)
 	}
-	time.Sleep(3 * time.Second)
+	// Wait for the last email using SSE (ensures all emails arrived)
+	waitForEmailWithSubject(t, configDir, subjects[len(subjects)-1])
 
 	// List all emails
 	stdout, _, code = runVSBWithConfig(t, configDir, "email", "list", "--output", "json")

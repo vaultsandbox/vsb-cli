@@ -26,6 +26,7 @@ import (
 
 // TestInboxErrors tests error handling for inbox commands.
 func TestInboxErrors(t *testing.T) {
+	t.Parallel()
 	t.Run("info without inbox", func(t *testing.T) {
 		configDir := t.TempDir()
 
@@ -113,6 +114,7 @@ func TestInboxErrors(t *testing.T) {
 
 // TestEmailErrors tests error handling for email commands.
 func TestEmailErrors(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	// Create an inbox for testing
@@ -231,6 +233,7 @@ func TestEmailErrors(t *testing.T) {
 
 // TestWaitErrors tests error handling for wait command.
 func TestWaitErrors(t *testing.T) {
+	t.Parallel()
 	skipIfNoSMTP(t)
 	configDir := t.TempDir()
 
@@ -339,6 +342,7 @@ func TestWaitErrors(t *testing.T) {
 
 // TestExportImportErrors tests error handling for export/import commands.
 func TestExportImportErrors(t *testing.T) {
+	t.Parallel()
 	t.Run("export without inbox", func(t *testing.T) {
 		configDir := t.TempDir()
 
@@ -512,6 +516,7 @@ func TestExportImportErrors(t *testing.T) {
 
 // TestConfigErrors tests error handling for config commands.
 func TestConfigErrors(t *testing.T) {
+	t.Parallel()
 	t.Run("set invalid config key", func(t *testing.T) {
 		configDir := t.TempDir()
 
@@ -545,6 +550,7 @@ func TestConfigErrors(t *testing.T) {
 
 // TestGlobalErrors tests global error scenarios.
 func TestGlobalErrors(t *testing.T) {
+	t.Parallel()
 	t.Run("unknown command", func(t *testing.T) {
 		configDir := t.TempDir()
 
@@ -629,6 +635,7 @@ func TestGlobalErrors(t *testing.T) {
 
 // TestNetworkErrors tests behavior with network issues.
 func TestNetworkErrors(t *testing.T) {
+	t.Parallel()
 	t.Run("invalid base URL", func(t *testing.T) {
 		configDir := t.TempDir()
 
@@ -751,6 +758,7 @@ func runVSBWithConfigAndEnv(t *testing.T, configDir string, envOverrides map[str
 
 // TestConcurrentInboxOperations tests creating multiple inboxes concurrently.
 func TestConcurrentInboxOperations(t *testing.T) {
+	t.Parallel()
 	configDir := t.TempDir()
 
 	t.Run("create multiple inboxes concurrently", func(t *testing.T) {
@@ -877,6 +885,7 @@ func TestConcurrentInboxOperations(t *testing.T) {
 
 // TestConcurrentEmailOperations tests concurrent email listing.
 func TestConcurrentEmailOperations(t *testing.T) {
+	t.Parallel()
 	skipIfNoSMTP(t)
 	configDir := t.TempDir()
 
@@ -893,9 +902,9 @@ func TestConcurrentEmailOperations(t *testing.T) {
 		runVSBWithConfig(t, configDir, "inbox", "delete", createResult.Email)
 	})
 
-	// Send test email
+	// Send test email and wait for it using SSE
 	sendTestEmail(t, createResult.Email, "Concurrent Test Email", "Test body")
-	time.Sleep(2 * time.Second)
+	waitForEmailWithSubject(t, configDir, "Concurrent Test Email")
 
 	t.Run("concurrent email list operations", func(t *testing.T) {
 		const numReads = 5

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -110,6 +111,9 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		exported := stored.ToExportedInbox()
 		inbox, err := client.ImportInbox(ctx, exported)
 		if err != nil {
+			if strings.Contains(err.Error(), "404") {
+				return fmt.Errorf("failed to import inbox %s: %w\n\nHint: run 'vsb inbox prune' to remove inboxes that no longer exist on the server", stored.Email, err)
+			}
 			return fmt.Errorf("failed to import inbox %s: %w", stored.Email, err)
 		}
 		inboxes = append(inboxes, inbox)
