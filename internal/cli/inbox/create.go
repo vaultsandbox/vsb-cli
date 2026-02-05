@@ -17,6 +17,7 @@ import (
 // ExportableInbox interface for inbox operations (allows mocking in tests)
 type ExportableInbox interface {
 	Export() *vaultsandbox.ExportedInbox
+	Persistent() bool
 }
 
 // InboxCreator interface for creating inboxes (allows mocking in tests)
@@ -188,6 +189,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	stored := config.StoredInboxFromExport(exported)
+	stored.Persistent = inbox.Persistent()
 	if err := keystore.AddInbox(stored); err != nil {
 		return fmt.Errorf("failed to save inbox: %w", err)
 	}

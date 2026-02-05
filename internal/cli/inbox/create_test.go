@@ -18,11 +18,16 @@ import (
 
 // mockInbox implements ExportableInbox for testing
 type mockInbox struct {
-	exported *vaultsandbox.ExportedInbox
+	exported   *vaultsandbox.ExportedInbox
+	persistent bool
 }
 
 func (m *mockInbox) Export() *vaultsandbox.ExportedInbox {
 	return m.exported
+}
+
+func (m *mockInbox) Persistent() bool {
+	return m.persistent
 }
 
 // mockClient implements InboxCreator for testing
@@ -539,8 +544,8 @@ func TestRunCreate(t *testing.T) {
 				ExportedAt:   time.Now(),
 				SecretKey:    "key",
 				ServerSigPk:  "sig",
-				Persistent:   true,
 			},
+			persistent: true,
 		}
 		mockCl := &mockClient{inbox: mockInb}
 

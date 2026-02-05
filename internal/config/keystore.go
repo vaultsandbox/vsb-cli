@@ -313,9 +313,8 @@ func StoredInboxFromExport(exp *vaultsandbox.ExportedInbox) StoredInbox {
 			KEMPublic:   "", // Public key is derived from secret key per spec Section 4.2
 			ServerSigPK: exp.ServerSigPk,
 		},
-		Encrypted:  exp.Encrypted,
-		EmailAuth:  exp.EmailAuth,
-		Persistent: exp.Persistent,
+		Encrypted: exp.Encrypted,
+		EmailAuth: exp.EmailAuth,
 	}
 }
 
@@ -329,9 +328,8 @@ func (s *StoredInbox) ToExportedInbox() *vaultsandbox.ExportedInbox {
 		ServerSigPk:  s.Keys.ServerSigPK,
 		SecretKey:    s.Keys.KEMPrivate,
 		ExportedAt:   s.CreatedAt,
-		Encrypted:    s.Encrypted,
-		EmailAuth:    s.EmailAuth,
-		Persistent:   s.Persistent,
+		Encrypted: s.Encrypted,
+		EmailAuth: s.EmailAuth,
 	}
 }
 
