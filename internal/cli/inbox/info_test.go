@@ -102,6 +102,24 @@ func TestFormatInboxInfoContent(t *testing.T) {
 		assert.NotContains(t, content, "(sync error)")
 	})
 
+	t.Run("shows encrypted persistent and email auth fields", func(t *testing.T) {
+		inbox := &config.StoredInbox{
+			Email:      "flags@example.com",
+			ID:         "inbox-flags",
+			CreatedAt:  now.Add(-24 * time.Hour),
+			ExpiresAt:  now.Add(24 * time.Hour),
+			Encrypted:  true,
+			EmailAuth:  true,
+			Persistent: true,
+		}
+
+		content := formatInboxInfoContent(inbox, false, false, 0, nil, nil)
+
+		assert.Contains(t, content, "Encrypted:")
+		assert.Contains(t, content, "Email Auth:")
+		assert.Contains(t, content, "Persistent:")
+	})
+
 	t.Run("short remaining time", func(t *testing.T) {
 		shortInbox := &config.StoredInbox{
 			Email:     "short@example.com",

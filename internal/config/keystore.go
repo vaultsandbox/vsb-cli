@@ -25,8 +25,9 @@ type StoredInbox struct {
 	CreatedAt time.Time `json:"createdAt"`
 	ExpiresAt time.Time `json:"expiresAt"`
 	Keys      InboxKeys `json:"keys"`
-	Encrypted bool      `json:"encrypted"`  // whether inbox uses encryption
-	EmailAuth bool      `json:"emailAuth"`  // whether email auth is enabled
+	Encrypted  bool      `json:"encrypted"`  // whether inbox uses encryption
+	EmailAuth  bool      `json:"emailAuth"`  // whether email auth is enabled
+	Persistent bool      `json:"persistent"` // whether inbox is persistent
 }
 
 // InboxKeys contains the cryptographic keys for an inbox
@@ -46,6 +47,7 @@ type ExportedInboxFile struct {
 	Keys         ExportedKeys `json:"keys"`
 	Encrypted    bool         `json:"encrypted"`
 	EmailAuth    bool         `json:"emailAuth"`
+	Persistent   bool         `json:"persistent"`
 }
 
 // ExportedKeys contains the cryptographic keys in an export file
@@ -311,8 +313,9 @@ func StoredInboxFromExport(exp *vaultsandbox.ExportedInbox) StoredInbox {
 			KEMPublic:   "", // Public key is derived from secret key per spec Section 4.2
 			ServerSigPK: exp.ServerSigPk,
 		},
-		Encrypted: exp.Encrypted,
-		EmailAuth: exp.EmailAuth,
+		Encrypted:  exp.Encrypted,
+		EmailAuth:  exp.EmailAuth,
+		Persistent: exp.Persistent,
 	}
 }
 
@@ -328,6 +331,7 @@ func (s *StoredInbox) ToExportedInbox() *vaultsandbox.ExportedInbox {
 		ExportedAt:   s.CreatedAt,
 		Encrypted:    s.Encrypted,
 		EmailAuth:    s.EmailAuth,
+		Persistent:   s.Persistent,
 	}
 }
 
@@ -344,8 +348,9 @@ func (s *StoredInbox) ToExportFile() ExportedInboxFile {
 			KEMPublic:   s.Keys.KEMPublic,
 			ServerSigPK: s.Keys.ServerSigPK,
 		},
-		Encrypted: s.Encrypted,
-		EmailAuth: s.EmailAuth,
+		Encrypted:  s.Encrypted,
+		EmailAuth:  s.EmailAuth,
+		Persistent: s.Persistent,
 	}
 }
 
@@ -361,7 +366,8 @@ func (e *ExportedInboxFile) ToStoredInbox() StoredInbox {
 			KEMPublic:   e.Keys.KEMPublic,
 			ServerSigPK: e.Keys.ServerSigPK,
 		},
-		Encrypted: e.Encrypted,
-		EmailAuth: e.EmailAuth,
+		Encrypted:  e.Encrypted,
+		EmailAuth:  e.EmailAuth,
+		Persistent: e.Persistent,
 	}
 }

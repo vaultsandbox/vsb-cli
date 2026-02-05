@@ -178,10 +178,13 @@ type InboxJSONOptions struct {
 // InboxJSON returns a map for JSON output with configurable fields.
 func InboxJSON(inbox *config.StoredInbox, isActive bool, now time.Time, opts InboxJSONOptions) map[string]interface{} {
 	m := map[string]interface{}{
-		"email":     inbox.Email,
-		"expiresAt": inbox.ExpiresAt.Format(time.RFC3339),
-		"isActive":  isActive,
-		"isExpired": inbox.ExpiresAt.Before(now),
+		"email":      inbox.Email,
+		"expiresAt":  inbox.ExpiresAt.Format(time.RFC3339),
+		"isActive":   isActive,
+		"isExpired":  inbox.ExpiresAt.Before(now),
+		"encrypted":  inbox.Encrypted,
+		"emailAuth":  inbox.EmailAuth,
+		"persistent": inbox.Persistent,
 	}
 
 	if opts.IncludeID {

@@ -76,6 +76,7 @@ var (
 	createTTL          string
 	createEmailAuth    string
 	createEncryption   string
+	createPersistence  string
 	createSpamAnalysis string
 )
 
@@ -88,6 +89,8 @@ func init() {
 		"Enable/disable email authentication (true/false, omit for server default)")
 	createCmd.Flags().StringVar(&createEncryption, "encryption", "",
 		"Encryption mode (encrypted/plain, omit for server default)")
+	createCmd.Flags().StringVar(&createPersistence, "persistence", "",
+		"Persistence mode (persistent/ephemeral, omit for server default)")
 	createCmd.Flags().StringVar(&createSpamAnalysis, "spam-analysis", "",
 		"Enable/disable spam analysis (true/false, omit for server default)")
 }
@@ -141,6 +144,18 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Add persistence option if specified
+	if createPersistence != "" {
+		switch strings.ToLower(createPersistence) {
+		case "persistent":
+			opts = append(opts, vaultsandbox.WithPersistence(vaultsandbox.PersistenceModePersistent))
+		case "ephemeral":
+			opts = append(opts, vaultsandbox.WithPersistence(vaultsandbox.PersistenceModeEphemeral))
+		default:
+			return fmt.Errorf("invalid --persistence value: %s (use persistent/ephemeral)", createPersistence)
+		}
+	}
+
 	// Add spam analysis option if specified
 	if createSpamAnalysis != "" {
 		switch strings.ToLower(createSpamAnalysis) {
@@ -180,9 +195,12 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// Output
 	if jsonMode {
 		data := map[string]interface{}{
-			"email":     stored.Email,
-			"expiresAt": stored.ExpiresAt.Format(time.RFC3339),
-			"createdAt": stored.CreatedAt.Format(time.RFC3339),
+			"email":      stored.Email,
+			"expiresAt":  stored.ExpiresAt.Format(time.RFC3339),
+			"createdAt":  stored.CreatedAt.Format(time.RFC3339),
+			"encrypted":  stored.Encrypted,
+			"emailAuth":  stored.EmailAuth,
+			"persistent": stored.Persistent,
 		}
 		return cliutil.OutputJSON(data)
 	} else {
@@ -203,13 +221,24 @@ func printInboxCreated(inbox config.StoredInbox) {
 	expiry := time.Until(inbox.ExpiresAt).Round(time.Hour)
 	expiryStr := fmt.Sprintf("%v", expiry)
 
+	encryptedStr := "No"
+	if inbox.Encrypted {
+		encryptedStr = "Yes"
+	}
+	persistentStr := "No"
+	if inbox.Persistent {
+		persistentStr = "Yes"
+	}
+
 	details := fmt.Sprintf(`
 
-  Address:  %s
-  Expires:  %s
+  Address:     %s
+  Expires:     %s
+  Encrypted:   %s
+  Persistent:  %s
 
 Run 'vsb' to see emails arrive live.`,
-		emailBox, expiryStr)
+		emailBox, expiryStr, encryptedStr, persistentStr)
 
 	// Box it all
 	box := styles.SuccessBoxStyle.Render(title + details)
