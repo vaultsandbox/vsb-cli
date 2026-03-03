@@ -99,6 +99,25 @@ func formatInboxInfoContent(stored *config.StoredInbox, isActive, isExpired bool
 	}
 	content += fmt.Sprintf("%s %s\n", labelStyle.Render("Expires:"), expiryStr)
 
+	// Inbox properties
+	encryptedStr := styles.MutedStyle.Render("No")
+	if stored.Encrypted {
+		encryptedStr = "Yes"
+	}
+	content += fmt.Sprintf("%s %s\n", labelStyle.Render("Encrypted:"), encryptedStr)
+
+	emailAuthStr := styles.MutedStyle.Render("No")
+	if stored.EmailAuth {
+		emailAuthStr = "Yes"
+	}
+	content += fmt.Sprintf("%s %s\n", labelStyle.Render("Email Auth:"), emailAuthStr)
+
+	persistentStr := styles.MutedStyle.Render("No")
+	if stored.Persistent {
+		persistentStr = "Yes"
+	}
+	content += fmt.Sprintf("%s %s\n", labelStyle.Render("Persistent:"), persistentStr)
+
 	// Email count
 	if syncErr != nil {
 		content += fmt.Sprintf("%s %s\n", labelStyle.Render("Emails:"), styles.WarnStyle.Render("(sync error)"))

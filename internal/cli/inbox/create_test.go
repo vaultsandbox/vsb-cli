@@ -18,11 +18,16 @@ import (
 
 // mockInbox implements ExportableInbox for testing
 type mockInbox struct {
-	exported *vaultsandbox.ExportedInbox
+	exported   *vaultsandbox.ExportedInbox
+	persistent bool
 }
 
 func (m *mockInbox) Export() *vaultsandbox.ExportedInbox {
 	return m.exported
+}
+
+func (m *mockInbox) Persistent() bool {
+	return m.persistent
 }
 
 // mockClient implements InboxCreator for testing
@@ -92,6 +97,7 @@ func resetCreateTestState(oldClientFunc func() (InboxCreator, error), oldKeystor
 	newClientFunc = oldClientFunc
 	loadKeystoreFunc = oldKeystoreFunc
 	createTTL = oldTTL
+	createPersistence = ""
 }
 
 func TestParseTTL(t *testing.T) {
@@ -517,5 +523,83 @@ func TestRunCreate(t *testing.T) {
 		})
 
 		assert.NotNil(t, mockKS.addedInbox)
+	})
+
+	t.Run("passes persistence flag to client", func(t *testing.T) {
+		oldClientFunc := newClientFunc
+		oldKeystoreFunc := loadKeystoreFunc
+		oldTTL := createTTL
+		defer resetCreateTestState(oldClientFunc, oldKeystoreFunc, oldTTL)
+
+		createTTL = "24h"
+		createPersistence = "persistent"
+
+		mockKS := &mockKeystore{}
+		mockInb := &mockInbox{
+			exported: &vaultsandbox.ExportedInbox{
+				Version:      1,
+				EmailAddress: "test@example.com",
+				InboxHash:    "hash",
+				ExpiresAt:    time.Now().Add(24 * time.Hour),
+				ExportedAt:   time.Now(),
+				SecretKey:    "key",
+				ServerSigPk:  "sig",
+			},
+			persistent: true,
+		}
+		mockCl := &mockClient{inbox: mockInb}
+
+		newClientFunc = func() (InboxCreator, error) {
+			return mockCl, nil
+		}
+		loadKeystoreFunc = func() (KeystoreWriter, error) {
+			return mockKS, nil
+		}
+
+		cmd := createTestCommand()
+		captureCreateStdout(t, func() {
+			err := runCreate(cmd, []string{})
+			require.NoError(t, err)
+		})
+
+		assert.NotNil(t, mockKS.addedInbox)
+		assert.True(t, mockKS.addedInbox.Persistent)
+	})
+
+	t.Run("returns error for invalid persistence value", func(t *testing.T) {
+		oldClientFunc := newClientFunc
+		oldKeystoreFunc := loadKeystoreFunc
+		oldTTL := createTTL
+		defer resetCreateTestState(oldClientFunc, oldKeystoreFunc, oldTTL)
+
+		createTTL = "24h"
+		createPersistence = "invalid"
+
+		mockKS := &mockKeystore{}
+		mockCl := &mockClient{inbox: &mockInbox{
+			exported: &vaultsandbox.ExportedInbox{
+				Version:      1,
+				EmailAddress: "test@example.com",
+				InboxHash:    "hash",
+				ExpiresAt:    time.Now().Add(24 * time.Hour),
+				ExportedAt:   time.Now(),
+				SecretKey:    "key",
+				ServerSigPk:  "sig",
+			},
+		}}
+
+		newClientFunc = func() (InboxCreator, error) {
+			return mockCl, nil
+		}
+		loadKeystoreFunc = func() (KeystoreWriter, error) {
+			return mockKS, nil
+		}
+
+		cmd := createTestCommand()
+		captureCreateStdout(t, func() {
+			err := runCreate(cmd, []string{})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid --persistence value")
+		})
 	})
 }
